@@ -20,7 +20,6 @@ OBJ_DIR := $(shell cd $(OBJ_DIR); pwd)
 PLATFORM := unix
 
 DELETE := rm -f
-CAT    := cat
 SEP    := /
 
 # we use a special devel ftoption.h
