@@ -3,10 +3,6 @@
 #endif
 #include "stubs.h"
 
-#ifdef __SUNPRO_C
-#pragma weak GetNewFontClientID
-#endif
-
 weak Font
 GetNewFontClientID(void)
 {

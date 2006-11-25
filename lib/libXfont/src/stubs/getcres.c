@@ -3,10 +3,6 @@
 #endif
 #include "stubs.h"
 
-#ifdef __SUNPRO_C
-#pragma weak GetClientResolutions
-#endif
-
 weak FontResolutionPtr
 GetClientResolutions(int *num)
 {

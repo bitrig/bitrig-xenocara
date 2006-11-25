@@ -3,10 +3,6 @@
 #endif
 #include "stubs.h"
 
-#ifdef __SUNPRO_C
-#pragma weak client_auth_generation
-#endif
-
 weak int
 client_auth_generation(ClientPtr client)
 {
