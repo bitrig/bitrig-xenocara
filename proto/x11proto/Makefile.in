@@ -188,7 +188,8 @@ xproto_HEADERS = \
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = xproto.pc
-EXTRA_DIST = autogen.sh xproto.pc.in
+EXTRA_DIST = autogen.sh xproto.pc.in ChangeLog
+CLEANFILES = ChangeLog
 all: do-not-use-config.h Xfuncproto.h
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
@@ -371,6 +372,9 @@ distdir: $(DISTFILES)
 	    || exit 1; \
 	  fi; \
 	done
+	$(MAKE) $(AM_MAKEFLAGS) \
+	  top_distdir="$(top_distdir)" distdir="$(distdir)" \
+	  dist-hook
 	-find $(distdir) -type d ! -perm -777 -exec chmod a+rwx {} \; -o \
 	  ! -type d ! -perm -444 -links 1 -exec chmod a+r {} \; -o \
 	  ! -type d ! -perm -400 -exec chmod a+r {} \; -o \
@@ -492,6 +496,7 @@ install-strip:
 mostlyclean-generic:
 
 clean-generic:
+	-test -z "$(CLEANFILES)" || rm -f $(CLEANFILES)
 
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
@@ -551,7 +556,7 @@ uninstall-am: uninstall-info-am uninstall-pkgconfigDATA \
 
 .PHONY: CTAGS GTAGS all all-am am--refresh check check-am clean \
 	clean-generic ctags dist dist-all dist-bzip2 dist-gzip \
-	dist-shar dist-tarZ dist-zip distcheck distclean \
+	dist-hook dist-shar dist-tarZ dist-zip distcheck distclean \
 	distclean-generic distclean-hdr distclean-tags distcleancheck \
 	distdir distuninstallcheck dvi dvi-am html html-am info \
 	info-am install install-am install-data install-data-am \
@@ -563,6 +568,13 @@ uninstall-am: uninstall-info-am uninstall-pkgconfigDATA \
 	uninstall-am uninstall-info-am uninstall-pkgconfigDATA \
 	uninstall-xprotoHEADERS
 
+
+.PHONY: ChangeLog
+
+ChangeLog:
+	(cd $(srcdir) && git-log > ChangeLog )
+
+dist-hook: ChangeLog
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:
