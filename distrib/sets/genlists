@@ -1,5 +1,5 @@
 #!/bin/sh
-#	$OpenBSD: genlists,v 1.1.1.1 2006/11/27 11:25:45 matthieu Exp $
+#	$OpenBSD: genlists,v 1.1 2006/11/27 11:25:45 matthieu Exp $
 
 arch=$1
 lists="xbase xetc xserv xshare xfont"
