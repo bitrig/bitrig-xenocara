@@ -73,10 +73,17 @@ am__vpath_adj = case $$p in \
 am__strip_dir = `echo $$p | sed -e 's|^.*/||'`;
 am__installdirs = "$(DESTDIR)$(s3_drv_ladir)"
 s3_drv_laLTLIBRARIES_INSTALL = $(INSTALL)
-LTLIBRARIES = $(s3_drv_la_LTLIBRARIES)
-s3_drv_la_LIBADD =
-am_s3_drv_la_OBJECTS = s3_accel.lo s3_bios.lo s3_cursor.lo s3_dga.lo \
-	s3_driver.lo s3_IBMRGB.lo s3_Ti.lo s3_Trio64DAC.lo s3_video.lo
+LTLIBRARIES = $(noinst_LTLIBRARIES) $(s3_drv_la_LTLIBRARIES)
+libs3_accel_newmmio_la_LIBADD =
+am_libs3_accel_newmmio_la_OBJECTS =  \
+	libs3_accel_newmmio_la-s3_accel.lo
+libs3_accel_newmmio_la_OBJECTS = $(am_libs3_accel_newmmio_la_OBJECTS)
+libs3_accel_pio_la_LIBADD =
+am_libs3_accel_pio_la_OBJECTS = libs3_accel_pio_la-s3_accel.lo
+libs3_accel_pio_la_OBJECTS = $(am_libs3_accel_pio_la_OBJECTS)
+s3_drv_la_DEPENDENCIES = libs3_accel_newmmio.la libs3_accel_pio.la
+am_s3_drv_la_OBJECTS = s3_bios.lo s3_cursor.lo s3_dga.lo s3_driver.lo \
+	s3_IBMRGB.lo s3_Ti.lo s3_Trio64DAC.lo s3_video.lo
 s3_drv_la_OBJECTS = $(am_s3_drv_la_OBJECTS)
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
@@ -89,8 +96,10 @@ LTCOMPILE = $(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) \
 CCLD = $(CC)
 LINK = $(LIBTOOL) --tag=CC --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(AM_LDFLAGS) $(LDFLAGS) -o $@
-SOURCES = $(s3_drv_la_SOURCES)
-DIST_SOURCES = $(s3_drv_la_SOURCES)
+SOURCES = $(libs3_accel_newmmio_la_SOURCES) \
+	$(libs3_accel_pio_la_SOURCES) $(s3_drv_la_SOURCES)
+DIST_SOURCES = $(libs3_accel_newmmio_la_SOURCES) \
+	$(libs3_accel_pio_la_SOURCES) $(s3_drv_la_SOURCES)
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -223,7 +232,6 @@ s3_drv_la_LDFLAGS = -module -avoid-version
 s3_drv_ladir = @moduledir@/drivers
 s3_drv_la_SOURCES = \
          newmmio.h \
-         s3_accel.c \
          s3_bios.c \
          s3_cursor.c \
          s3_dga.c \
@@ -235,6 +243,12 @@ s3_drv_la_SOURCES = \
          s3_Trio64DAC.c \
          s3_video.c
 
+noinst_LTLIBRARIES = libs3_accel_newmmio.la libs3_accel_pio.la
+s3_drv_la_LIBADD = libs3_accel_newmmio.la libs3_accel_pio.la
+libs3_accel_newmmio_la_SOURCES = s3_accel.c
+libs3_accel_newmmio_la_CFLAGS = $(AM_CFLAGS) -DS3_NEWMMIO=1
+libs3_accel_pio_la_SOURCES = s3_accel.c
+libs3_accel_pio_la_CFLAGS = $(AM_CFLAGS)
 all: all-am
 
 .SUFFIXES:
@@ -268,6 +282,15 @@ $(top_srcdir)/configure: @MAINTAINER_MODE_TRUE@ $(am__configure_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 $(ACLOCAL_M4): @MAINTAINER_MODE_TRUE@ $(am__aclocal_m4_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
+
+clean-noinstLTLIBRARIES:
+	-test -z "$(noinst_LTLIBRARIES)" || rm -f $(noinst_LTLIBRARIES)
+	@list='$(noinst_LTLIBRARIES)'; for p in $$list; do \
+	  dir="`echo $$p | sed -e 's|/[^/]*$$||'`"; \
+	  test "$$dir" != "$$p" || dir=.; \
+	  echo "rm -f \"$${dir}/so_locations\""; \
+	  rm -f "$${dir}/so_locations"; \
+	done
 install-s3_drv_laLTLIBRARIES: $(s3_drv_la_LTLIBRARIES)
 	@$(NORMAL_INSTALL)
 	test -z "$(s3_drv_ladir)" || $(mkdir_p) "$(DESTDIR)$(s3_drv_ladir)"
@@ -295,6 +318,10 @@ clean-s3_drv_laLTLIBRARIES:
 	  echo "rm -f \"$${dir}/so_locations\""; \
 	  rm -f "$${dir}/so_locations"; \
 	done
+libs3_accel_newmmio.la: $(libs3_accel_newmmio_la_OBJECTS) $(libs3_accel_newmmio_la_DEPENDENCIES) 
+	$(LINK)  $(libs3_accel_newmmio_la_LDFLAGS) $(libs3_accel_newmmio_la_OBJECTS) $(libs3_accel_newmmio_la_LIBADD) $(LIBS)
+libs3_accel_pio.la: $(libs3_accel_pio_la_OBJECTS) $(libs3_accel_pio_la_DEPENDENCIES) 
+	$(LINK)  $(libs3_accel_pio_la_LDFLAGS) $(libs3_accel_pio_la_OBJECTS) $(libs3_accel_pio_la_LIBADD) $(LIBS)
 s3_drv.la: $(s3_drv_la_OBJECTS) $(s3_drv_la_DEPENDENCIES) 
 	$(LINK) -rpath $(s3_drv_ladir) $(s3_drv_la_LDFLAGS) $(s3_drv_la_OBJECTS) $(s3_drv_la_LIBADD) $(LIBS)
 
@@ -304,10 +331,11 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libs3_accel_newmmio_la-s3_accel.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libs3_accel_pio_la-s3_accel.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/s3_IBMRGB.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/s3_Ti.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/s3_Trio64DAC.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/s3_accel.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/s3_bios.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/s3_cursor.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/s3_dga.Plo@am__quote@
@@ -334,6 +362,20 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LTCOMPILE) -c -o $@ $<
+
+libs3_accel_newmmio_la-s3_accel.lo: s3_accel.c
+@am__fastdepCC_TRUE@	if $(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libs3_accel_newmmio_la_CFLAGS) $(CFLAGS) -MT libs3_accel_newmmio_la-s3_accel.lo -MD -MP -MF "$(DEPDIR)/libs3_accel_newmmio_la-s3_accel.Tpo" -c -o libs3_accel_newmmio_la-s3_accel.lo `test -f 's3_accel.c' || echo '$(srcdir)/'`s3_accel.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libs3_accel_newmmio_la-s3_accel.Tpo" "$(DEPDIR)/libs3_accel_newmmio_la-s3_accel.Plo"; else rm -f "$(DEPDIR)/libs3_accel_newmmio_la-s3_accel.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='s3_accel.c' object='libs3_accel_newmmio_la-s3_accel.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libs3_accel_newmmio_la_CFLAGS) $(CFLAGS) -c -o libs3_accel_newmmio_la-s3_accel.lo `test -f 's3_accel.c' || echo '$(srcdir)/'`s3_accel.c
+
+libs3_accel_pio_la-s3_accel.lo: s3_accel.c
+@am__fastdepCC_TRUE@	if $(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libs3_accel_pio_la_CFLAGS) $(CFLAGS) -MT libs3_accel_pio_la-s3_accel.lo -MD -MP -MF "$(DEPDIR)/libs3_accel_pio_la-s3_accel.Tpo" -c -o libs3_accel_pio_la-s3_accel.lo `test -f 's3_accel.c' || echo '$(srcdir)/'`s3_accel.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libs3_accel_pio_la-s3_accel.Tpo" "$(DEPDIR)/libs3_accel_pio_la-s3_accel.Plo"; else rm -f "$(DEPDIR)/libs3_accel_pio_la-s3_accel.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='s3_accel.c' object='libs3_accel_pio_la-s3_accel.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libs3_accel_pio_la_CFLAGS) $(CFLAGS) -c -o libs3_accel_pio_la-s3_accel.lo `test -f 's3_accel.c' || echo '$(srcdir)/'`s3_accel.c
 
 mostlyclean-libtool:
 	-rm -f *.lo
@@ -453,8 +495,8 @@ maintainer-clean-generic:
 	@echo "it deletes files that may require special tools to rebuild."
 clean: clean-am
 
-clean-am: clean-generic clean-libtool clean-s3_drv_laLTLIBRARIES \
-	mostlyclean-am
+clean-am: clean-generic clean-libtool clean-noinstLTLIBRARIES \
+	clean-s3_drv_laLTLIBRARIES mostlyclean-am
 
 distclean: distclean-am
 	-rm -rf ./$(DEPDIR)
@@ -503,11 +545,12 @@ ps-am:
 uninstall-am: uninstall-info-am uninstall-s3_drv_laLTLIBRARIES
 
 .PHONY: CTAGS GTAGS all all-am check check-am clean clean-generic \
-	clean-libtool clean-s3_drv_laLTLIBRARIES ctags distclean \
-	distclean-compile distclean-generic distclean-libtool \
-	distclean-tags distdir dvi dvi-am html html-am info info-am \
-	install install-am install-data install-data-am install-exec \
-	install-exec-am install-info install-info-am install-man \
+	clean-libtool clean-noinstLTLIBRARIES \
+	clean-s3_drv_laLTLIBRARIES ctags distclean distclean-compile \
+	distclean-generic distclean-libtool distclean-tags distdir dvi \
+	dvi-am html html-am info info-am install install-am \
+	install-data install-data-am install-exec install-exec-am \
+	install-info install-info-am install-man \
 	install-s3_drv_laLTLIBRARIES install-strip installcheck \
 	installcheck-am installdirs maintainer-clean \
 	maintainer-clean-generic mostlyclean mostlyclean-compile \
