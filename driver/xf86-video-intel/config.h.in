@@ -59,11 +59,23 @@
 /* Define to the version of this package. */
 #undef PACKAGE_VERSION
 
+/* Major version of this package */
+#undef PACKAGE_VERSION_MAJOR
+
+/* Minor version of this package */
+#undef PACKAGE_VERSION_MINOR
+
+/* Patch version of this package */
+#undef PACKAGE_VERSION_PATCHLEVEL
+
 /* Define to 1 if you have the ANSI C header files. */
 #undef STDC_HEADERS
 
 /* Version number of package */
 #undef VERSION
+
+/* Enable debug support */
+#undef VIDEO_DEBUG
 
 /* Enable DRI driver support */
 #undef XF86DRI
