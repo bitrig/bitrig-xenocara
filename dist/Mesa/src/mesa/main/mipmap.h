@@ -23,32 +23,30 @@
  */
 
 
-#ifndef ASM_MMX_H
-#define ASM_MMX_H
+#ifndef MIPMAP_H
+#define MIPMAP_H
 
-extern void _ASMAPI
-_mesa_mmx_blend_transparency( GLcontext *ctx, GLuint n, const GLubyte mask[],
-                              GLvoid *rgba, const GLvoid *dest,
-                              GLenum chanType );
+#include "mtypes.h"
 
-extern void _ASMAPI
-_mesa_mmx_blend_add( GLcontext *ctx, GLuint n, const GLubyte mask[],
-                     GLvoid *rgba, const GLvoid *dest,
-                     GLenum chanType );
+extern void
+_mesa_generate_mipmap(GLcontext *ctx, GLenum target,
+                      const struct gl_texture_unit *texUnit,
+                      struct gl_texture_object *texObj);
 
-extern void _ASMAPI
-_mesa_mmx_blend_min( GLcontext *ctx, GLuint n, const GLubyte mask[],
-                     GLvoid *rgba, const GLvoid *dest,
-                     GLenum chanType );
 
-extern void _ASMAPI
-_mesa_mmx_blend_max( GLcontext *ctx, GLuint n, const GLubyte mask[],
-                     GLvoid *rgba, const GLvoid *dest,
-                     GLenum chanType );
+extern void
+_mesa_rescale_teximage2d(GLuint bytesPerPixel,
+                         GLuint srcStrideInPixels,
+                         GLuint dstRowStride,
+                         GLint srcWidth, GLint srcHeight,
+                         GLint dstWidth, GLint dstHeight,
+                         const GLvoid *srcImage, GLvoid *dstImage);
 
-extern void _ASMAPI
-_mesa_mmx_blend_modulate( GLcontext *ctx, GLuint n, const GLubyte mask[],
-                          GLvoid *rgba, const GLvoid *dest,
-                          GLenum chanType );
+extern void
+_mesa_upscale_teximage2d(GLsizei inWidth, GLsizei inHeight,
+                         GLsizei outWidth, GLsizei outHeight,
+                         GLint comps, const GLchan *src, GLint srcRowStride,
+                         GLchan *dest);
 
-#endif
+
+#endif /* MIPMAP_H */
