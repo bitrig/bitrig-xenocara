@@ -7,6 +7,10 @@ if KDRIVEFBDEV
 FBDEV_SUBDIRS = fbdev
 endif
 
+if KDRIVEWSCONS
+WSCONS_SUBDIRS = wscons
+endif
+
 if XSDLSERVER
 XSDL_SUBDIRS = sdl
 endif
@@ -15,14 +19,25 @@ if XEPHYR
 XEPHYR_SUBDIRS = ephyr
 endif
 
+if KDRIVELINUX
+LINUX_SUBDIRS = linux
+endif
+
+if KDRIVEOPENBSD
+OPENBSD_SUBDIRS = openbsd
+endif
+
 SUBDIRS =			\
 	src			\
-	linux			\
+	$(LINUX_SUBDIRS)	\
+	$(OPENBSD_SUBDIRS)	\
 	$(XSDL_SUBDIRS)		\
 	$(FBDEV_SUBDIRS)	\
 	$(VESA_SUBDIRS)		\
+	$(WSCONS_SUBDIRS)	\
 	$(XEPHYR_SUBDIRS)       \
 	fake
 
 DIST_SUBDIRS = vesa ati chips epson i810 mach64 mga neomagic nvidia pm2 r128 \
-               smi via fbdev sdl ephyr src linux fake sis300
+               smi via fbdev sdl ephyr src linux fake sis300 \
+	       openbsd wscons
