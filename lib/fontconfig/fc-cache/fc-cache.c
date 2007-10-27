@@ -22,6 +22,8 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include "../fc-arch/fcarch.h"
+
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #else
@@ -40,6 +42,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <dirent.h>
+#include <string.h>
 
 #if defined (_WIN32)
 #define STRICT
@@ -64,6 +67,7 @@
 #define _GNU_SOURCE
 #include <getopt.h>
 const struct option longopts[] = {
+    {"chroot", 0, 0, 'c'},
     {"force", 0, 0, 'f'},
     {"really-force", 0, 0, 'r'},
     {"system-only", 0, 0, 's'},
@@ -296,6 +300,12 @@ cleanCacheDirectory (FcConfig *config, FcChar8 *dir, FcBool verbose)
 
 	if (ent->d_name[0] == '.')
 	    continue;
+	/* skip cache files for different architectures and */
+	/* files which are not cache files at all */
+	if (strlen(ent->d_name) != 32 + strlen ("-" FC_ARCHITECTURE FC_CACHE_SUFFIX) ||
+	    strcmp(ent->d_name + 32, "-" FC_ARCHITECTURE FC_CACHE_SUFFIX))
+	    continue;
+	
 	file_name = FcStrPlus (dir_base, (FcChar8 *) ent->d_name);
 	if (!file_name)
 	{
@@ -377,16 +387,20 @@ main (int argc, char **argv)
     FcConfig	*config;
     int		i;
     int		ret;
+    char        *destdir = NULL;
 #if HAVE_GETOPT_LONG || HAVE_GETOPT
     int		c;
 
 #if HAVE_GETOPT_LONG
-    while ((c = getopt_long (argc, argv, "frsVv?", longopts, NULL)) != -1)
+    while ((c = getopt_long (argc, argv, "c:frsVv?", longopts, NULL)) != -1)
 #else
-    while ((c = getopt (argc, argv, "frsVv?")) != -1)
+    while ((c = getopt (argc, argv, "c:frsVv?")) != -1)
 #endif
     {
 	switch (c) {
+	case 'c':
+	    destdir = optarg;
+	    break;
 	case 'r':
 	    really_force = FcTrue;
 	    /* fall through */
@@ -411,7 +425,14 @@ main (int argc, char **argv)
 #else
     i = 1;
 #endif
-
+    if (destdir) {
+	if (chroot(destdir) == -1) {
+	    fprintf(stderr, "%s: Can't chroot to %s: %s\n", argv[0], destdir,
+		    strerror(errno));
+	    return 1;
+	}
+	systemOnly = FcTrue;
+    }
     if (systemOnly)
 	FcConfigEnableHome (FcFalse);
     config = FcInitLoadConfig ();
