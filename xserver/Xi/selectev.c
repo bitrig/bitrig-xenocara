@@ -74,6 +74,53 @@ SOFTWARE.
 extern Mask ExtExclusiveMasks[];
 extern Mask ExtValidMasks[];
 
+static int
+HandleDevicePresenceMask(ClientPtr client, WindowPtr win,
+                         XEventClass *cls, CARD16 *count)
+{
+    int i, j;
+    Mask mask;
+
+    /* We use the device ID 256 to select events that aren't bound to
+     * any device.  For now we only handle the device presence event,
+     * but this could be extended to other events that aren't bound to
+     * a device.
+     *
+     * In order not to break in CreateMaskFromList() we remove the
+     * entries with device ID 256 from the XEventClass array.
+     */
+
+    mask = 0;
+    for (i = 0, j = 0; i < *count; i++) {
+        if (cls[i] >> 8 != 256) {
+            cls[j] = cls[i];
+            j++;
+            continue;
+        }
+
+        switch (cls[i] & 0xff) {
+        case _devicePresence:
+            mask |= DevicePresenceNotifyMask;
+            break;
+        }
+    }
+
+    *count = j;
+
+    if (mask == 0)
+        return Success;
+
+    /* We always only use mksidx = 0 for events not bound to
+     * devices */
+
+    if (AddExtensionClient (win, client, mask, 0) != Success)
+        return BadAlloc;
+
+    RecalculateDeviceDeliverableEvents(win);
+
+    return Success;
+}
+
 /***********************************************************************
  *
  * Handle requests from clients with a different byte order.
@@ -81,22 +128,19 @@ extern Mask ExtValidMasks[];
  */
 
 int
-SProcXSelectExtensionEvent(register ClientPtr client)
+SProcXSelectExtensionEvent(ClientPtr client)
 {
-    register char n;
-    register long *p;
-    register int i;
+    char n;
 
     REQUEST(xSelectExtensionEventReq);
     swaps(&stuff->length, n);
     REQUEST_AT_LEAST_SIZE(xSelectExtensionEventReq);
     swapl(&stuff->window, n);
     swaps(&stuff->count, n);
-    p = (long *)&stuff[1];
-    for (i = 0; i < stuff->count; i++) {
-	swapl(p, n);
-	p++;
-    }
+    REQUEST_FIXED_SIZE(xSelectExtensionEventReq,
+                      stuff->count * sizeof(CARD32));
+    SwapLongs((CARD32 *) (&stuff[1]), stuff->count);
+
     return (ProcXSelectExtensionEvent(client));
 }
 
@@ -107,7 +151,7 @@ SProcXSelectExtensionEvent(register ClientPtr client)
  */
 
 int
-ProcXSelectExtensionEvent(register ClientPtr client)
+ProcXSelectExtensionEvent(ClientPtr client)
 {
     int ret;
     int i;
@@ -123,12 +167,17 @@ ProcXSelectExtensionEvent(register ClientPtr client)
 	return Success;
     }
 
-    pWin = (WindowPtr) LookupWindow(stuff->window, client);
-    if (!pWin) {
-	client->errorValue = stuff->window;
-	SendErrorToClient(client, IReqCode, X_SelectExtensionEvent, 0,
-			  BadWindow);
+    ret = dixLookupWindow(&pWin, stuff->window, client, DixUnknownAccess);
+    if (ret != Success) {
+	SendErrorToClient(client, IReqCode, X_SelectExtensionEvent, 0, ret);
 	return Success;
+    }
+
+    if (HandleDevicePresenceMask(client, pWin, (XEventClass *) & stuff[1],
+                                &stuff->count) != Success) {
+       SendErrorToClient(client, IReqCode, X_SelectExtensionEvent, 0,
+                         BadAlloc);
+       return Success;
     }
 
     if ((ret = CreateMaskFromList(client, (XEventClass *) & stuff[1],
