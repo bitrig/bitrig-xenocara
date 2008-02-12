@@ -38,6 +38,31 @@
 #include "intel_regions.h"
 #include "swrast/swrast.h"
 
+int intel_translate_shadow_compare_func( GLenum func )
+{
+   switch(func) {
+   case GL_NEVER: 
+       return COMPAREFUNC_ALWAYS; 
+   case GL_LESS: 
+       return COMPAREFUNC_LEQUAL; 
+   case GL_LEQUAL: 
+       return COMPAREFUNC_LESS;
+   case GL_GREATER: 
+       return COMPAREFUNC_GEQUAL; 
+   case GL_GEQUAL: 
+      return COMPAREFUNC_GREATER; 
+   case GL_NOTEQUAL: 
+      return COMPAREFUNC_EQUAL; 
+   case GL_EQUAL: 
+      return COMPAREFUNC_NOTEQUAL; 
+   case GL_ALWAYS: 
+       return COMPAREFUNC_NEVER; 
+   }
+
+   fprintf(stderr, "Unknown value in %s: %x\n", __FUNCTION__, func);
+   return COMPAREFUNC_NEVER; 
+}
+
 int intel_translate_compare_func( GLenum func )
 {
    switch(func) {
@@ -182,39 +207,6 @@ static void intelClearColor(GLcontext *ctx, const GLfloat color[4])
 }
 
 
-static void intelCalcViewport( GLcontext *ctx )
-{
-   struct intel_context *intel = intel_context(ctx);
-   const GLfloat *v = ctx->Viewport._WindowMap.m;
-   GLfloat *m = intel->ViewportMatrix.m;
-   GLint h = 0;
-
-   if (intel->driDrawable) 
-      h = intel->driDrawable->h + SUBPIXEL_Y;
-
-   /* See also intel_translate_vertex.  SUBPIXEL adjustments can be done
-    * via state vars, too.
-    */
-   m[MAT_SX] =   v[MAT_SX];
-   m[MAT_TX] =   v[MAT_TX] + SUBPIXEL_X;
-   m[MAT_SY] = - v[MAT_SY];
-   m[MAT_TY] = - v[MAT_TY] + h;
-   m[MAT_SZ] =   v[MAT_SZ] * intel->depth_scale;
-   m[MAT_TZ] =   v[MAT_TZ] * intel->depth_scale;
-}
-
-static void intelViewport( GLcontext *ctx,
-			  GLint x, GLint y,
-			  GLsizei width, GLsizei height )
-{
-   intelCalcViewport( ctx );
-}
-
-static void intelDepthRange( GLcontext *ctx,
-			    GLclampd nearval, GLclampd farval )
-{
-   intelCalcViewport( ctx );
-}
 
 /* Fallback to swrast for select and feedback.
  */
@@ -228,8 +220,6 @@ static void intelRenderMode( GLcontext *ctx, GLenum mode )
 void intelInitStateFuncs( struct dd_function_table *functions )
 {
    functions->RenderMode = intelRenderMode;
-   functions->Viewport = intelViewport;
-   functions->DepthRange = intelDepthRange;
    functions->ClearColor = intelClearColor;
 }
 

@@ -123,10 +123,8 @@ __glXInitVertexArrayState( __GLXcontext * gc )
     struct array_state_vector * arrays;
 
     unsigned array_count;
-    unsigned texture_units = 1;
-    unsigned i;
-    unsigned j;
-    unsigned vertex_program_attribs = 0;
+    int texture_units = 1, vertex_program_attribs = 0;
+    unsigned i, j;
 
     GLboolean got_fog = GL_FALSE;
     GLboolean got_secondary_color = GL_FALSE;
@@ -775,6 +773,7 @@ emit_DrawElements_old( GLenum mode, GLsizei count, GLenum type,
     unsigned total_requests = 0;
     unsigned i;
     unsigned req;
+    unsigned req_element=0;
 
 
     pc = emit_DrawArrays_header_old( gc, arrays, & elements_per_request,
@@ -792,7 +791,7 @@ emit_DrawElements_old( GLenum mode, GLsizei count, GLenum type,
 
 	switch( type ) {
 	case GL_UNSIGNED_INT: {
-	    const GLuint   * ui_ptr = (const GLuint   *) indices;
+	    const GLuint   * ui_ptr = (const GLuint   *) indices + req_element;
 
 	    for ( i = 0 ; i < elements_per_request ; i++ ) {
 		const GLint index = (GLint) *(ui_ptr++);
@@ -801,7 +800,7 @@ emit_DrawElements_old( GLenum mode, GLsizei count, GLenum type,
 	    break;
 	}
 	case GL_UNSIGNED_SHORT: {
-	    const GLushort * us_ptr = (const GLushort *) indices;
+	    const GLushort * us_ptr = (const GLushort *) indices + req_element;
 
 	    for ( i = 0 ; i < elements_per_request ; i++ ) {
 		const GLint index = (GLint) *(us_ptr++);
@@ -810,7 +809,7 @@ emit_DrawElements_old( GLenum mode, GLsizei count, GLenum type,
 	    break;
 	}
 	case GL_UNSIGNED_BYTE: {
-	    const GLubyte  * ub_ptr = (const GLubyte  *) indices;
+	    const GLubyte  * ub_ptr = (const GLubyte  *) indices + req_element;
 
 	    for ( i = 0 ; i < elements_per_request ; i++ ) {
 		const GLint index = (GLint) *(ub_ptr++);
@@ -828,6 +827,7 @@ emit_DrawElements_old( GLenum mode, GLsizei count, GLenum type,
 	}
 
 	count -= elements_per_request;
+	req_element += elements_per_request;
     }
 
 
@@ -1669,7 +1669,7 @@ __glXGetArrayType( const __GLXattribute * const state,
 						    key, index );
 
     if ( a != NULL ) {
-	*dest = (GLintptr) a->enabled;
+	*dest = (GLintptr) a->data_type;
     }
 
     return (a != NULL);

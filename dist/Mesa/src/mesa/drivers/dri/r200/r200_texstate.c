@@ -38,6 +38,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "context.h"
 #include "macros.h"
 #include "texformat.h"
+#include "texobj.h"
 #include "enums.h"
 
 #include "r200_context.h"
@@ -71,18 +72,48 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define _INVALID(f) \
     [ MESA_FORMAT_ ## f ] = { 0xffffffff, 0 }
 #define VALID_FORMAT(f) ( ((f) <= MESA_FORMAT_RGBA_DXT5) \
-			     && (tx_table[f].format != 0xffffffff) )
+			     && (tx_table_le[f].format != 0xffffffff) )
 
-static const struct {
+struct tx_table {
    GLuint format, filter;
-}
-tx_table[] =
+};
+
+static const struct tx_table tx_table_be[] =
 {
-   _ALPHA(RGBA8888),
+   [ MESA_FORMAT_RGBA8888 ] = { R200_TXFORMAT_ABGR8888 | R200_TXFORMAT_ALPHA_IN_MAP, 0 },
    _ALPHA_REV(RGBA8888),
    _ALPHA(ARGB8888),
    _ALPHA_REV(ARGB8888),
    _INVALID(RGB888),
+   _COLOR(RGB565),
+   _COLOR_REV(RGB565),
+   _ALPHA(ARGB4444),
+   _ALPHA_REV(ARGB4444),
+   _ALPHA(ARGB1555),
+   _ALPHA_REV(ARGB1555),
+   _ALPHA(AL88),
+   _ALPHA_REV(AL88),
+   _ALPHA(A8),
+   _COLOR(L8),
+   _ALPHA(I8),
+   _INVALID(CI8),
+   _YUV(YCBCR),
+   _YUV(YCBCR_REV),
+   _INVALID(RGB_FXT1),
+   _INVALID(RGBA_FXT1),
+   _COLOR(RGB_DXT1),
+   _ALPHA(RGBA_DXT1),
+   _ALPHA(RGBA_DXT3),
+   _ALPHA(RGBA_DXT5),
+};
+
+static const struct tx_table tx_table_le[] =
+{
+   _ALPHA(RGBA8888),
+   [ MESA_FORMAT_RGBA8888_REV ] = { R200_TXFORMAT_ABGR8888 | R200_TXFORMAT_ALPHA_IN_MAP, 0 },
+   _ALPHA(ARGB8888),
+   _ALPHA_REV(ARGB8888),
+   [ MESA_FORMAT_RGB888 ] = { R200_TXFORMAT_ARGB8888, 0 },
    _COLOR(RGB565),
    _COLOR_REV(RGB565),
    _ALPHA(ARGB4444),
@@ -132,18 +163,19 @@ static void r200SetTexImages( r200ContextPtr rmesa,
 
    /* Set the hardware texture format
     */
+   if ( !t->image_override ) {
+      if ( VALID_FORMAT( baseImage->TexFormat->MesaFormat ) ) {
+         t->pp_txformat &= ~(R200_TXFORMAT_FORMAT_MASK |
+                             R200_TXFORMAT_ALPHA_IN_MAP);
+         t->pp_txfilter &= ~R200_YUV_TO_RGB;
 
-   t->pp_txformat &= ~(R200_TXFORMAT_FORMAT_MASK |
-		       R200_TXFORMAT_ALPHA_IN_MAP);
-   t->pp_txfilter &= ~R200_YUV_TO_RGB;
-
-   if ( VALID_FORMAT( baseImage->TexFormat->MesaFormat ) ) {
-      t->pp_txformat |= tx_table[ baseImage->TexFormat->MesaFormat ].format;
-      t->pp_txfilter |= tx_table[ baseImage->TexFormat->MesaFormat ].filter;
-   }
-   else {
-      _mesa_problem(NULL, "unexpected texture format in %s", __FUNCTION__);
-      return;
+	 t->pp_txformat |= tx_table_le[ baseImage->TexFormat->MesaFormat ].format;
+	 t->pp_txfilter |= tx_table_le[ baseImage->TexFormat->MesaFormat ].filter;
+      }
+      else {
+         _mesa_problem(NULL, "unexpected texture format in %s", __FUNCTION__);
+         return;
+      }
    }
 
    texelBytes = baseImage->TexFormat->TexelBytes;
@@ -341,11 +373,13 @@ static void r200SetTexImages( r200ContextPtr rmesa,
     * requires 64-byte aligned pitches, and we may/may not need the
     * blitter.   NPOT only!
     */
-   if (baseImage->IsCompressed)
-      t->pp_txpitch = (tObj->Image[0][t->base.firstLevel]->Width + 63) & ~(63);
-   else
-      t->pp_txpitch = ((tObj->Image[0][t->base.firstLevel]->Width * texelBytes) + 63) & ~(63);
-   t->pp_txpitch -= 32;
+   if ( !t->image_override ) {
+      if (baseImage->IsCompressed)
+         t->pp_txpitch = (tObj->Image[0][t->base.firstLevel]->Width + 63) & ~(63);
+      else
+         t->pp_txpitch = ((tObj->Image[0][t->base.firstLevel]->Width * texelBytes) + 63) & ~(63);
+      t->pp_txpitch -= 32;
+   }
 
    t->dirty_state = TEX_ALL;
 
@@ -940,6 +974,46 @@ static GLboolean r200UpdateTextureEnv( GLcontext *ctx, int unit, int slot, GLuin
    return GL_TRUE;
 }
 
+void r200SetTexOffset(__DRIcontext * pDRICtx, GLint texname,
+		      unsigned long long offset, GLint depth, GLuint pitch)
+{
+	r200ContextPtr rmesa =
+	    (r200ContextPtr) ((__DRIcontextPrivate *) pDRICtx->private)->
+	    driverPrivate;
+	struct gl_texture_object *tObj =
+	    _mesa_lookup_texture(rmesa->glCtx, texname);
+	r200TexObjPtr t;
+
+	if (!tObj)
+		return;
+
+	t = (r200TexObjPtr) tObj->DriverData;
+
+	t->image_override = GL_TRUE;
+
+	if (!offset)
+		return;
+
+	t->pp_txoffset = offset;
+	t->pp_txpitch = pitch - 32;
+
+	switch (depth) {
+	case 32:
+		t->pp_txformat = tx_table_le[MESA_FORMAT_ARGB8888].format;
+		t->pp_txfilter |= tx_table_le[MESA_FORMAT_ARGB8888].filter;
+		break;
+	case 24:
+	default:
+		t->pp_txformat = tx_table_le[MESA_FORMAT_RGB888].format;
+		t->pp_txfilter |= tx_table_le[MESA_FORMAT_RGB888].filter;
+		break;
+	case 16:
+		t->pp_txformat = tx_table_le[MESA_FORMAT_RGB565].format;
+		t->pp_txfilter |= tx_table_le[MESA_FORMAT_RGB565].filter;
+		break;
+	}
+}
+
 #define REF_COLOR 1
 #define REF_ALPHA 2
 
@@ -1138,7 +1212,7 @@ static void import_tex_obj_state( r200ContextPtr rmesa,
 				  r200TexObjPtr texobj )
 {
 /* do not use RADEON_DB_STATE to avoid stale texture caches */
-   GLuint *cmd = &rmesa->hw.tex[unit].cmd[TEX_CMD_0];
+   int *cmd = &rmesa->hw.tex[unit].cmd[TEX_CMD_0];
 
    R200_STATECHANGE( rmesa, tex[unit] );
 
@@ -1159,7 +1233,7 @@ static void import_tex_obj_state( r200ContextPtr rmesa,
    }
 
    if (texobj->base.tObj->Target == GL_TEXTURE_CUBE_MAP) {
-      GLuint *cube_cmd = &rmesa->hw.cube[unit].cmd[CUBE_CMD_0];
+      int *cube_cmd = &rmesa->hw.cube[unit].cmd[CUBE_CMD_0];
       GLuint bytesPerFace = texobj->base.totalSize / 6;
       ASSERT(texobj->base.totalSize % 6 == 0);
 
@@ -1213,6 +1287,47 @@ static void set_texgen_matrix( r200ContextPtr rmesa,
    _math_matrix_loadf( &(rmesa->TexGenMatrix[unit]), m);
    _math_matrix_analyse( &(rmesa->TexGenMatrix[unit]) );
    rmesa->TexGenEnabled |= R200_TEXMAT_0_ENABLE<<unit;
+}
+
+
+static GLuint r200_need_dis_texgen(const GLbitfield texGenEnabled,
+				   const GLfloat *planeS,
+				   const GLfloat *planeT,
+				   const GLfloat *planeR,
+				   const GLfloat *planeQ)
+{
+   GLuint needtgenable = 0;
+
+   if (!(texGenEnabled & S_BIT)) {
+      if (((texGenEnabled & T_BIT) && planeT[0] != 0.0) ||
+	 ((texGenEnabled & R_BIT) && planeR[0] != 0.0) ||
+	 ((texGenEnabled & Q_BIT) && planeQ[0] != 0.0)) {
+	 needtgenable |= S_BIT;
+      }
+   }
+   if (!(texGenEnabled & T_BIT)) {
+      if (((texGenEnabled & S_BIT) && planeS[1] != 0.0) ||
+	 ((texGenEnabled & R_BIT) && planeR[1] != 0.0) ||
+	 ((texGenEnabled & Q_BIT) && planeQ[1] != 0.0)) {
+	 needtgenable |= T_BIT;
+     }
+   }
+   if (!(texGenEnabled & R_BIT)) {
+      if (((texGenEnabled & S_BIT) && planeS[2] != 0.0) ||
+	 ((texGenEnabled & T_BIT) && planeT[2] != 0.0) ||
+	 ((texGenEnabled & Q_BIT) && planeQ[2] != 0.0)) {
+	 needtgenable |= R_BIT;
+      }
+   }
+   if (!(texGenEnabled & Q_BIT)) {
+      if (((texGenEnabled & S_BIT) && planeS[3] != 0.0) ||
+	 ((texGenEnabled & T_BIT) && planeT[3] != 0.0) ||
+	 ((texGenEnabled & R_BIT) && planeR[3] != 0.0)) {
+	 needtgenable |= Q_BIT;
+      }
+   }
+
+   return needtgenable;
 }
 
 
@@ -1285,28 +1400,72 @@ static GLboolean r200_validate_texgen( GLcontext *ctx, GLuint unit )
       return GL_FALSE;
    }
 
+/* we CANNOT do mixed mode if the texgen mode requires a plane where the input
+   is not enabled for texgen, since the planes are concatenated into texmat,
+   and thus the input will come from texcoord rather than tex gen equation!
+   Either fallback or just hope that those texcoords aren't really needed...
+   Assuming the former will cause lots of unnecessary fallbacks, the latter will
+   generate bogus results sometimes - it's pretty much impossible to really know
+   when a fallback is needed, depends on texmat and what sort of texture is bound
+   etc, - for now fallback if we're missing either S or T bits, there's a high
+   probability we need the texcoords in that case.
+   That's a lot of work for some obscure texgen mixed mode fixup - why oh why
+   doesn't the chip just directly accept the plane parameters :-(. */
    switch (mode) {
-   case GL_OBJECT_LINEAR:
+   case GL_OBJECT_LINEAR: {
+      GLuint needtgenable = r200_need_dis_texgen( texUnit->TexGenEnabled,
+				texUnit->ObjectPlaneS, texUnit->ObjectPlaneT,
+				texUnit->ObjectPlaneR, texUnit->ObjectPlaneQ );
+      if (needtgenable & (S_BIT | T_BIT)) {
+	 if (R200_DEBUG & DEBUG_FALLBACKS)
+	 fprintf(stderr, "fallback mixed texgen / obj plane, 0x%x\n",
+		 texUnit->TexGenEnabled);
+	 return GL_FALSE;
+      }
+      if (needtgenable & (R_BIT)) {
+	 tgcm &= ~(R200_TEXGEN_COMP_R << (unit * 4));
+      }
+      if (needtgenable & (Q_BIT)) {
+	 tgcm &= ~(R200_TEXGEN_COMP_Q << (unit * 4));
+      }
+
       tgi |= R200_TEXGEN_INPUT_OBJ << inputshift;
       set_texgen_matrix( rmesa, unit, 
 	 (texUnit->TexGenEnabled & S_BIT) ? texUnit->ObjectPlaneS : I,
 	 (texUnit->TexGenEnabled & T_BIT) ? texUnit->ObjectPlaneT : I + 4,
 	 (texUnit->TexGenEnabled & R_BIT) ? texUnit->ObjectPlaneR : I + 8,
 	 (texUnit->TexGenEnabled & Q_BIT) ? texUnit->ObjectPlaneQ : I + 12);
+      }
       break;
 
-   case GL_EYE_LINEAR:
+   case GL_EYE_LINEAR: {
+      GLuint needtgenable = r200_need_dis_texgen( texUnit->TexGenEnabled,
+				texUnit->EyePlaneS, texUnit->EyePlaneT,
+				texUnit->EyePlaneR, texUnit->EyePlaneQ );
+      if (needtgenable & (S_BIT | T_BIT)) {
+	 if (R200_DEBUG & DEBUG_FALLBACKS)
+	 fprintf(stderr, "fallback mixed texgen / eye plane, 0x%x\n",
+		 texUnit->TexGenEnabled);
+	 return GL_FALSE;
+      }
+      if (needtgenable & (R_BIT)) {
+	 tgcm &= ~(R200_TEXGEN_COMP_R << (unit * 4));
+      }
+      if (needtgenable & (Q_BIT)) {
+	 tgcm &= ~(R200_TEXGEN_COMP_Q << (unit * 4));
+      }
       tgi |= R200_TEXGEN_INPUT_EYE << inputshift;
-      set_texgen_matrix( rmesa, unit, 
+      set_texgen_matrix( rmesa, unit,
 	 (texUnit->TexGenEnabled & S_BIT) ? texUnit->EyePlaneS : I,
 	 (texUnit->TexGenEnabled & T_BIT) ? texUnit->EyePlaneT : I + 4,
 	 (texUnit->TexGenEnabled & R_BIT) ? texUnit->EyePlaneR : I + 8,
 	 (texUnit->TexGenEnabled & Q_BIT) ? texUnit->EyePlaneQ : I + 12);
+      }
       break;
 
    case GL_REFLECTION_MAP_NV:
       rmesa->TexGenNeedNormals[unit] = GL_TRUE;
-      tgi |= R200_TEXGEN_INPUT_EYE_REFLECT<<inputshift;
+      tgi |= R200_TEXGEN_INPUT_EYE_REFLECT << inputshift;
       /* pretty weird, must only negate when lighting is enabled? */
       if (ctx->Light.Enabled)
 	 set_texgen_matrix( rmesa, unit, 
@@ -1436,7 +1595,7 @@ static GLboolean enable_tex_2d( GLcontext *ctx, int unit )
       R200_FIREVERTICES( rmesa );
       r200SetTexImages( rmesa, tObj );
       r200UploadTexImages( rmesa, (r200TexObjPtr) tObj->DriverData, 0 );
-      if ( !t->base.memBlock ) 
+      if ( !t->base.memBlock && !t->image_override ) 
 	 return GL_FALSE;
    }
 
@@ -1544,7 +1703,9 @@ static GLboolean enable_tex_rect( GLcontext *ctx, int unit )
       R200_FIREVERTICES( rmesa );
       r200SetTexImages( rmesa, tObj );
       r200UploadTexImages( rmesa, (r200TexObjPtr) tObj->DriverData, 0 );
-      if ( !t->base.memBlock && !rmesa->prefer_gart_client_texturing ) 
+      if ( !t->base.memBlock &&
+           !t->image_override &&
+           !rmesa->prefer_gart_client_texturing ) 
 	 return GL_FALSE;
    }
 

@@ -53,8 +53,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "r200_context.h"
 #include "r200_ioctl.h"
 #include "r200_span.h"
+#include "r200_tex.h"
 #elif RADEON_COMMON && defined(RADEON_COMMON_FOR_R300)
 #include "r300_context.h"
+#include "r300_fragprog.h"
+#include "r300_tex.h"
 #include "radeon_span.h"
 #endif
 
@@ -130,6 +133,7 @@ extern const struct dri_extension blend_extensions[];
 extern const struct dri_extension ARB_vp_extension[];
 extern const struct dri_extension NV_vp_extension[];
 extern const struct dri_extension ATI_fs_extension[];
+extern const struct dri_extension point_extensions[];
 
 #elif RADEON_COMMON && defined(RADEON_COMMON_FOR_R300)
 
@@ -162,6 +166,18 @@ DRI_CONF_OPT_BEGIN(disable_lowimpact_fallback,bool,def) \
         DRI_CONF_DESC(en,"Disable Low-impact fallback") \
 DRI_CONF_OPT_END
 
+#define DRI_CONF_DISABLE_DOUBLE_SIDE_STENCIL(def) \
+DRI_CONF_OPT_BEGIN(disable_stencil_two_side,bool,def) \
+        DRI_CONF_DESC(en,"Disable GL_EXT_stencil_two_side") \
+DRI_CONF_OPT_END
+
+#define DRI_CONF_FP_OPTIMIZATION(def) \
+DRI_CONF_OPT_BEGIN_V(fp_optimization,enum,def,"0:1") \
+	DRI_CONF_DESC_BEGIN(en,"Fragment Program optimization") \
+                DRI_CONF_ENUM(0,"Optimize for Speed") \
+                DRI_CONF_ENUM(1,"Optimize for Quality") \
+        DRI_CONF_DESC_END \
+DRI_CONF_OPT_END
 
 const char __driConfigOptions[] =
 DRI_CONF_BEGIN
@@ -173,6 +189,7 @@ DRI_CONF_BEGIN
 		DRI_CONF_MAX_TEXTURE_COORD_UNITS(8, 2, 8)
 		DRI_CONF_COMMAND_BUFFER_SIZE(8, 8, 32)
 		DRI_CONF_DISABLE_FALLBACK(false)
+		DRI_CONF_DISABLE_DOUBLE_SIDE_STENCIL(false)
 	DRI_CONF_SECTION_END
 	DRI_CONF_SECTION_QUALITY
 		DRI_CONF_TEXTURE_DEPTH(DRI_CONF_TEXTURE_DEPTH_FB)
@@ -183,12 +200,13 @@ DRI_CONF_BEGIN
 		DRI_CONF_COLOR_REDUCTION(DRI_CONF_COLOR_REDUCTION_DITHER)
 		DRI_CONF_ROUND_MODE(DRI_CONF_ROUND_TRUNC)
 		DRI_CONF_DITHER_MODE(DRI_CONF_DITHER_XERRORDIFF)
+		DRI_CONF_FP_OPTIMIZATION(DRI_CONF_FP_OPTIMIZATION_SPEED)
 	DRI_CONF_SECTION_END
 	DRI_CONF_SECTION_DEBUG
 		DRI_CONF_NO_RAST(false)
 	DRI_CONF_SECTION_END
 DRI_CONF_END;
-static const GLuint __driNConfigOptions = 16;
+static const GLuint __driNConfigOptions = 18;
 
 #ifndef RADEON_DEBUG
 int RADEON_DEBUG = 0;
@@ -640,7 +658,7 @@ radeonCreateScreen( __DRIscreenPrivate *sPriv )
    case PCI_CHIP_RC410_5A61:
    case PCI_CHIP_RC410_5A62:
       screen->chip_family = CHIP_FAMILY_RS400;
-      fprintf(stderr, "Warning, xpress200 detected. Probably won't work.\n");
+      fprintf(stderr, "Warning, xpress200 detected.\n");
       break;
 
    default:
@@ -726,6 +744,7 @@ radeonCreateScreen( __DRIscreenPrivate *sPriv )
 	 (*glx_enable_extension)( psc, "GLX_MESA_allocate_memory" );
 
       (*glx_enable_extension)( psc, "GLX_MESA_copy_sub_buffer" );
+      (*glx_enable_extension)( psc, "GLX_SGI_make_current_read" );
    }
 
 #if RADEON_COMMON && defined(RADEON_COMMON_FOR_R200)
@@ -884,7 +903,7 @@ radeonCreateBuffer( __DRIscreenPrivate *driScrnPriv,
 static void
 radeonDestroyBuffer(__DRIdrawablePrivate *driDrawPriv)
 {
-   _mesa_destroy_framebuffer((GLframebuffer *) (driDrawPriv->driverPrivate));
+   _mesa_unreference_framebuffer((GLframebuffer **)(&(driDrawPriv->driverPrivate)));
 }
 
 #if RADEON_COMMON && defined(RADEON_COMMON_FOR_R300)
@@ -935,6 +954,9 @@ static struct __DriverAPIRec radeonAPI = {
    .WaitForSBC      = NULL,
    .SwapBuffersMSC  = NULL,
    .CopySubBuffer   = radeonCopySubBuffer,
+#if RADEON_COMMON && defined(RADEON_COMMON_FOR_R300)
+   .setTexOffset    = r300SetTexOffset,
+#endif
 };
 #else
 static const struct __DriverAPIRec r200API = {
@@ -952,7 +974,8 @@ static const struct __DriverAPIRec r200API = {
    .WaitForMSC      = driWaitForMSC32,
    .WaitForSBC      = NULL,
    .SwapBuffersMSC  = NULL,
-   .CopySubBuffer   = r200CopySubBuffer
+   .CopySubBuffer   = r200CopySubBuffer,
+   .setTexOffset    = r200SetTexOffset
 };
 #endif
 
@@ -1042,6 +1065,7 @@ __driCreateNewScreen_20050727( __DRInativeDisplay *dpy,
       driInitSingleExtension( NULL, ARB_vp_extension );
       driInitSingleExtension( NULL, NV_vp_extension );
       driInitSingleExtension( NULL, ATI_fs_extension );
+      driInitExtensions( NULL, point_extensions, GL_FALSE );
 #endif
    }
 

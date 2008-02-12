@@ -6,12 +6,13 @@
 #include "wmesadef.h"
 #include "colors.h"
 #include <GL/wmesa.h>
+#include <winuser.h>
 #include "context.h"
 #include "extensions.h"
 #include "framebuffer.h"
 #include "renderbuffer.h"
 #include "drivers/common/driverfuncs.h"
-#include "array_cache/acache.h"
+#include "vbo/vbo.h"
 #include "swrast/swrast.h"
 #include "swrast_setup/swrast_setup.h"
 #include "tnl/tnl.h"
@@ -114,7 +115,7 @@ static void wmSetPixelFormat(WMesaFramebuffer pwfb, HDC hDC)
 {
     pwfb->cColorBits = GetDeviceCaps(hDC, BITSPIXEL);
 
-    // Only 16 and 32 bit targets are supported now
+    /* Only 16 and 32 bit targets are supported now */
     assert(pwfb->cColorBits == 0 ||
 	   pwfb->cColorBits == 16 || 
 	   pwfb->cColorBits == 32);
@@ -281,13 +282,13 @@ static void clear_color(GLcontext *ctx, const GLfloat color[4])
  * Clearing of the other non-color buffers is left to the swrast. 
  */ 
 
-static void clear(GLcontext *ctx, 
-		  GLbitfield mask, 
-		  GLboolean all, 
-		  GLint x, GLint y, 
-		  GLint width, GLint height) 
+static void clear(GLcontext *ctx, GLbitfield mask)
 {
 #define FLIP(Y)  (ctx->DrawBuffer->Height - (Y) - 1)
+    const GLint x = ctx->DrawBuffer->_Xmin;
+    const GLint y = ctx->DrawBuffer->_Ymin;
+    const GLint height = ctx->DrawBuffer->_Ymax - ctx->DrawBuffer->_Ymin;
+    const GLint width  = ctx->DrawBuffer->_Xmax - ctx->DrawBuffer->_Xmin;
 
     WMesaContext pwc = wmesa_context(ctx);
     WMesaFramebuffer pwfb = wmesa_framebuffer(ctx->DrawBuffer);
@@ -299,7 +300,7 @@ static void clear(GLcontext *ctx,
 	ctx->Color.ColorMask[1] != 0xff ||
 	ctx->Color.ColorMask[2] != 0xff ||
 	ctx->Color.ColorMask[3] != 0xff) {
-	_swrast_Clear(ctx, mask, all, x, y, width, height); 
+	_swrast_Clear(ctx, mask);
 	return;
     }
 
@@ -318,7 +319,8 @@ static void clear(GLcontext *ctx,
 	
 	/* Try for a fast clear - clearing entire buffer with a single
 	 * byte value. */
-	if (all) { /* entire buffer */
+	if (width == ctx->DrawBuffer->Width &&
+            height == ctx->DrawBuffer->Height) { /* entire buffer */
 	    /* Now check for an easy clear value */
 	    switch (bytesPerPixel) {
 	    case 1:
@@ -431,7 +433,7 @@ static void clear(GLcontext *ctx,
     
     /* Call swrast if there is anything left to clear (like DEPTH) */ 
     if (mask) 
-	_swrast_Clear(ctx, mask, all, x, y, width, height); 
+	_swrast_Clear(ctx, mask);
   
 #undef FLIP
 } 
@@ -456,23 +458,84 @@ static void write_rgba_span_front(const GLcontext *ctx,
 				   const GLubyte rgba[][4], 
 				   const GLubyte mask[] )
 {
-    WMesaContext pwc = wmesa_context(ctx);
-    GLuint i;
-    
-    (void) ctx;
-    y=FLIP(y);
-    if (mask) {
-	for (i=0; i<n; i++)
-	    if (mask[i])
-		SetPixel(pwc->hDC, x+i, y, RGB(rgba[i][RCOMP], rgba[i][GCOMP], 
-					       rgba[i][BCOMP]));
-    }
-    else {
-	for (i=0; i<n; i++)
-	    SetPixel(pwc->hDC, x+i, y, RGB(rgba[i][RCOMP], rgba[i][GCOMP], 
-					   rgba[i][BCOMP]));
-    }
-    
+   WMesaContext pwc = wmesa_context(ctx);
+   WMesaFramebuffer pwfb = wmesa_lookup_framebuffer(pwc->hDC);
+   CONST BITMAPINFO bmi=
+   {
+      {
+         sizeof(BITMAPINFOHEADER),
+         n, 1, 1, 32, BI_RGB, 0, 1, 1, 0, 0
+      }
+   };
+   HBITMAP bmp=0;
+   HDC mdc=0;
+   typedef union
+   {
+      unsigned i;
+      struct {
+         unsigned b:8, g:8, r:8, a:8;
+      };
+   } BGRA;
+   BGRA *bgra, c;
+   int i;
+
+   if (n < 16) {   // the value 16 is just guessed
+      y=FLIP(y);
+      if (mask) {
+         for (i=0; i<n; i++)
+            if (mask[i])
+               SetPixel(pwc->hDC, x+i, y,
+                        RGB(rgba[i][RCOMP], rgba[i][GCOMP], rgba[i][BCOMP]));
+      }
+      else {
+         for (i=0; i<n; i++)
+            SetPixel(pwc->hDC, x+i, y,
+                     RGB(rgba[i][RCOMP], rgba[i][GCOMP], rgba[i][BCOMP]));
+      }
+   }
+   else {
+      if (!pwfb) {
+         _mesa_problem(NULL, "wmesa: write_rgba_span_front on unknown hdc");
+         return;
+      }
+      bgra=malloc(n*sizeof(BGRA));
+      if (!bgra) {
+         _mesa_problem(NULL, "wmesa: write_rgba_span_front: out of memory");
+         return;
+      }
+      c.a=0;
+      if (mask) {
+         for (i=0; i<n; i++) {
+            if (mask[i]) {
+               c.r=rgba[i][RCOMP];
+               c.g=rgba[i][GCOMP];
+               c.b=rgba[i][BCOMP];
+               c.a=rgba[i][ACOMP];
+               bgra[i]=c;
+            }
+            else
+               bgra[i].i=0;
+         }
+      }
+      else {
+         for (i=0; i<n; i++) {
+            c.r=rgba[i][RCOMP];
+            c.g=rgba[i][GCOMP];
+            c.b=rgba[i][BCOMP];
+            c.a=rgba[i][ACOMP];
+            bgra[i]=c;
+         }
+      }
+      bmp=CreateBitmap(n, 1,  1, 32, bgra);
+      mdc=CreateCompatibleDC(pwfb->hDC);
+      SelectObject(mdc, bmp);
+      y=FLIP(y);
+      BitBlt(pwfb->hDC, x, y, n, 1, mdc, 0, 0, SRCCOPY);
+      SelectObject(mdc, 0);
+      DeleteObject(bmp);
+      DeleteDC(mdc);
+      free(bgra);
+   }
 }
 
 /* Write a horizontal span of RGB color pixels with a boolean mask. */
@@ -1124,7 +1187,7 @@ static void wmesa_update_state(GLcontext *ctx, GLuint new_state)
 {
     _swrast_InvalidateState(ctx, new_state);
     _swsetup_InvalidateState(ctx, new_state);
-    _ac_InvalidateState(ctx, new_state);
+    _vbo_InvalidateState(ctx, new_state);
     _tnl_InvalidateState(ctx, new_state);
 
     /* TODO - This code is not complete yet because I 
@@ -1170,7 +1233,7 @@ WMesaContext WMesaCreateContext(HDC hDC,
     /* I do not understand this contributed code */
     /* Support memory and device contexts */
     if(WindowFromDC(hDC) != NULL) {
-	c->hDC = GetDC(WindowFromDC(hDC)); // huh ????
+	c->hDC = GetDC(WindowFromDC(hDC)); /* huh ???? */
     }
     else {
 	c->hDC = hDC;
@@ -1238,10 +1301,11 @@ WMesaContext WMesaCreateContext(HDC hDC,
     _mesa_enable_1_4_extensions(ctx);
     _mesa_enable_1_5_extensions(ctx);
     _mesa_enable_2_0_extensions(ctx);
+    _mesa_enable_2_1_extensions(ctx);
   
     /* Initialize the software rasterizer and helper modules. */
     if (!_swrast_CreateContext(ctx) ||
-        !_ac_CreateContext(ctx) ||
+        !_vbo_CreateContext(ctx) ||
         !_tnl_CreateContext(ctx) ||
 	!_swsetup_CreateContext(ctx)) {
 	_mesa_free_context_data(ctx);
@@ -1284,7 +1348,7 @@ void WMesaDestroyContext( WMesaContext pwc )
     
     _swsetup_DestroyContext(ctx);
     _tnl_DestroyContext(ctx);
-    _ac_DestroyContext(ctx);
+    _vbo_DestroyContext(ctx);
     _swrast_DestroyContext(ctx);
     
     _mesa_free_context_data(ctx);
@@ -1402,48 +1466,72 @@ void WMesaSwapBuffers( HDC hdc )
  * table entries.  Hopefully, I'll find a better solution.  The
  * dispatch table generation scripts ought to be making these dummy
  * stubs as well. */
-void gl_dispatch_stub_543(void){};
-void gl_dispatch_stub_544(void){};
-void gl_dispatch_stub_545(void){};
-void gl_dispatch_stub_546(void){};
-void gl_dispatch_stub_547(void){};
-void gl_dispatch_stub_548(void){};
-void gl_dispatch_stub_549(void){};
-void gl_dispatch_stub_550(void){};
-void gl_dispatch_stub_551(void){};
-void gl_dispatch_stub_552(void){};
-void gl_dispatch_stub_553(void){};
-void gl_dispatch_stub_554(void){};
-void gl_dispatch_stub_555(void){};
-void gl_dispatch_stub_556(void){};
-void gl_dispatch_stub_557(void){};
-void gl_dispatch_stub_558(void){};
-void gl_dispatch_stub_559(void){};
-void gl_dispatch_stub_560(void){};
-void gl_dispatch_stub_561(void){};
-void gl_dispatch_stub_565(void){};
-void gl_dispatch_stub_566(void){};
-void gl_dispatch_stub_577(void){};
-void gl_dispatch_stub_578(void){};
-void gl_dispatch_stub_603(void){};
-void gl_dispatch_stub_645(void){};
-void gl_dispatch_stub_646(void){};
-void gl_dispatch_stub_647(void){};
-void gl_dispatch_stub_648(void){};
-void gl_dispatch_stub_649(void){};
-void gl_dispatch_stub_650(void){};
-void gl_dispatch_stub_651(void){};
-void gl_dispatch_stub_652(void){};
-void gl_dispatch_stub_653(void){};
-void gl_dispatch_stub_734(void){};
-void gl_dispatch_stub_735(void){};
-void gl_dispatch_stub_736(void){};
-void gl_dispatch_stub_737(void){};
-void gl_dispatch_stub_738(void){};
-void gl_dispatch_stub_745(void){};
-void gl_dispatch_stub_746(void){};
-void gl_dispatch_stub_760(void){};
-void gl_dispatch_stub_761(void){};
-void gl_dispatch_stub_766(void){};
-void gl_dispatch_stub_767(void){};
-void gl_dispatch_stub_768(void){};
+#if !defined(__MINGW32__) || !defined(GL_NO_STDCALL)
+void gl_dispatch_stub_543(void){}
+void gl_dispatch_stub_544(void){}
+void gl_dispatch_stub_545(void){}
+void gl_dispatch_stub_546(void){}
+void gl_dispatch_stub_547(void){}
+void gl_dispatch_stub_548(void){}
+void gl_dispatch_stub_549(void){}
+void gl_dispatch_stub_550(void){}
+void gl_dispatch_stub_551(void){}
+void gl_dispatch_stub_552(void){}
+void gl_dispatch_stub_553(void){}
+void gl_dispatch_stub_554(void){}
+void gl_dispatch_stub_555(void){}
+void gl_dispatch_stub_556(void){}
+void gl_dispatch_stub_557(void){}
+void gl_dispatch_stub_558(void){}
+void gl_dispatch_stub_559(void){}
+void gl_dispatch_stub_560(void){}
+void gl_dispatch_stub_561(void){}
+void gl_dispatch_stub_565(void){}
+void gl_dispatch_stub_566(void){}
+void gl_dispatch_stub_577(void){}
+void gl_dispatch_stub_578(void){}
+void gl_dispatch_stub_603(void){}
+void gl_dispatch_stub_645(void){}
+void gl_dispatch_stub_646(void){}
+void gl_dispatch_stub_647(void){}
+void gl_dispatch_stub_648(void){}
+void gl_dispatch_stub_649(void){}
+void gl_dispatch_stub_650(void){}
+void gl_dispatch_stub_651(void){}
+void gl_dispatch_stub_652(void){}
+void gl_dispatch_stub_653(void){}
+void gl_dispatch_stub_734(void){}
+void gl_dispatch_stub_735(void){}
+void gl_dispatch_stub_736(void){}
+void gl_dispatch_stub_737(void){}
+void gl_dispatch_stub_738(void){}
+void gl_dispatch_stub_745(void){}
+void gl_dispatch_stub_746(void){}
+void gl_dispatch_stub_760(void){}
+void gl_dispatch_stub_761(void){}
+void gl_dispatch_stub_766(void){}
+void gl_dispatch_stub_767(void){}
+void gl_dispatch_stub_768(void){}
+
+void gl_dispatch_stub_562(void){}
+void gl_dispatch_stub_563(void){}
+void gl_dispatch_stub_564(void){}
+void gl_dispatch_stub_567(void){}
+void gl_dispatch_stub_568(void){}
+void gl_dispatch_stub_569(void){}
+void gl_dispatch_stub_580(void){}
+void gl_dispatch_stub_581(void){}
+void gl_dispatch_stub_606(void){}
+void gl_dispatch_stub_654(void){}
+void gl_dispatch_stub_655(void){}
+void gl_dispatch_stub_656(void){}
+void gl_dispatch_stub_739(void){}
+void gl_dispatch_stub_740(void){}
+void gl_dispatch_stub_741(void){}
+void gl_dispatch_stub_748(void){}
+void gl_dispatch_stub_749(void){}
+void gl_dispatch_stub_769(void){}
+void gl_dispatch_stub_770(void){}
+void gl_dispatch_stub_771(void){}
+
+#endif

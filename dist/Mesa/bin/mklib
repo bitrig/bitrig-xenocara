@@ -34,6 +34,7 @@ MINOR=0
 PATCH=""
 DEPS=""
 LINK=""
+LDFLAGS=""
 CPLUSPLUS=0
 STATIC=0
 DLOPEN=0
@@ -63,6 +64,7 @@ do
 	    echo '  -LDIR         search in DIR for library dependencies'
 	    echo '  -linker L     explicity specify the linker program to use (eg: gcc, g++)'
 	    echo '                Not observed on all systems at this time.'
+	    echo '  -ldflags OPT  specify any additional linker flags in OPT'
 	    echo '  -cplusplus    link with C++ runtime'
 	    echo '  -static       make a static library (default is dynamic/shared)'
 	    echo '  -dlopen       make a shared library suitable for dynamic loading'
@@ -94,11 +96,23 @@ do
 	    shift 1;
 	    LINK=$1
 	    ;;
+	'-ldflags')
+	    shift 1;
+	    LDFLAGS=$1
+	    ;;
 	-l*)
 	    DEPS="$DEPS $1"
 	    ;;
 	-L*)
 	    DEPS="$DEPS $1"
+	    ;;
+	-pthread)
+	    # this is a special case (see bugzilla 10876)
+	    DEPS="$DEPS $1"
+	    ;;
+	'-pthread')
+	    # for FreeBSD
+	    DEPS="$DEPS -pthread"
 	    ;;
 	'-cplusplus')
 	    CPLUSPLUS=1
@@ -208,19 +222,20 @@ case $ARCH in
 
             rm -f ${LIBNAME}
             # make lib
-            ${LINK} ${OPTS} -o ${LIBNAME} ${OBJECTS} ${DEPS}
+            ${LINK} ${OPTS} ${LDFLAGS} -o ${LIBNAME} ${OBJECTS} ${DEPS}
             # finish up
             FINAL_LIBS="${LIBNAME}"
         elif [ $STATIC = 1 ] ; then
-	    LIBNAME="lib${LIBNAME}"     # prefix with "lib"
-            echo "mklib: Making" $ARCH "static library: " ${LIBNAME}.a
+            LIBNAME="lib${LIBNAME}.a"     # prefix with "lib", suffix with ".a"
+            echo "mklib: Making" $ARCH "static library: " ${LIBNAME}
             LINK="ar"
             OPTS="-ru"
+            rm -f ${LIBNAME}
             # make lib
-            ${LINK} ${OPTS} ${LIBNAME}.a ${OBJECTS}
-	    ranlib ${LIBNAME}.a
+            ${LINK} ${OPTS} ${LIBNAME} ${OBJECTS}
+            ranlib ${LIBNAME}
             # finish up
-            FINAL_LIBS=${LIBNAME}.a
+            FINAL_LIBS=${LIBNAME}
         else
 	    LIBNAME="lib${LIBNAME}"     # prefix with "lib"
 	    case $ARCH in 'Linux' | 'GNU' | GNU/*)
@@ -265,7 +280,7 @@ case $ARCH in
             rm -f ${LIBNAME}.so
 
             # make lib
-            ${LINK} ${OPTS} -o ${LIBNAME}.so.${VERSION} ${OBJECTS} ${DEPS}
+            ${LINK} ${OPTS} ${LDFLAGS} -o ${LIBNAME}.so.${VERSION} ${OBJECTS} ${DEPS}
             # make usual symlinks
             ln -s ${LIBNAME}.so.${VERSION} ${LIBNAME}.so.${MAJOR}
             ln -s ${LIBNAME}.so.${MAJOR} ${LIBNAME}.so
@@ -283,7 +298,9 @@ case $ARCH in
 	    ar -ruv ${LIBNAME} ${OBJECTS}
 	    FINAL_LIBS=${LIBNAME}
 	else
-	    LIBNAME="lib${LIBNAME}.so"
+	    if [ $NOPREFIX = 0 ] ; then
+		LIBNAME="lib${LIBNAME}.so"
+	    fi
 	    echo "mklib: Making SunOS shared library: " ${LIBNAME}
 
 	    if [ "x$LINK" = "x" ] ; then
@@ -333,9 +350,14 @@ case $ARCH in
 
 	    # for debug:
 	    #echo "mklib: linker is" ${LINK} ${OPTS}
-	    rm -f ${LIBNAME}.${MAJOR} ${LIBNAME}
-	    ${LINK} ${OPTS} -o ${LIBNAME}.${MAJOR} ${OBJECTS} ${DEPS}
-	    ln -s ${LIBNAME}.${MAJOR} ${LIBNAME}
+	    if [ $NOPREFIX = 1 ] ; then
+		rm -f ${LIBNAME}
+		${LINK} ${OPTS} ${LDFLAGS} -o ${LIBNAME} ${OBJECTS} ${DEPS}
+	    else
+		rm -f ${LIBNAME}.${MAJOR} ${LIBNAME}
+		${LINK} ${OPTS} ${LDFLAGS} -o ${LIBNAME}.${MAJOR} ${OBJECTS} ${DEPS}
+		ln -s ${LIBNAME}.${MAJOR} ${LIBNAME}
+	    fi
 	    FINAL_LIBS="${LIBNAME}.${MAJOR} ${LIBNAME}"
 	fi
 	;;
@@ -357,7 +379,7 @@ case $ARCH in
 	    echo "mklib: Making FreeBSD shared library: " ${LIBNAME}
 	    OPTS="-shared"
 	    rm -f ${LIBNAME}
-	    ${LINK} ${OPTS} -o ${LIBNAME} ${OBJECTS} ${DEPS}
+	    ${LINK} ${OPTS} ${LDFLAGS} -o ${LIBNAME} ${OBJECTS} ${DEPS}
 	    FINAL_LIBS=${LIBNAME}
         elif [ $STATIC = 1 ] ; then
 	    STLIB="lib${LIBNAME}.a"
@@ -371,7 +393,7 @@ case $ARCH in
 	    OPTS="-shared -Wl,-soname,${SHLIB}"
 	    echo "mklib: Making FreeBSD shared library: " ${SHLIB}
 	    rm -f ${SHLIB}
-	    ${LINK} ${OPTS} -o ${SHLIB} ${OBJECTS} ${DEPS}
+	    ${LINK} ${OPTS} ${LDFLAGS} -o ${SHLIB} ${OBJECTS} ${DEPS}
 	    ln -sf ${SHLIB} "lib${LIBNAME}.so"
 	    FINAL_LIBS="${SHLIB} lib${LIBNAME}.so"
 	fi
@@ -429,7 +451,7 @@ case $ARCH in
 	    fi
 
 	    echo "mklib: Making IRIX " ${ABI} " shared library: " ${LIBNAME}
-	    ${LINK} ${OPTS} -o ${LIBNAME} ${OBJECTS} ${DEPS}
+	    ${LINK} ${OPTS} ${LDFLAGS} -o ${LIBNAME} ${OBJECTS} ${DEPS}
 	    FINAL_LIBS=${LIBNAME}
 	fi
 	;;
@@ -505,9 +527,9 @@ case $ARCH in
             # On AIX a shared library is linked differently when
             # you want to dlopen the file
 	    if [ $DLOPEN = "1" ] ; then
-		cc -G ${OPTS} -o ${LIBNAME} ${OBJECTS} ${DEPS}
+		cc -G ${OPTS} ${LDFLAGS} -o ${LIBNAME} ${OBJECTS} ${DEPS}
 	    else
-		cc ${OPTS} -o ${OFILE} ${OBJECTS} ${DEPS}
+		cc ${OPTS} ${LDFLAGS} -o ${OFILE} ${OBJECTS} ${DEPS}
 		ar ${X64} -r ${LIBNAME} ${OFILE}
 	    fi
 
@@ -589,7 +611,7 @@ case $ARCH in
 	    fi
 
             echo "mklib: Making Darwin shared library: " ${LIBNAME}
-            ${LINK} ${OPTS} -o ${LIBNAME} ${OBJECTS} ${DEPS}
+            ${LINK} ${OPTS} ${LDFLAGS} -o ${LIBNAME} ${OBJECTS} ${DEPS}
             ln -s ${LIBNAME} ${LINKNAME}
             FINAL_LIBS="${LIBNAME} ${LINKNAME}"
         fi
@@ -666,7 +688,7 @@ case $ARCH in
             rm -f ${LIBNAME}.so.${MAJOR}
             rm -f ${LIBNAME}.so
             # make lib
-            ${LINK} ${OPTS} -o ${LIBNAME}.so.${VERSION} ${OBJECTS} ${DEPS}
+            ${LINK} ${OPTS} ${LDFLAGS} -o ${LIBNAME}.so.${VERSION} ${OBJECTS} ${DEPS}
             # make usual symlinks
             ln -s ${LIBNAME}.so.${VERSION} ${LIBNAME}.so.${MAJOR}
             ln -s ${LIBNAME}.so.${MAJOR} ${LIBNAME}.so
@@ -738,7 +760,7 @@ case $ARCH in
             rm -f ${LIBNAME}.a
 
             # make lib
-            ${LINK} ${OPTS} -o ${CYGNAME}-${MAJOR}.dll ${OBJECTS} ${DEPS}
+            ${LINK} ${OPTS} ${LDFLAGS} -o ${CYGNAME}-${MAJOR}.dll ${OBJECTS} ${DEPS}
             # make usual symlinks
             ln -s ${LIBNAME}-${MAJOR}.dll.a ${LIBNAME}.dll.a
             # finish up

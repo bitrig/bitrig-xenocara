@@ -33,11 +33,12 @@
 #include "extensions.h"
 #include "framebuffer.h"
 #include "imports.h"
+#include "points.h"
 
 #include "swrast/swrast.h"
 #include "swrast_setup/swrast_setup.h"
 #include "tnl/tnl.h"
-#include "array_cache/acache.h"
+#include "vbo/vbo.h"
 
 #include "tnl/t_pipeline.h"
 #include "tnl/t_vertex.h"
@@ -92,7 +93,7 @@ int prevLockLine;
  * Mesa's Driver Functions
  ***************************************/
 
-#define DRIVER_DATE                     "20050225"
+#define DRIVER_DATE "20061017"
 
 const GLubyte *intelGetString( GLcontext *ctx, GLenum name )
 {
@@ -122,6 +123,14 @@ const GLubyte *intelGetString( GLcontext *ctx, GLenum name )
 	 chipset = "Intel(R) 945G"; break;
       case PCI_CHIP_I945_GM:
 	 chipset = "Intel(R) 945GM"; break;
+      case PCI_CHIP_I945_GME:
+	 chipset = "Intel(R) 945GME"; break;
+      case PCI_CHIP_G33_G:
+	 chipset = "Intel(R) G33"; break;
+      case PCI_CHIP_Q35_G:
+	 chipset = "Intel(R) Q35"; break;
+      case PCI_CHIP_Q33_G:
+	 chipset = "Intel(R) Q33"; break;
       default:
 	 chipset = "Unknown Intel Chipset"; break;
       }
@@ -132,27 +141,6 @@ const GLubyte *intelGetString( GLcontext *ctx, GLenum name )
    default:
       return NULL;
    }
-}
-
-static void intelBufferSize(GLframebuffer *buffer,
-			   GLuint *width, GLuint *height)
-{
-   GET_CURRENT_CONTEXT(ctx);
-   intelContextPtr intel = INTEL_CONTEXT(ctx);
-   /* Need to lock to make sure the driDrawable is uptodate.  This
-    * information is used to resize Mesa's software buffers, so it has
-    * to be correct.
-    */
-   LOCK_HARDWARE(intel);
-   if (intel->driDrawable) {
-      *width = intel->driDrawable->w;
-      *height = intel->driDrawable->h;
-   }
-   else {
-      *width = 0;
-      *height = 0;
-   }
-   UNLOCK_HARDWARE(intel);
 }
 
 
@@ -216,7 +204,6 @@ static const struct tnl_pipeline_stage *intel_pipeline[] = {
    &_tnl_texgen_stage,
    &_tnl_texture_transform_stage,
    &_tnl_point_attenuation_stage,
-   &_tnl_arb_vertex_program_stage,
    &_tnl_vertex_program_stage,
 #if 1
    &_intel_render_stage,     /* ADD: unclipped rastersetup-to-dma */
@@ -249,7 +236,7 @@ static void intelInvalidateState( GLcontext *ctx, GLuint new_state )
 {
    _swrast_InvalidateState( ctx, new_state );
    _swsetup_InvalidateState( ctx, new_state );
-   _ac_InvalidateState( ctx, new_state );
+   _vbo_InvalidateState( ctx, new_state );
    _tnl_InvalidateState( ctx, new_state );
    _tnl_invalidate_vertex_state( ctx, new_state );
    INTEL_CONTEXT(ctx)->NewGLState |= new_state;
@@ -263,14 +250,8 @@ void intelInitDriverFunctions( struct dd_function_table *functions )
    functions->Clear = intelClear;
    functions->Flush = intelglFlush;
    functions->Finish = intelFinish;
-   functions->GetBufferSize = intelBufferSize;
-   functions->ResizeBuffers = _mesa_resize_framebuffer;
    functions->GetString = intelGetString;
    functions->UpdateState = intelInvalidateState;
-   functions->CopyColorTable = _swrast_CopyColorTable;
-   functions->CopyColorSubTable = _swrast_CopyColorSubTable;
-   functions->CopyConvolutionFilter1D = _swrast_CopyConvolutionFilter1D;
-   functions->CopyConvolutionFilter2D = _swrast_CopyConvolutionFilter2D;
 
    intelInitTextureFuncs( functions );
    intelInitPixelFuncs( functions );
@@ -329,9 +310,14 @@ GLboolean intelInitContext( intelContextPtr intel,
    ctx->Const.MaxPointSizeAA = 3.0;
    ctx->Const.PointSizeGranularity = 1.0;
 
+   /* reinitialize the context point state.
+    * It depend on constants in __GLcontextRec::Const
+    */
+   _mesa_init_point(ctx);
+
    /* Initialize the software rasterizer and helper modules. */
    _swrast_CreateContext( ctx );
-   _ac_CreateContext( ctx );
+   _vbo_CreateContext( ctx );
    _tnl_CreateContext( ctx );
    _swsetup_CreateContext( ctx );
 
@@ -450,7 +436,7 @@ void intelDestroyContext(__DRIcontextPrivate *driContextPriv)
       release_texture_heaps = (intel->ctx.Shared->RefCount == 1);
       _swsetup_DestroyContext (&intel->ctx);
       _tnl_DestroyContext (&intel->ctx);
-      _ac_DestroyContext (&intel->ctx);
+      _vbo_DestroyContext (&intel->ctx);
 
       _swrast_DestroyContext (&intel->ctx);
       intel->Fallback = 0;	/* don't call _swrast_Flush later */
@@ -543,14 +529,14 @@ void intelSetBackClipRects( intelContextPtr intel )
 void intelWindowMoved( intelContextPtr intel )
 {
    __DRIdrawablePrivate *dPriv = intel->driDrawable;
+   GLframebuffer *drawFb = (GLframebuffer *) dPriv->driverPrivate;
 
    if (!intel->ctx.DrawBuffer) {
       intelSetFrontClipRects( intel );
    }
    else {
-      driUpdateFramebufferSize(&intel->ctx, intel->driDrawable);
-    
-      switch (intel->ctx.DrawBuffer->_ColorDrawBufferMask[0]) {
+      driUpdateFramebufferSize(&intel->ctx, dPriv);
+      switch (drawFb->_ColorDrawBufferMask[0]) {
       case BUFFER_BIT_FRONT_LEFT:
 	 intelSetFrontClipRects( intel );
 	 break;
@@ -563,14 +549,46 @@ void intelWindowMoved( intelContextPtr intel )
       }
    }
 
-   _mesa_resize_framebuffer(&intel->ctx,
-			    (GLframebuffer*)dPriv->driverPrivate,
-			    dPriv->w, dPriv->h);
-   
+   if (drawFb->Width != dPriv->w || drawFb->Height != dPriv->h) {
+      /* update Mesa's notion of framebuffer/window size */
+      _mesa_resize_framebuffer(&intel->ctx, drawFb, dPriv->w, dPriv->h);
+      drawFb->Initialized = GL_TRUE; /* XXX remove someday */
+   }
+
    /* Set state we know depends on drawable parameters:
     */
    {
       GLcontext *ctx = &intel->ctx;
+
+      if (intel->intelScreen->driScrnPriv->ddxMinor >= 7) {
+	 drmI830Sarea *sarea = intel->sarea;
+	 drm_clip_rect_t drw_rect = { .x1 = dPriv->x, .x2 = dPriv->x + dPriv->w,
+				      .y1 = dPriv->y, .y2 = dPriv->y + dPriv->h };
+	 drm_clip_rect_t pipeA_rect = { .x1 = sarea->pipeA_x,
+					.x2 = sarea->pipeA_x + sarea->pipeA_w,
+					.y1 = sarea->pipeA_y,
+					.y2 = sarea->pipeA_y + sarea->pipeA_h };
+	 drm_clip_rect_t pipeB_rect = { .x1 = sarea->pipeB_x,
+					.x2 = sarea->pipeB_x + sarea->pipeB_w,
+					.y1 = sarea->pipeB_y,
+					.y2 = sarea->pipeB_y + sarea->pipeB_h };
+	 GLint areaA = driIntersectArea( drw_rect, pipeA_rect );
+	 GLint areaB = driIntersectArea( drw_rect, pipeB_rect );
+	 GLuint flags = intel->vblank_flags;
+
+	 if (areaB > areaA || (areaA == areaB && areaB > 0)) {
+	    flags = intel->vblank_flags | VBLANK_FLAG_SECONDARY;
+	 } else {
+	    flags = intel->vblank_flags & ~VBLANK_FLAG_SECONDARY;
+	 }
+
+	 if (flags != intel->vblank_flags) {
+	    intel->vblank_flags = flags;
+	    driGetCurrentVBlank(dPriv, intel->vblank_flags, &intel->vbl_seq);
+	 }
+      } else {
+	 intel->vblank_flags &= ~VBLANK_FLAG_SECONDARY;
+      }
 
       ctx->Driver.Scissor( ctx, ctx->Scissor.X, ctx->Scissor.Y,
 			   ctx->Scissor.Width, ctx->Scissor.Height );
@@ -596,7 +614,8 @@ GLboolean intelMakeCurrent(__DRIcontextPrivate *driContextPriv,
 
       if ( intel->driDrawable != driDrawPriv ) {
 	 /* Shouldn't the readbuffer be stored also? */
-	 driDrawableInitVBlank( driDrawPriv, intel->vblank_flags );
+	 driDrawableInitVBlank( driDrawPriv, intel->vblank_flags,
+				&intel->vbl_seq );
 
 	 intel->driDrawable = driDrawPriv;
 	 intelWindowMoved( intel );

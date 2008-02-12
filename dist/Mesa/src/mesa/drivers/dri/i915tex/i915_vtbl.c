@@ -61,6 +61,7 @@ i915_reduced_primitive_state(struct intel_context *intel, GLenum rprim)
    st1 &= ~ST1_ENABLE;
 
    switch (rprim) {
+   case GL_QUADS: /* from RASTERIZE(GL_QUADS) in t_dd_tritemp.h */
    case GL_TRIANGLES:
       if (intel->ctx.Polygon.StippleFlag && intel->hw_stipple)
          st1 |= ST1_ENABLE;
@@ -381,10 +382,12 @@ i915_emit_state(struct intel_context *intel)
                          DRM_BO_MASK_MEM | DRM_BO_FLAG_READ,
                          state->tex_offset[i]);
             }
-            else {
+            else if (state == &i915->meta) {
                assert(i == 0);
-               assert(state == &i915->meta);
                OUT_BATCH(0);
+            }
+            else {
+               OUT_BATCH(state->tex_offset[i]);
             }
 
             OUT_BATCH(state->Tex[i][I915_TEXREG_MS3]);
@@ -427,6 +430,16 @@ i915_emit_state(struct intel_context *intel)
 static void
 i915_destroy_context(struct intel_context *intel)
 {
+   GLuint i;
+   struct i915_context *i915 = i915_context(&intel->ctx);
+
+   for (i = 0; i < I915_TEX_UNITS; i++) {
+      if (i915->state.tex_buffer[i] != NULL) {
+	 driBOUnReference(i915->state.tex_buffer[i]);
+	 i915->state.tex_buffer[i] = NULL;
+      }
+   }
+
    _tnl_free_vertices(&intel->ctx);
 }
 

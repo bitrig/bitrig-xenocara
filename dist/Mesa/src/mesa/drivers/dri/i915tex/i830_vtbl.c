@@ -490,11 +490,13 @@ i830_emit_state(struct intel_context *intel)
                       DRM_BO_MASK_MEM | DRM_BO_FLAG_READ,
                       state->tex_offset[i] | TM0S0_USE_FENCE);
          }
-         else {
-            assert(i == 0);
-            assert(state == &i830->meta);
-            OUT_BATCH(0);
-         }
+	 else if (state == &i830->meta) {
+	    assert(i == 0);
+	    OUT_BATCH(0);
+	 }
+	 else {
+	    OUT_BATCH(state->tex_offset[i]);
+	 }
 
          OUT_BATCH(state->Tex[i][I830_TEXREG_TM0S1]);
          OUT_BATCH(state->Tex[i][I830_TEXREG_TM0S2]);
@@ -517,6 +519,16 @@ i830_emit_state(struct intel_context *intel)
 static void
 i830_destroy_context(struct intel_context *intel)
 {
+   GLuint i;
+   struct i830_context *i830 = i830_context(&intel->ctx);
+
+   for (i = 0; i < I830_TEX_UNITS; i++) {
+      if (i830->state.tex_buffer[i] != NULL) {
+	 driBOUnReference(i830->state.tex_buffer[i]);
+	 i830->state.tex_buffer[i] = NULL;
+      }
+   }
+
    _tnl_free_vertices(&intel->ctx);
 }
 

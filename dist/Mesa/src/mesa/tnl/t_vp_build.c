@@ -1,8 +1,8 @@
 /*
  * Mesa 3-D graphics library
- * Version:  6.5
+ * Version:  7.1
  *
- * Copyright (C) 2006  Tungsten Graphics   All Rights Reserved.
+ * Copyright (C) 2007  Tungsten Graphics   All Rights Reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -33,11 +33,14 @@
 #include "glheader.h"
 #include "macros.h"
 #include "enums.h"
-#include "t_context.h"
+#include "shader/program.h"
+#include "shader/prog_instruction.h"
+#include "shader/prog_parameter.h"
+#include "shader/prog_print.h"
+#include "shader/prog_statevars.h"
+#include "t_context.h" /* NOTE: very light dependency on this */
 #include "t_vp_build.h"
 
-#include "shader/program.h"
-#include "shader/program_instruction.h"
 
 struct state_key {
    unsigned light_global_enabled:1;
@@ -382,11 +385,14 @@ static struct ureg register_const4f( struct tnl_program *p,
 {
    GLfloat values[4];
    GLint idx;
+   GLuint swizzle;
    values[0] = s0;
    values[1] = s1;
    values[2] = s2;
    values[3] = s3;
-   idx = _mesa_add_unnamed_constant( p->program->Base.Parameters, values );
+   idx = _mesa_add_unnamed_constant( p->program->Base.Parameters, values, 4,
+                                     &swizzle );
+   ASSERT(swizzle == SWIZZLE_NOOP);
    return make_ureg(PROGRAM_STATE_VAR, idx);
 }
 
@@ -408,40 +414,37 @@ static struct ureg get_identity_param( struct tnl_program *p )
    return p->identity;
 }
 
-static struct ureg register_param6( struct tnl_program *p, 
+static struct ureg register_param5(struct tnl_program *p, 
 				   GLint s0,
 				   GLint s1,
 				   GLint s2,
 				   GLint s3,
-				   GLint s4,
-				   GLint s5)
+                                   GLint s4)
 {
-   GLint tokens[6];
+   gl_state_index tokens[STATE_LENGTH];
    GLint idx;
    tokens[0] = s0;
    tokens[1] = s1;
    tokens[2] = s2;
    tokens[3] = s3;
    tokens[4] = s4;
-   tokens[5] = s5;
    idx = _mesa_add_state_reference( p->program->Base.Parameters, tokens );
    return make_ureg(PROGRAM_STATE_VAR, idx);
 }
 
 
-#define register_param1(p,s0)          register_param6(p,s0,0,0,0,0,0)
-#define register_param2(p,s0,s1)       register_param6(p,s0,s1,0,0,0,0)
-#define register_param3(p,s0,s1,s2)    register_param6(p,s0,s1,s2,0,0,0)
-#define register_param4(p,s0,s1,s2,s3) register_param6(p,s0,s1,s2,s3,0,0)
+#define register_param1(p,s0)          register_param5(p,s0,0,0,0,0)
+#define register_param2(p,s0,s1)       register_param5(p,s0,s1,0,0,0)
+#define register_param3(p,s0,s1,s2)    register_param5(p,s0,s1,s2,0,0)
+#define register_param4(p,s0,s1,s2,s3) register_param5(p,s0,s1,s2,s3,0)
 
 
-static void register_matrix_param6( struct tnl_program *p,
-				    GLint s0,
-				    GLint s1,
-				    GLint s2,
-				    GLint s3,
-				    GLint s4,
-				    GLint s5,
+static void register_matrix_param5( struct tnl_program *p,
+				    GLint s0, /* modelview, projection, etc */
+				    GLint s1, /* texture matrix number */
+				    GLint s2, /* first row */
+				    GLint s3, /* last row */
+				    GLint s4, /* inverse, transpose, etc */
 				    struct ureg *matrix )
 {
    GLint i;
@@ -449,14 +452,18 @@ static void register_matrix_param6( struct tnl_program *p,
    /* This is a bit sad as the support is there to pull the whole
     * matrix out in one go:
     */
-   for (i = 0; i <= s4 - s3; i++) 
-      matrix[i] = register_param6( p, s0, s1, s2, i, i, s5 );
+   for (i = 0; i <= s3 - s2; i++) 
+      matrix[i] = register_param5( p, s0, s1, i, i, s4 );
 }
 
 
+/**
+ * Convert a ureg source register to a prog_src_register.
+ */
 static void emit_arg( struct prog_src_register *src,
 		      struct ureg reg )
 {
+   assert(reg.file != PROGRAM_OUTPUT);
    src->File = reg.file;
    src->Index = reg.idx;
    src->Swizzle = reg.swz;
@@ -466,15 +473,24 @@ static void emit_arg( struct prog_src_register *src,
    src->RelAddr = 0;
 }
 
+/**
+ * Convert a ureg dest register to a prog_dst_register.
+ */
 static void emit_dst( struct prog_dst_register *dst,
 		      struct ureg reg, GLuint mask )
 {
+   /* Check for legal output register type.  UNDEFINED will occur in
+    * instruction that don't produce a result (like END).
+    */
+   assert(reg.file == PROGRAM_TEMPORARY ||
+          reg.file == PROGRAM_OUTPUT ||
+          reg.file == PROGRAM_UNDEFINED);
    dst->File = reg.file;
    dst->Index = reg.idx;
    /* allow zero as a shorthand for xyzw */
    dst->WriteMask = mask ? mask : WRITEMASK_XYZW; 
-   dst->CondMask = COND_TR;
-   dst->CondSwizzle = 0;
+   dst->CondMask = COND_TR;  /* always pass cond test */
+   dst->CondSwizzle = SWIZZLE_NOOP;
    dst->CondSrc = 0;
    dst->pad = 0;
 }
@@ -497,7 +513,7 @@ static void debug_insn( struct prog_instruction *inst, const char *fn,
 
 
 static void emit_op3fn(struct tnl_program *p,
-		       GLuint op,
+                       enum prog_opcode op,
 		       struct ureg dest,
 		       GLuint mask,
 		       struct ureg src0,
@@ -630,13 +646,13 @@ static struct ureg get_eye_position( struct tnl_program *p )
       p->eye_position = reserve_temp(p);
 
       if (PREFER_DP4) {
-	 register_matrix_param6( p, STATE_MATRIX, STATE_MODELVIEW, 0, 0, 3, 
-				 STATE_MATRIX, modelview );
+	 register_matrix_param5( p, STATE_MODELVIEW_MATRIX, 0, 0, 3,
+                                 0, modelview );
 
 	 emit_matrix_transform_vec4(p, p->eye_position, modelview, pos);
       }
       else {
-	 register_matrix_param6( p, STATE_MATRIX, STATE_MODELVIEW, 0, 0, 3, 
+	 register_matrix_param5( p, STATE_MODELVIEW_MATRIX, 0, 0, 3,
 				 STATE_MATRIX_TRANSPOSE, modelview );
 
 	 emit_transpose_matrix_transform_vec4(p, p->eye_position, modelview, pos);
@@ -665,7 +681,7 @@ static struct ureg get_eye_normal( struct tnl_program *p )
       struct ureg normal = register_input(p, VERT_ATTRIB_NORMAL );
       struct ureg mvinv[3];
 
-      register_matrix_param6( p, STATE_MATRIX, STATE_MODELVIEW, 0, 0, 2,
+      register_matrix_param5( p, STATE_MODELVIEW_MATRIX, 0, 0, 2,
 			      STATE_MATRIX_INVTRANS, mvinv );
 
       p->eye_normal = reserve_temp(p);
@@ -683,7 +699,7 @@ static struct ureg get_eye_normal( struct tnl_program *p )
 	 struct ureg rescale = register_param2(p, STATE_INTERNAL,
 					       STATE_NORMAL_SCALE);
 
-	 emit_op2( p, OPCODE_MUL, p->eye_normal, 0, normal, 
+	 emit_op2( p, OPCODE_MUL, p->eye_normal, 0, p->eye_normal,
 		   swizzle1(rescale, X));
       }
    }
@@ -700,12 +716,12 @@ static void build_hpos( struct tnl_program *p )
    struct ureg mvp[4];
 
    if (PREFER_DP4) {
-      register_matrix_param6( p, STATE_MATRIX, STATE_MVP, 0, 0, 3, 
-			      STATE_MATRIX, mvp );
+      register_matrix_param5( p, STATE_MVP_MATRIX, 0, 0, 3, 
+			      0, mvp );
       emit_matrix_transform_vec4( p, hpos, mvp, pos );
    }
    else {
-      register_matrix_param6( p, STATE_MATRIX, STATE_MVP, 0, 0, 3, 
+      register_matrix_param5( p, STATE_MVP_MATRIX, 0, 0, 3, 
 			      STATE_MATRIX_TRANSPOSE, mvp );
       emit_transpose_matrix_transform_vec4( p, hpos, mvp, pos );
    }
@@ -806,14 +822,13 @@ static struct ureg calculate_light_attenuation( struct tnl_program *p,
    /* Calculate spot attenuation:
     */
    if (!p->state->unit[i].light_spotcutoff_is_180) {
-      struct ureg spot_dir = register_param3(p, STATE_LIGHT, i,
-					     STATE_SPOT_DIRECTION);
+      struct ureg spot_dir_norm = register_param3(p, STATE_INTERNAL,
+						  STATE_SPOT_DIR_NORMALIZED, i);
       struct ureg spot = get_temp(p);
       struct ureg slt = get_temp(p);
-	       
-      emit_normalize_vec3( p, spot, spot_dir ); /* XXX: precompute! */
-      emit_op2(p, OPCODE_DP3, spot, 0, negate(VPpli), spot);
-      emit_op2(p, OPCODE_SLT, slt, 0, swizzle1(spot_dir,W), spot);
+
+      emit_op2(p, OPCODE_DP3, spot, 0, negate(VPpli), spot_dir_norm);
+      emit_op2(p, OPCODE_SLT, slt, 0, swizzle1(spot_dir_norm,W), spot);
       emit_op2(p, OPCODE_POW, spot, 0, spot, swizzle1(attenuation, W));
       emit_op2(p, OPCODE_MUL, att, 0, slt, spot);
 
@@ -851,7 +866,7 @@ static struct ureg calculate_light_attenuation( struct tnl_program *p,
 
 
 /* Need to add some addtional parameters to allow lighting in object
- * space - STATE_SPOT_DIRECTION and STATE_HALF implicitly assume eye
+ * space - STATE_SPOT_DIRECTION and STATE_HALF_VECTOR implicitly assume eye
  * space lighting.
  */
 static void build_lighting( struct tnl_program *p )
@@ -940,20 +955,33 @@ static void build_lighting( struct tnl_program *p )
 	     */
 	    VPpli = register_param3(p, STATE_LIGHT, i, 
 				    STATE_POSITION_NORMALIZED); 
-	    half = register_param3(p, STATE_LIGHT, i, STATE_HALF);
+            if (p->state->light_local_viewer) {
+                struct ureg eye_hat = get_eye_position_normalized(p);
+                half = get_temp(p);
+                emit_op2(p, OPCODE_SUB, half, 0, VPpli, eye_hat);
+                emit_normalize_vec3(p, half, half);
+            } else {
+                half = register_param3(p, STATE_LIGHT, i, STATE_HALF_VECTOR);
+            }
 	 } 
 	 else {
 	    struct ureg Ppli = register_param3(p, STATE_LIGHT, i, 
 					       STATE_POSITION); 
 	    struct ureg V = get_eye_position(p);
 	    struct ureg dist = get_temp(p);
+	    struct ureg tmpPpli = get_temp(p);
 
 	    VPpli = get_temp(p); 
 	    half = get_temp(p);
  
-	    /* Calulate VPpli vector
+            /* In homogeneous object coordinates
+             */
+            emit_op1(p, OPCODE_RCP, dist, 0, swizzle1(Ppli, W));
+            emit_op2(p, OPCODE_MUL, tmpPpli, 0, Ppli, dist);
+
+	    /* Calculate VPpli vector
 	     */
-	    emit_op2(p, OPCODE_SUB, VPpli, 0, Ppli, V); 
+	    emit_op2(p, OPCODE_SUB, VPpli, 0, tmpPpli, V); 
 
 	    /* Normalize VPpli.  The dist value also used in
 	     * attenuation below.
@@ -985,6 +1013,7 @@ static void build_lighting( struct tnl_program *p )
 	    emit_normalize_vec3(p, half, half);
 
 	    release_temp(p, dist);
+	    release_temp(p, tmpPpli);
 	 }
 
 	 /* Calculate dot products:
@@ -1094,7 +1123,7 @@ static void build_fog( struct tnl_program *p )
 {
    struct ureg fog = register_output(p, VERT_RESULT_FOGC);
    struct ureg input;
-   
+
    if (p->state->fog_source_is_depth) {
       input = swizzle1(get_eye_position(p), Z);
    }
@@ -1102,41 +1131,48 @@ static void build_fog( struct tnl_program *p )
       input = swizzle1(register_input(p, VERT_ATTRIB_FOG), X);
    }
 
-   if (p->state->tnl_do_vertex_fog) {
-      struct ureg params = register_param1(p, STATE_FOG_PARAMS);
+   if (p->state->fog_mode && p->state->tnl_do_vertex_fog) {
+      struct ureg params = register_param2(p, STATE_INTERNAL,
+					   STATE_FOG_PARAMS_OPTIMIZED);
       struct ureg tmp = get_temp(p);
+      GLboolean useabs = (p->state->fog_mode != FOG_EXP2);
+
+      if (useabs) {
+	 emit_op1(p, OPCODE_ABS, tmp, 0, input);
+      }
 
       switch (p->state->fog_mode) {
       case FOG_LINEAR: {
 	 struct ureg id = get_identity_param(p);
-	 emit_op2(p, OPCODE_SUB, tmp, 0, swizzle1(params,Z), input); 
-	 emit_op2(p, OPCODE_MUL, tmp, 0, tmp, swizzle1(params,W)); 
+	 emit_op3(p, OPCODE_MAD, tmp, 0, useabs ? tmp : input,
+			swizzle1(params,X), swizzle1(params,Y));
 	 emit_op2(p, OPCODE_MAX, tmp, 0, tmp, swizzle1(id,X)); /* saturate */
 	 emit_op2(p, OPCODE_MIN, fog, WRITEMASK_X, tmp, swizzle1(id,W));
 	 break;
       }
       case FOG_EXP:
-	 emit_op1(p, OPCODE_ABS, tmp, 0, input); 
-	 emit_op2(p, OPCODE_MUL, tmp, 0, tmp, swizzle1(params,X)); 
-	 emit_op2(p, OPCODE_POW, fog, WRITEMASK_X, 
-		  register_const1f(p, M_E), negate(tmp)); 
+	 emit_op2(p, OPCODE_MUL, tmp, 0, useabs ? tmp : input,
+			swizzle1(params,Z));
+	 emit_op1(p, OPCODE_EX2, fog, WRITEMASK_X, negate(tmp));
 	 break;
       case FOG_EXP2:
-	 emit_op2(p, OPCODE_MUL, tmp, 0, input, swizzle1(params,X)); 
-	 emit_op2(p, OPCODE_MUL, tmp, 0, tmp, tmp); 
-	 emit_op2(p, OPCODE_POW, fog, WRITEMASK_X, 
-		  register_const1f(p, M_E), negate(tmp)); 
+	 emit_op2(p, OPCODE_MUL, tmp, 0, input, swizzle1(params,W));
+	 emit_op2(p, OPCODE_MUL, tmp, 0, tmp, tmp);
+	 emit_op1(p, OPCODE_EX2, fog, WRITEMASK_X, negate(tmp));
 	 break;
       }
-      
+
       release_temp(p, tmp);
    }
    else {
       /* results = incoming fog coords (compute fog per-fragment later) 
        *
        * KW:  Is it really necessary to do anything in this case?
+       * BP: Yes, we always need to compute the absolute value, unless
+       * we want to push that down into the fragment program...
        */
-      emit_op1(p, OPCODE_MOV, fog, WRITEMASK_X, input);
+      GLboolean useabs = GL_TRUE;
+      emit_op1(p, useabs ? OPCODE_ABS : OPCODE_MOV, fog, WRITEMASK_X, input);
    }
 }
  
@@ -1207,7 +1243,7 @@ static void build_texture_transform( struct tnl_program *p )
 
    for (i = 0; i < MAX_TEXTURE_UNITS; i++) {
 
-      if (!(p->state->fragprog_inputs_read & (FRAG_BIT_TEX0<<i)))
+      if (!(p->state->fragprog_inputs_read & FRAG_BIT_TEX(i)))
 	 continue;
 							     
       if (p->state->unit[i].texgen_enabled || 
@@ -1297,13 +1333,13 @@ static void build_texture_transform( struct tnl_program *p )
 			      out_texgen : 
 			      register_input(p, VERT_ATTRIB_TEX0+i));
 	    if (PREFER_DP4) {
-	       register_matrix_param6( p, STATE_MATRIX, STATE_TEXTURE, i, 
-				       0, 3, STATE_MATRIX, texmat );
+	       register_matrix_param5( p, STATE_TEXTURE_MATRIX, i, 0, 3,
+				       0, texmat );
 	       emit_matrix_transform_vec4( p, out, texmat, in );
 	    }
 	    else {
-	       register_matrix_param6( p, STATE_MATRIX, STATE_TEXTURE, i, 
-				       0, 3, STATE_MATRIX_TRANSPOSE, texmat );
+	       register_matrix_param5( p, STATE_TEXTURE_MATRIX, i, 0, 3,
+				       STATE_MATRIX_TRANSPOSE, texmat );
 	       emit_transpose_matrix_transform_vec4( p, out, texmat, in );
 	    }
 	 }
@@ -1317,8 +1353,6 @@ static void build_texture_transform( struct tnl_program *p )
 }
 
 
-/* Seems like it could be tighter:
- */
 static void build_pointsize( struct tnl_program *p )
 {
    struct ureg eye = get_eye_position(p);
@@ -1327,20 +1361,27 @@ static void build_pointsize( struct tnl_program *p )
    struct ureg out = register_output(p, VERT_RESULT_PSIZ);
    struct ureg ut = get_temp(p);
 
-   /* 1, -Z, Z * Z, 1 */      
-   emit_op1(p, OPCODE_MOV, ut, 0, swizzle1(get_identity_param(p), W));
-   emit_op2(p, OPCODE_MUL, ut, WRITEMASK_YZ, ut, negate(swizzle1(eye, Z)));
-   emit_op2(p, OPCODE_MUL, ut, WRITEMASK_Z, ut, negate(swizzle1(eye, Z)));
+   /* dist = |eyez| */
+   emit_op1(p, OPCODE_ABS, ut, WRITEMASK_Y, swizzle1(eye, Z));
+   /* p1 + dist * (p2 + dist * p3); */
+   emit_op3(p, OPCODE_MAD, ut, WRITEMASK_X, swizzle1(ut, Y),
+		swizzle1(state_attenuation, Z), swizzle1(state_attenuation, Y));
+   emit_op3(p, OPCODE_MAD, ut, WRITEMASK_X, swizzle1(ut, Y),
+		ut, swizzle1(state_attenuation, X));
 
+   /* 1 / sqrt(factor) */
+   emit_op1(p, OPCODE_RSQ, ut, WRITEMASK_X, ut );
 
-   /* p1 +  p2 * dist + p3 * dist * dist, 0 */
-   emit_op2(p, OPCODE_DP3, ut, 0, ut, state_attenuation);
-
-   /* 1 / factor */
-   emit_op1(p, OPCODE_RCP, ut, 0, ut ); 
-
-   /* out = pointSize / factor */
-   emit_op2(p, OPCODE_MUL, out, WRITEMASK_X, ut, state_size); 
+#if 1
+   /* out = pointSize / sqrt(factor) */
+   emit_op2(p, OPCODE_MUL, out, WRITEMASK_X, ut, state_size);
+#else
+   /* not sure, might make sense to do clamping here,
+      but it's not done in t_vb_points neither */
+   emit_op2(p, OPCODE_MUL, ut, WRITEMASK_X, ut, state_size);
+   emit_op2(p, OPCODE_MAX, ut, WRITEMASK_X, ut, swizzle1(state_size, Y));
+   emit_op2(p, OPCODE_MIN, out, WRITEMASK_X, ut, swizzle1(state_size, Z));
+#endif
 
    release_temp(p, ut);
 }
@@ -1407,9 +1448,8 @@ create_new_program( const struct state_key *key,
    else
       p.temp_reserved = ~((1<<max_temps)-1);
 
-   p.program->Base.Instructions
-      = (struct prog_instruction*) MALLOC(sizeof(struct prog_instruction) * MAX_INSN);
-   p.program->Base.String = 0;
+   p.program->Base.Instructions = _mesa_alloc_instructions(MAX_INSN);
+   p.program->Base.String = NULL;
    p.program->Base.NumInstructions =
    p.program->Base.NumTemporaries =
    p.program->Base.NumParameters =
@@ -1495,7 +1535,8 @@ void _tnl_UpdateFixedFunctionProgram( GLcontext *ctx )
    GLuint hash;
    const struct gl_vertex_program *prev = ctx->VertexProgram._Current;
 
-   if (ctx->VertexProgram._Enabled == GL_FALSE) { 
+   if (!ctx->VertexProgram._Current ||
+       ctx->VertexProgram._Current == ctx->VertexProgram._TnlProgram) {
       /* Grab all the relevent state and put it in a single structure:
        */
       key = make_state_key(ctx);
@@ -1503,45 +1544,42 @@ void _tnl_UpdateFixedFunctionProgram( GLcontext *ctx )
 
       /* Look for an already-prepared program for this state:
        */
-      ctx->_TnlProgram = (struct gl_vertex_program *)
+      ctx->VertexProgram._TnlProgram = (struct gl_vertex_program *)
 	 search_cache( tnl->vp_cache, hash, key, sizeof(*key) );
    
       /* OK, we'll have to build a new one:
        */
-      if (!ctx->_TnlProgram) {
+      if (!ctx->VertexProgram._TnlProgram) {
 	 if (0)
 	    _mesa_printf("Build new TNL program\n");
 	 
-	 ctx->_TnlProgram = (struct gl_vertex_program *)
+	 ctx->VertexProgram._TnlProgram = (struct gl_vertex_program *)
 	    ctx->Driver.NewProgram(ctx, GL_VERTEX_PROGRAM_ARB, 0); 
 
-	 create_new_program( key, ctx->_TnlProgram, 
+	 create_new_program( key, ctx->VertexProgram._TnlProgram, 
 			     ctx->Const.VertexProgram.MaxTemps );
 
 	 if (ctx->Driver.ProgramStringNotify)
 	    ctx->Driver.ProgramStringNotify( ctx, GL_VERTEX_PROGRAM_ARB, 
-					     &ctx->_TnlProgram->Base );
+                                       &ctx->VertexProgram._TnlProgram->Base );
 
-	 cache_item(tnl->vp_cache, hash, key, ctx->_TnlProgram );
+	 cache_item(tnl->vp_cache, hash, key, ctx->VertexProgram._TnlProgram );
       }
       else {
 	 FREE(key);
 	 if (0) 
 	    _mesa_printf("Found existing TNL program for key %x\n", hash);
       }
-      ctx->VertexProgram._Current = ctx->_TnlProgram;
-   }
-   else {
-      ctx->VertexProgram._Current = ctx->VertexProgram.Current;
+      ctx->VertexProgram._Current = ctx->VertexProgram._TnlProgram;
    }
 
    /* Tell the driver about the change.  Could define a new target for
     * this?
     */
-   if (ctx->VertexProgram._Current != prev &&
-       ctx->Driver.BindProgram) 
+   if (ctx->VertexProgram._Current != prev && ctx->Driver.BindProgram) {
       ctx->Driver.BindProgram(ctx, GL_VERTEX_PROGRAM_ARB,
                             (struct gl_program *) ctx->VertexProgram._Current);
+   }
 }
 
 void _tnl_ProgramCacheInit( GLcontext *ctx )

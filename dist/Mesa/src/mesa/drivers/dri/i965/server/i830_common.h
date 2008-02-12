@@ -52,6 +52,7 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define DRM_I830_INIT_HEAP                0x0a
 #define DRM_I830_CMDBUFFER                0x0b
 #define DRM_I830_DESTROY_HEAP             0x0c
+#define DRM_I830_MMIO		       	  0x10
 
 typedef struct {
    enum {
@@ -118,6 +119,16 @@ typedef struct {
         unsigned int depth_tiled;
         unsigned int rotated_tiled;
         unsigned int rotated2_tiled;
+
+	int pipeA_x;
+	int pipeA_y;
+	int pipeA_w;
+	int pipeA_h;
+	int pipeB_x;
+	int pipeB_y;
+	int pipeB_w;
+	int pipeB_h;
+
 } drmI830Sarea;
 
 /* Flags for perf_boxes
@@ -199,5 +210,23 @@ typedef struct {
 	int region;
 } drmI830MemDestroyHeap;
 
+#define MMIO_READ  0
+#define MMIO_WRITE 1
+
+#define MMIO_REGS_IA_PRIMATIVES_COUNT           0
+#define MMIO_REGS_IA_VERTICES_COUNT             1
+#define MMIO_REGS_VS_INVOCATION_COUNT           2
+#define MMIO_REGS_GS_PRIMITIVES_COUNT           3
+#define MMIO_REGS_GS_INVOCATION_COUNT           4
+#define MMIO_REGS_CL_PRIMITIVES_COUNT           5
+#define MMIO_REGS_CL_INVOCATION_COUNT           6
+#define MMIO_REGS_PS_INVOCATION_COUNT           7
+#define MMIO_REGS_PS_DEPTH_COUNT                8
+
+typedef struct {
+        unsigned int read_write:1;
+        unsigned int reg:31;
+        void __user *data;
+} drmI830MMIO;
 
 #endif /* _I830_DRM_H_ */

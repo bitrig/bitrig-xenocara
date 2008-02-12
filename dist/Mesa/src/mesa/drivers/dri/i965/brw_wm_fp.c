@@ -37,9 +37,10 @@
 #include "brw_wm.h"
 #include "brw_util.h"
 
-#include "shader/program.h"
-#include "shader/program_instruction.h"
-#include "shader/arbprogparse.h"
+#include "shader/prog_parameter.h"
+#include "shader/prog_print.h"
+#include "shader/prog_statevars.h"
+
 
 #define FIRST_INTERNAL_TEMP MAX_NV_FRAGMENT_PROGRAM_TEMPS
 
@@ -60,9 +61,11 @@ static const char *wm_opcode_strings[] = {
    "FB_WRITE"
 };
 
+#if 0
 static const char *wm_file_strings[] = {   
    "PAYLOAD"
 };
+#endif
 
 
 /***********************************************************************
@@ -368,23 +371,21 @@ static void emit_interp( struct brw_wm_compile *c,
  * harm and it's not as if the parameter handling isn't a big hack
  * anyway.
  */
-static struct prog_src_register search_or_add_param6( struct brw_wm_compile *c, 
-					     GLint s0,
-					     GLint s1,
-					     GLint s2,
-					     GLint s3,
-					     GLint s4,
-					     GLint s5)
+static struct prog_src_register search_or_add_param5(struct brw_wm_compile *c, 
+                                                     GLint s0,
+                                                     GLint s1,
+                                                     GLint s2,
+                                                     GLint s3,
+                                                     GLint s4)
 {
    struct gl_program_parameter_list *paramList = c->fp->program.Base.Parameters;
-   GLint tokens[6];
+   gl_state_index tokens[STATE_LENGTH];
    GLuint idx;
    tokens[0] = s0;
    tokens[1] = s1;
    tokens[2] = s2;
    tokens[3] = s3;
    tokens[4] = s4;
-   tokens[5] = s5;
    
    for (idx = 0; idx < paramList->NumParameters; idx++) {
       if (paramList->Parameters[idx].Type == PROGRAM_STATE_VAR &&
@@ -396,7 +397,7 @@ static struct prog_src_register search_or_add_param6( struct brw_wm_compile *c,
 
    /* Recalculate state dependency: 
     */
-   c->fp->param_state = brw_parameter_list_state_flags( paramList );
+   c->fp->param_state = paramList->StateFlags;
 
    return src_reg(PROGRAM_STATE_VAR, idx);
 }
@@ -411,6 +412,7 @@ static struct prog_src_register search_or_add_const4f( struct brw_wm_compile *c,
    struct gl_program_parameter_list *paramList = c->fp->program.Base.Parameters;
    GLfloat values[4];
    GLuint idx;
+   GLuint swizzle;
 
    values[0] = s0;
    values[1] = s1;
@@ -430,8 +432,8 @@ static struct prog_src_register search_or_add_const4f( struct brw_wm_compile *c,
 	 return src_reg(PROGRAM_STATE_VAR, idx);
    }
    
-   idx = _mesa_add_unnamed_constant( paramList, values );
-
+   idx = _mesa_add_unnamed_constant( paramList, values, 4, &swizzle );
+   /* XXX what about swizzle? */
    return src_reg(PROGRAM_STATE_VAR, idx);
 }
 
@@ -520,6 +522,85 @@ static void precalc_lit( struct brw_wm_compile *c,
 static void precalc_tex( struct brw_wm_compile *c,
 			 const struct prog_instruction *inst )
 {
+   struct prog_src_register coord;
+   struct prog_dst_register tmpcoord;
+
+   if (inst->TexSrcTarget == TEXTURE_CUBE_INDEX) {
+       struct prog_instruction *out;
+       struct prog_dst_register tmp0 = get_temp(c);
+       struct prog_src_register tmp0src = src_reg_from_dst(tmp0);
+       struct prog_dst_register tmp1 = get_temp(c);
+       struct prog_src_register tmp1src = src_reg_from_dst(tmp1);
+       struct prog_src_register src0 = inst->SrcReg[0];
+
+       tmpcoord = get_temp(c);
+       coord = src_reg_from_dst(tmpcoord);
+
+       out = emit_op(c, OPCODE_MOV,
+                     tmpcoord,
+                     0, 0, 0,
+                     src0,
+                     src_undef(),
+                     src_undef());
+       out->SrcReg[0].NegateBase = 0;
+       out->SrcReg[0].Abs = 1;
+
+       emit_op(c, OPCODE_MAX,
+               tmp0,
+               0, 0, 0,
+               src_swizzle1(coord, X),
+               src_swizzle1(coord, Y),
+               src_undef());
+
+       emit_op(c, OPCODE_MAX,
+               tmp1,
+               0, 0, 0,
+               tmp0src,
+               src_swizzle1(coord, Z),
+               src_undef());
+
+       emit_op(c, OPCODE_RCP,
+               tmp0,
+               0, 0, 0,
+               tmp1src,
+               src_undef(),
+               src_undef());
+
+       emit_op(c, OPCODE_MUL,
+               tmpcoord,
+               0, 0, 0,
+               src0,
+               tmp0src,
+               src_undef());
+
+       release_temp(c, tmp0);
+       release_temp(c, tmp1);
+   } else if (inst->TexSrcTarget == TEXTURE_RECT_INDEX) {
+      struct prog_src_register scale = 
+	 search_or_add_param5( c, 
+			       STATE_INTERNAL, 
+			       STATE_TEXRECT_SCALE,
+			       inst->TexSrcUnit,
+			       0,0 );
+
+      tmpcoord = get_temp(c);
+
+      /* coord.xy   = MUL inst->SrcReg[0], { 1/width, 1/height }
+       */
+      emit_op(c,
+	      OPCODE_MUL,
+	      tmpcoord,
+	      0, 0, 0,
+	      inst->SrcReg[0],
+	      scale,
+	      src_undef());
+
+      coord = src_reg_from_dst(tmpcoord);
+   }
+   else {
+      coord = inst->SrcReg[0];
+   }
+
    /* Need to emit YUV texture conversions by hand.  Probably need to
     * do this here - the alternative is in brw_wm_emit.c, but the
     * conversion requires allocating a temporary variable which we
@@ -532,7 +613,7 @@ static void precalc_tex( struct brw_wm_compile *c,
 	      inst->SaturateMode,
 	      inst->TexSrcUnit,
 	      inst->TexSrcTarget,
-	      inst->SrcReg[0],
+	      coord,
 	      src_undef(),
 	      src_undef());
    }
@@ -604,7 +685,12 @@ static void precalc_tex( struct brw_wm_compile *c,
 	      src_swizzle1(tmpsrc, Z),
 	      src_swizzle1(C1, W),
 	      src_swizzle1(src_reg_from_dst(dst), Y));
+
+      release_temp(c, tmp);
    }
+
+   if (inst->TexSrcTarget == GL_TEXTURE_RECTANGLE_NV) 
+      release_temp(c, tmpcoord);
 }
 
 
@@ -688,7 +774,7 @@ static void fog_blend( struct brw_wm_compile *c,
 			     struct prog_src_register fog_factor )
 {
    struct prog_dst_register outcolor = dst_reg(PROGRAM_OUTPUT, FRAG_RESULT_COLR);
-   struct prog_src_register fogcolor = search_or_add_param6( c, STATE_FOG_COLOR, 0,0,0,0,0 );
+   struct prog_src_register fogcolor = search_or_add_param5( c, STATE_FOG_COLOR, 0,0,0,0 );
 
    /* color.xyz = LRP fog_factor.xxxx, output_color, fog_color */
    
@@ -768,6 +854,27 @@ static void validate_src_regs( struct brw_wm_compile *c,
 }
 	 
 
+
+static void print_insns( const struct prog_instruction *insn,
+			 GLuint nr )
+{
+   GLuint i;
+   for (i = 0; i < nr; i++, insn++) {
+      _mesa_printf("%3d: ", i);
+      if (insn->Opcode < MAX_OPCODE)
+	 _mesa_print_instruction(insn);
+      else if (insn->Opcode < MAX_WM_OPCODE) {
+	 GLuint idx = insn->Opcode - MAX_OPCODE;
+
+	 _mesa_print_alu_instruction(insn,
+				     wm_opcode_strings[idx],
+				     3);
+      }
+      else 
+	 _mesa_printf("UNKNOWN\n");
+	   
+   }
+}
 
 void brw_wm_pass_fp( struct brw_wm_compile *c )
 {
@@ -867,7 +974,7 @@ void brw_wm_pass_fp( struct brw_wm_compile *c )
 
    if (INTEL_DEBUG & DEBUG_WM) {
       _mesa_printf("\n\n\npass_fp:\n");
-/*       _mesa_debug_fp_inst(c->nr_fp_insns, c->prog_instructions, wm_opcode_strings, wm_file_strings);  */
+      print_insns( c->prog_instructions, c->nr_fp_insns );
       _mesa_printf("\n");
    }
 }

@@ -288,8 +288,8 @@ i810InitDriver(__DRIscreenPrivate *sPriv)
 	      i810Screen->depth.handle,
 	      i810Screen->depth.size,
 	      (drmAddress *)&i810Screen->depth.map) != 0) {
-      FREE(i810Screen);
       drmUnmap(i810Screen->back.map, i810Screen->back.size);
+      FREE(i810Screen);
       sPriv->private = NULL;
       __driUtilMessage("i810InitDriver: drmMap (2) failed");
       return GL_FALSE;
@@ -398,7 +398,7 @@ i810CreateBuffer( __DRIscreenPrivate *driScrnPriv,
 static void
 i810DestroyBuffer(__DRIdrawablePrivate *driDrawPriv)
 {
-   _mesa_destroy_framebuffer((GLframebuffer *) (driDrawPriv->driverPrivate));
+    _mesa_unreference_framebuffer((GLframebuffer **)(&(driDrawPriv->driverPrivate)));
 }
 
 

@@ -102,10 +102,15 @@ typedef void (*r200_point_func)( r200ContextPtr,
 struct r200_vertex_program {
         struct gl_vertex_program mesa_program; /* Must be first */
         int translated;
-        VERTEX_SHADER_INSTRUCTION instr[R200_VSF_MAX_INST + 3];
+        /* need excess instr: 1 for late loop checking, 2 for 
+           additional instr due to instr/attr, 3 for fog */
+        VERTEX_SHADER_INSTRUCTION instr[R200_VSF_MAX_INST + 6];
         int pos_end;
         int inputs[VERT_ATTRIB_MAX];
+        GLubyte inputmap_rev[16];
         int native;
+        int fogpidx;
+        int fogmode;
 };
 
 struct r200_colorbuffer_state {
@@ -175,6 +180,7 @@ struct r200_tex_obj {
 
    drm_radeon_tex_image_t image[6][RADEON_MAX_TEXTURE_LEVELS];
 					/* Six, for the cube faces */
+   GLboolean image_override;		/* Image overridden by GLX_EXT_tfp */
 
    GLuint pp_txfilter;		        /* hardware register values */
    GLuint pp_txformat;
@@ -445,9 +451,29 @@ struct r200_state_atom {
 
 /* SPR - point sprite state
  */
-#define SPR_CMD_0             0
-#define SPR_POINT_SPRITE_CNTL 1
-#define SPR_STATE_SIZE        2
+#define SPR_CMD_0              0
+#define SPR_POINT_SPRITE_CNTL  1
+#define SPR_STATE_SIZE         2
+
+#define PTP_CMD_0              0
+#define PTP_VPORT_SCALE_0      1
+#define PTP_VPORT_SCALE_1      2
+#define PTP_VPORT_SCALE_PTSIZE 3
+#define PTP_VPORT_SCALE_3      4
+#define PTP_CMD_1              5
+#define PTP_ATT_CONST_QUAD     6
+#define PTP_ATT_CONST_LIN      7
+#define PTP_ATT_CONST_CON      8
+#define PTP_ATT_CONST_3        9
+#define PTP_EYE_X             10
+#define PTP_EYE_Y             11
+#define PTP_EYE_Z             12
+#define PTP_EYE_3             13
+#define PTP_CLAMP_MIN         14
+#define PTP_CLAMP_MAX         15
+#define PTP_CLAMP_2           16
+#define PTP_CLAMP_3           17
+#define PTP_STATE_SIZE        18
 
 #define VTX_COLOR(v,n)   (((v)>>(R200_VTX_COLOR_0_SHIFT+(n)*2))&\
                          R200_VTX_COLOR_MASK)
@@ -614,6 +640,7 @@ struct r200_hw_state {
    struct r200_state_atom vpp[2];
    struct r200_state_atom atf;
    struct r200_state_atom spr;
+   struct r200_state_atom ptp;
 
    int max_state_size;	/* Number of bytes necessary for a full state emit. */
    GLboolean is_dirty, all_dirty;
@@ -674,6 +701,7 @@ struct r200_dri_mirror {
    __DRIcontextPrivate	*context;	/* DRI context */
    __DRIscreenPrivate	*screen;	/* DRI screen */
    __DRIdrawablePrivate	*drawable;	/* DRI drawable bound to this ctx */
+   __DRIdrawablePrivate	*readable;	/* DRI readable bound to this ctx */
 
    drm_context_t hwContext;
    drm_hw_lock_t *hwLock;
@@ -696,23 +724,16 @@ struct r200_store {
 /* r200_tcl.c
  */
 struct r200_tcl_info {
-   GLuint vertex_format;
-   GLint last_offset;
    GLuint hw_primitive;
 
-/* FIXME: what's the maximum number of components? */
-   struct r200_dma_region *aos_components[11];
+/* hw can handle 12 components max */
+   struct r200_dma_region *aos_components[12];
    GLuint nr_aos_components;
 
    GLuint *Elts;
 
    struct r200_dma_region indexed_verts;
-   struct r200_dma_region obj;
-   struct r200_dma_region rgba;
-   struct r200_dma_region spec;
-   struct r200_dma_region fog;
-   struct r200_dma_region tex[R200_MAX_TEXTURE_UNITS];
-   struct r200_dma_region norm;
+   struct r200_dma_region vertex_data[15];
 };
 
 
@@ -782,87 +803,6 @@ struct r200_ioctl {
 #define R200_MAX_PRIMS 64
 
 
-/* Want to keep a cache of these around.  Each is parameterized by
- * only a single value which has only a small range.  Only expect a
- * few, so just rescan the list each time?
- */
-struct dynfn {
-   struct dynfn *next, *prev;
-   int key[2];
-   char *code;
-};
-
-struct dfn_lists {
-   struct dynfn Vertex2f;
-   struct dynfn Vertex2fv;
-   struct dynfn Vertex3f;
-   struct dynfn Vertex3fv;
-   struct dynfn Color4ub;
-   struct dynfn Color4ubv;
-   struct dynfn Color3ub;
-   struct dynfn Color3ubv;
-   struct dynfn Color4f;
-   struct dynfn Color4fv;
-   struct dynfn Color3f;
-   struct dynfn Color3fv;
-   struct dynfn SecondaryColor3ubEXT;
-   struct dynfn SecondaryColor3ubvEXT;
-   struct dynfn SecondaryColor3fEXT;
-   struct dynfn SecondaryColor3fvEXT;
-   struct dynfn Normal3f;
-   struct dynfn Normal3fv;
-   struct dynfn TexCoord3f;
-   struct dynfn TexCoord3fv;
-   struct dynfn TexCoord2f;
-   struct dynfn TexCoord2fv;
-   struct dynfn TexCoord1f;
-   struct dynfn TexCoord1fv;
-   struct dynfn MultiTexCoord3fARB;
-   struct dynfn MultiTexCoord3fvARB;
-   struct dynfn MultiTexCoord2fARB;
-   struct dynfn MultiTexCoord2fvARB;
-   struct dynfn MultiTexCoord1fARB;
-   struct dynfn MultiTexCoord1fvARB;
-   struct dynfn FogCoordfEXT;
-   struct dynfn FogCoordfvEXT;
-};
-
-struct dfn_generators {
-   struct dynfn *(*Vertex2f)( GLcontext *, const int * );
-   struct dynfn *(*Vertex2fv)( GLcontext *, const int * );
-   struct dynfn *(*Vertex3f)( GLcontext *, const int * );
-   struct dynfn *(*Vertex3fv)( GLcontext *, const int * );
-   struct dynfn *(*Color4ub)( GLcontext *, const int * );
-   struct dynfn *(*Color4ubv)( GLcontext *, const int * );
-   struct dynfn *(*Color3ub)( GLcontext *, const int * );
-   struct dynfn *(*Color3ubv)( GLcontext *, const int * );
-   struct dynfn *(*Color4f)( GLcontext *, const int * );
-   struct dynfn *(*Color4fv)( GLcontext *, const int * );
-   struct dynfn *(*Color3f)( GLcontext *, const int * );
-   struct dynfn *(*Color3fv)( GLcontext *, const int * );
-   struct dynfn *(*SecondaryColor3ubEXT)( GLcontext *, const int * );
-   struct dynfn *(*SecondaryColor3ubvEXT)( GLcontext *, const int * );
-   struct dynfn *(*SecondaryColor3fEXT)( GLcontext *, const int * );
-   struct dynfn *(*SecondaryColor3fvEXT)( GLcontext *, const int * );
-   struct dynfn *(*Normal3f)( GLcontext *, const int * );
-   struct dynfn *(*Normal3fv)( GLcontext *, const int * );
-   struct dynfn *(*TexCoord3f)( GLcontext *, const int * );
-   struct dynfn *(*TexCoord3fv)( GLcontext *, const int * );
-   struct dynfn *(*TexCoord2f)( GLcontext *, const int * );
-   struct dynfn *(*TexCoord2fv)( GLcontext *, const int * );
-   struct dynfn *(*TexCoord1f)( GLcontext *, const int * );
-   struct dynfn *(*TexCoord1fv)( GLcontext *, const int * );
-   struct dynfn *(*MultiTexCoord3fARB)( GLcontext *, const int * );
-   struct dynfn *(*MultiTexCoord3fvARB)( GLcontext *, const int * );
-   struct dynfn *(*MultiTexCoord2fARB)( GLcontext *, const int * );
-   struct dynfn *(*MultiTexCoord2fvARB)( GLcontext *, const int * );
-   struct dynfn *(*MultiTexCoord1fARB)( GLcontext *, const int * );
-   struct dynfn *(*MultiTexCoord1fvARB)( GLcontext *, const int * );
-   struct dynfn *(*FogCoordfEXT)( GLcontext *, const int * );
-   struct dynfn *(*FogCoordfvEXT)( GLcontext *, const int * );
-};
-
-
 
 struct r200_prim {
    GLuint start;
@@ -882,43 +822,6 @@ struct r200_prim {
     */
 
 #define R200_MAX_VERTEX_SIZE ((3*6)+11)
-
-struct r200_vbinfo {
-   GLint counter, initial_counter;
-   GLint *dmaptr;
-   void (*notify)( void );
-   GLint vertex_size;
-
-   union { float f; int i; r200_color_t color; } vertex[R200_MAX_VERTEX_SIZE];
-
-   GLfloat *normalptr;
-   GLfloat *floatcolorptr;
-   GLfloat *fogptr;
-   r200_color_t *colorptr;
-   GLfloat *floatspecptr;
-   r200_color_t *specptr;
-   GLfloat *texcoordptr[8];	/* 6 (TMU) + 2 for r200_vtxfmt_c.c when GL_TEXTURE6/7 */
-
-
-   GLenum *prim;		/* &ctx->Driver.CurrentExecPrimitive */
-   GLuint primflags;
-   GLboolean enabled;		/* *_NO_VTXFMT / *_NO_TCL env vars */
-   GLboolean installed;
-   GLboolean fell_back;
-   GLboolean recheck;
-   GLint nrverts;
-   GLuint vtxfmt_0, vtxfmt_1;
-
-   GLuint installed_vertex_format;
-   GLuint installed_color_3f_sz;
-
-   struct r200_prim primlist[R200_MAX_PRIMS];
-   int nrprims;
-
-   struct dfn_lists dfn_cache;
-   struct dfn_generators codegen;
-   GLvertexformat vtxfmt;
-};
 
 
 struct r200_context {
@@ -1010,10 +913,6 @@ struct r200_context {
    /* r200_swtcl.c
     */
    struct r200_swtcl_info swtcl;
-
-   /* r200_vtxfmt.c
-    */
-   struct r200_vbinfo vb;
 
    /* Mirrors of some DRI state
     */

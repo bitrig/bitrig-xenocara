@@ -7,7 +7,9 @@ SUBDIRS = src progs
 
 default: $(TOP)/configs/current
 	@for dir in $(SUBDIRS) ; do \
-		(cd $$dir ; $(MAKE)) || exit 1 ; \
+		if [ -d $$dir ] ; then \
+			(cd $$dir && $(MAKE)) || exit 1 ; \
+		fi \
 	done
 
 
@@ -16,7 +18,9 @@ doxygen:
 
 clean:
 	@for dir in $(SUBDIRS) ; do \
-		(cd $$dir ; $(MAKE) clean) ; \
+		if [ -d $$dir ] ; then \
+			(cd $$dir && $(MAKE) clean) ; \
+		fi \
 	done
 
 
@@ -34,8 +38,11 @@ realclean:
 
 install:
 	@for dir in $(SUBDIRS) ; do \
-		(cd $$dir ; $(MAKE) install) || exit 1 ; \
+		if [ -d $$dir ] ; then \
+			(cd $$dir && $(MAKE) install) || exit 1 ; \
+		fi \
 	done
+
 
 # DirectFBGL module installation
 linux-directfb-install:
@@ -60,6 +67,9 @@ aix-64-static \
 aix-gcc \
 aix-static \
 beos \
+bluegene-osmesa \
+bluegene-xlc-osmesa \
+catamount-osmesa-pgi \
 darwin \
 darwin-static \
 darwin-static-x86ppc \
@@ -92,6 +102,7 @@ linux-alpha-static \
 linux-debug \
 linux-directfb \
 linux-dri \
+linux-dri-debug \
 linux-dri-x86 \
 linux-dri-x86-64 \
 linux-dri-ppc \
@@ -143,8 +154,9 @@ sunos5-v8 \
 sunos5-v8-static \
 sunos5-v9 \
 sunos5-v9-static \
+sunos5-v9-cc-g++ \
 ultrix-gcc:
-	@ if [ -e configs/current ] ; then \
+	@ if test -f configs/current || test -L configs/current ; then \
 		echo "Please run 'make realclean' before changing configs" ; \
 		exit 1 ; \
 	fi
@@ -154,16 +166,17 @@ ultrix-gcc:
 
 # Rules for making release tarballs
 
-DIRECTORY = Mesa-6.5.1
-LIB_NAME = MesaLib-6.5.1
-DEMO_NAME = MesaDemos-6.5.1
-GLUT_NAME = MesaGLUT-6.5.1
+DIRECTORY = Mesa-7.0.2
+LIB_NAME = MesaLib-7.0.2
+DEMO_NAME = MesaDemos-7.0.2
+GLUT_NAME = MesaGLUT-7.0.2
 
 MAIN_FILES = \
 	$(DIRECTORY)/Makefile*						\
 	$(DIRECTORY)/descrip.mms					\
 	$(DIRECTORY)/mms-config.					\
 	$(DIRECTORY)/bin/mklib						\
+	$(DIRECTORY)/bin/minstall					\
 	$(DIRECTORY)/configs/[a-z]*					\
 	$(DIRECTORY)/docs/*.html					\
 	$(DIRECTORY)/docs/COPYING					\
@@ -173,7 +186,6 @@ MAIN_FILES = \
 	$(DIRECTORY)/include/GL/internal/glcore.h			\
 	$(DIRECTORY)/include/GL/amesa.h					\
 	$(DIRECTORY)/include/GL/dmesa.h					\
-	$(DIRECTORY)/include/GL/directfbgl.h				\
 	$(DIRECTORY)/include/GL/fxmesa.h				\
 	$(DIRECTORY)/include/GL/ggimesa.h				\
 	$(DIRECTORY)/include/GL/gl.h					\
@@ -201,28 +213,41 @@ MAIN_FILES = \
 	$(DIRECTORY)/src/mesa/Makefile*					\
 	$(DIRECTORY)/src/mesa/sources					\
 	$(DIRECTORY)/src/mesa/descrip.mms				\
+	$(DIRECTORY)/src/mesa/gl.pc.in					\
 	$(DIRECTORY)/src/mesa/depend					\
 	$(DIRECTORY)/src/mesa/main/*.[chS]				\
 	$(DIRECTORY)/src/mesa/main/descrip.mms				\
+	$(DIRECTORY)/src/mesa/main/sources				\
 	$(DIRECTORY)/src/mesa/glapi/*.[chS]				\
 	$(DIRECTORY)/src/mesa/glapi/descrip.mms				\
-	$(DIRECTORY)/src/mesa/array_cache/*.[ch]			\
-	$(DIRECTORY)/src/mesa/array_cache/descrip.mms			\
+	$(DIRECTORY)/src/mesa/glapi/sources				\
 	$(DIRECTORY)/src/mesa/math/*.[ch]				\
 	$(DIRECTORY)/src/mesa/math/descrip.mms				\
+	$(DIRECTORY)/src/mesa/math/sources				\
 	$(DIRECTORY)/src/mesa/shader/*.[ch]				\
 	$(DIRECTORY)/src/mesa/shader/descrip.mms			\
+	$(DIRECTORY)/src/mesa/shader/sources				\
 	$(DIRECTORY)/src/mesa/shader/grammar/*.[ch]			\
 	$(DIRECTORY)/src/mesa/shader/grammar/descrip.mms		\
+	$(DIRECTORY)/src/mesa/shader/grammar/sources			\
 	$(DIRECTORY)/src/mesa/shader/slang/*.[ch]			\
 	$(DIRECTORY)/src/mesa/shader/slang/descrip.mms			\
+	$(DIRECTORY)/src/mesa/shader/slang/sources			\
 	$(DIRECTORY)/src/mesa/shader/slang/library/*.[ch]		\
+	$(DIRECTORY)/src/mesa/shader/slang/library/*.gc			\
+	$(DIRECTORY)/src/mesa/shader/slang/library/*.syn		\
+	$(DIRECTORY)/src/mesa/shader/slang/library/Makefile		\
 	$(DIRECTORY)/src/mesa/swrast/*.[ch]				\
 	$(DIRECTORY)/src/mesa/swrast/descrip.mms			\
+	$(DIRECTORY)/src/mesa/swrast/sources				\
 	$(DIRECTORY)/src/mesa/swrast_setup/*.[ch]			\
 	$(DIRECTORY)/src/mesa/swrast_setup/descrip.mms			\
+	$(DIRECTORY)/src/mesa/swrast_setup/sources			\
+	$(DIRECTORY)/src/mesa/vbo/*.[chS]				\
+	$(DIRECTORY)/src/mesa/vbo/descrip.mms				\
 	$(DIRECTORY)/src/mesa/tnl/*.[chS]				\
 	$(DIRECTORY)/src/mesa/tnl/descrip.mms				\
+	$(DIRECTORY)/src/mesa/tnl/sources				\
 	$(DIRECTORY)/src/mesa/tnl_dd/*.[ch]				\
 	$(DIRECTORY)/src/mesa/tnl_dd/imm/*.[ch]				\
 	$(DIRECTORY)/src/mesa/tnl_dd/imm/NOTES.imm			\
@@ -230,6 +255,7 @@ MAIN_FILES = \
 	$(DIRECTORY)/src/mesa/drivers/beos/Makefile			\
 	$(DIRECTORY)/src/mesa/drivers/common/*.[ch]			\
 	$(DIRECTORY)/src/mesa/drivers/common/descrip.mms		\
+	$(DIRECTORY)/src/mesa/drivers/common/sources			\
 	$(DIRECTORY)/src/mesa/drivers/directfb/*.[ch]			\
 	$(DIRECTORY)/src/mesa/drivers/directfb/Makefile			\
 	$(DIRECTORY)/src/mesa/drivers/dos/*.[chS]			\
@@ -250,6 +276,7 @@ MAIN_FILES = \
 	$(DIRECTORY)/src/mesa/drivers/windows/*/*.[ch]			\
 	$(DIRECTORY)/src/mesa/drivers/windows/*/*.def			\
 	$(DIRECTORY)/src/mesa/drivers/x11/descrip.mms			\
+	$(DIRECTORY)/src/mesa/drivers/x11/sources			\
 	$(DIRECTORY)/src/mesa/drivers/x11/*.[ch]			\
 	$(DIRECTORY)/src/mesa/ppc/*.[ch]				\
 	$(DIRECTORY)/src/mesa/sparc/*.[chS]				\
@@ -266,17 +293,15 @@ MAIN_FILES = \
 	$(DIRECTORY)/vms/analyze_map.com				\
 	$(DIRECTORY)/vms/xlib.opt					\
 	$(DIRECTORY)/vms/xlib_share.opt					\
-	$(DIRECTORY)/windows/VC6/mesa/gdi/gdi.dsp			\
-	$(DIRECTORY)/windows/VC6/mesa/glu/*.txt				\
-	$(DIRECTORY)/windows/VC6/mesa/glu/glu.dsp			\
-	$(DIRECTORY)/windows/VC6/mesa/mesa.dsw				\
-	$(DIRECTORY)/windows/VC6/mesa/mesa/mesa.dsp			\
-	$(DIRECTORY)/windows/VC6/mesa/osmesa/osmesa.dsp			\
-	$(DIRECTORY)/windows/VC7/mesa/gdi/gdi.vcproj			\
-	$(DIRECTORY)/windows/VC7/mesa/glu/glu.vcproj			\
-	$(DIRECTORY)/windows/VC7/mesa/mesa.sln				\
-	$(DIRECTORY)/windows/VC7/mesa/mesa/mesa.vcproj			\
-	$(DIRECTORY)/windows/VC7/mesa/osmesa/osmesa.vcproj
+	$(DIRECTORY)/windows/VC8/mesa/mesa.sln				\
+	$(DIRECTORY)/windows/VC8/mesa/gdi/gdi.vcproj			\
+	$(DIRECTORY)/windows/VC8/mesa/glu/glu.vcproj			\
+	$(DIRECTORY)/windows/VC8/mesa/mesa/mesa.vcproj			\
+	$(DIRECTORY)/windows/VC8/mesa/osmesa/osmesa.vcproj		\
+	$(DIRECTORY)/windows/VC8/progs/progs.sln			\
+	$(DIRECTORY)/windows/VC8/progs/demos/gears.vcproj		\
+	$(DIRECTORY)/windows/VC8/progs/glut/glut.vcproj
+
 
 DRI_FILES = \
 	$(DIRECTORY)/include/GL/internal/dri_interface.h		\
@@ -296,7 +321,9 @@ DRI_FILES = \
 SGI_GLU_FILES = \
 	$(DIRECTORY)/src/glu/Makefile					\
 	$(DIRECTORY)/src/glu/descrip.mms				\
+	$(DIRECTORY)/src/glu/glu.pc.in					\
 	$(DIRECTORY)/src/glu/sgi/Makefile				\
+	$(DIRECTORY)/src/glu/sgi/Makefile.mgw				\
 	$(DIRECTORY)/src/glu/sgi/Makefile.win				\
 	$(DIRECTORY)/src/glu/sgi/Makefile.DJ				\
 	$(DIRECTORY)/src/glu/sgi/glu.def				\
@@ -341,6 +368,8 @@ DEMO_FILES = \
 	$(DIRECTORY)/progs/demos/*.cxx			\
 	$(DIRECTORY)/progs/demos/*.dat			\
 	$(DIRECTORY)/progs/demos/README			\
+	$(DIRECTORY)/progs/fbdev/Makefile		\
+	$(DIRECTORY)/progs/fbdev/glfbdevtest.c		\
 	$(DIRECTORY)/progs/osdemos/Makefile		\
 	$(DIRECTORY)/progs/osdemos/*.c			\
 	$(DIRECTORY)/progs/xdemos/Makefile*		\
@@ -352,6 +381,9 @@ DEMO_FILES = \
 	$(DIRECTORY)/progs/samples/Makefile*		\
 	$(DIRECTORY)/progs/samples/README		\
 	$(DIRECTORY)/progs/samples/*.c			\
+	$(DIRECTORY)/progs/glsl/Makefile*		\
+	$(DIRECTORY)/progs/glsl/*.c			\
+	$(DIRECTORY)/progs/glsl/*.txt			\
 	$(DIRECTORY)/progs/windml/Makefile.ugl		\
 	$(DIRECTORY)/progs/windml/*.c			\
 	$(DIRECTORY)/progs/windml/*.bmp			\
@@ -366,6 +398,7 @@ GLUT_FILES = \
 	$(DIRECTORY)/include/GL/glutf90.h		\
 	$(DIRECTORY)/src/glut/glx/Makefile*		\
 	$(DIRECTORY)/src/glut/glx/depend		\
+	$(DIRECTORY)/src/glut/glx/glut.pc.in		\
 	$(DIRECTORY)/src/glut/glx/*def			\
 	$(DIRECTORY)/src/glut/glx/descrip.mms		\
 	$(DIRECTORY)/src/glut/glx/mms_depend		\
@@ -381,6 +414,9 @@ GLUT_FILES = \
 	$(DIRECTORY)/src/glut/fbdev/Makefile		\
 	$(DIRECTORY)/src/glut/fbdev/*[ch]		\
 	$(DIRECTORY)/src/glut/mini/*[ch]		\
+	$(DIRECTORY)/src/glut/directfb/Makefile		\
+	$(DIRECTORY)/src/glut/directfb/NOTES		\
+	$(DIRECTORY)/src/glut/directfb/*[ch]		\
 	$(DIRECTORY)/windows/VC6/progs/glut/glut.dsp	\
 	$(DIRECTORY)/windows/VC7/progs/glut/glut.vcproj
 
@@ -388,6 +424,7 @@ DEPEND_FILES = \
 	$(TOP)/src/mesa/depend		\
 	$(TOP)/src/glx/x11/depend	\
 	$(TOP)/src/glw/depend		\
+	$(TOP)/src/glw/glw.pc.in	\
 	$(TOP)/src/glut/glx/depend	\
 	$(TOP)/src/glu/sgi/depend
 

@@ -31,7 +31,9 @@
 #include "intel_regions.h"
 #include "intel_batchbuffer.h"
 #include "context.h"
+#include "utils.h"
 #include "framebuffer.h"
+#include "vblank.h"
 #include "macros.h"
 #include "swrast/swrast.h"
 
@@ -190,8 +192,40 @@ void intelWindowMoved( struct intel_context *intel )
       }
    }
 
+   {
+      if (intel->intelScreen->driScrnPriv->ddxMinor >= 7) {
+	 volatile drmI830Sarea *sarea = intel->sarea;
+	 drm_clip_rect_t drw_rect = { .x1 = dPriv->x, .x2 = dPriv->x + dPriv->w,
+				      .y1 = dPriv->y, .y2 = dPriv->y + dPriv->h 
+	 };
+	 drm_clip_rect_t pipeA_rect = { .x1 = sarea->pipeA_x,
+					.x2 = sarea->pipeA_x + sarea->pipeA_w,
+					.y1 = sarea->pipeA_y,
+                                        .y2 = sarea->pipeA_y + sarea->pipeA_h };
+         drm_clip_rect_t pipeB_rect = { .x1 = sarea->pipeB_x,
+                                        .x2 = sarea->pipeB_x + sarea->pipeB_w,
+                                        .y1 = sarea->pipeB_y,
+                                        .y2 = sarea->pipeB_y + sarea->pipeB_h };
+         GLint areaA = driIntersectArea( drw_rect, pipeA_rect );
+         GLint areaB = driIntersectArea( drw_rect, pipeB_rect );
+         GLuint flags = intel->vblank_flags;
+	 
+         if (areaB > areaA || (areaA > 0 && areaB > 0)) {
+            flags = intel->vblank_flags | VBLANK_FLAG_SECONDARY;
+         } else {
+            flags = intel->vblank_flags & ~VBLANK_FLAG_SECONDARY;
+         }
+	 
+         if (flags != intel->vblank_flags) {
+            intel->vblank_flags = flags;
+            driGetCurrentVBlank(dPriv, intel->vblank_flags, &intel->vbl_seq);
+         }
+      } else {
+         intel->vblank_flags &= ~VBLANK_FLAG_SECONDARY;
+      }
+   }
    _mesa_resize_framebuffer(&intel->ctx,
-			    (GLframebuffer*)dPriv->driverPrivate,
+   			    (GLframebuffer*)dPriv->driverPrivate,
 			    dPriv->w, dPriv->h);
 
    /* Set state we know depends on drawable parameters:
@@ -210,6 +244,12 @@ void intelWindowMoved( struct intel_context *intel )
 
       intel->NewGLState |= _NEW_SCISSOR;
    }
+
+   /* This works because the lock is always grabbed before emitting
+    * commands and commands are always flushed prior to releasing
+    * the lock.
+    */
+   intel->NewGLState |= _NEW_WINDOW_POS; 
 }
 
 
@@ -218,12 +258,11 @@ void intelWindowMoved( struct intel_context *intel )
  * machine independent.  Maybe we'll get there one day.
  */
 static void intelClearWithTris(struct intel_context *intel, 
-			       GLbitfield mask,
-			       GLboolean all,
-			       GLint cx, GLint cy, 
-			       GLint cw, GLint ch)
+			       GLbitfield mask)
 {
+   GLcontext *ctx = &intel->ctx;
    drm_clip_rect_t clear;
+   GLint cx, cy, cw, ch;
 
    if (INTEL_DEBUG & DEBUG_DRI)
       _mesa_printf("%s %x\n", __FUNCTION__, mask);
@@ -232,18 +271,11 @@ static void intelClearWithTris(struct intel_context *intel,
 
       intel->vtbl.install_meta_state(intel);
 
-      /* Refresh the cx/y/w/h values as they may have been invalidated
-       * by a new window position or size picked up when we did
-       * LOCK_HARDWARE above.  The values passed by mesa are not
-       * reliable.
-       */
-      {
-	 GLcontext *ctx = &intel->ctx;
-	 cx = ctx->DrawBuffer->_Xmin;
-	 cy = ctx->DrawBuffer->_Ymin;
-	 ch = ctx->DrawBuffer->_Ymax - ctx->DrawBuffer->_Ymin;
-	 cw  = ctx->DrawBuffer->_Xmax - ctx->DrawBuffer->_Xmin;
-      }
+      /* Get clear bounds after locking */
+      cx = ctx->DrawBuffer->_Xmin;
+      cy = ctx->DrawBuffer->_Ymin;
+      cw = ctx->DrawBuffer->_Xmax - ctx->DrawBuffer->_Xmin;
+      ch = ctx->DrawBuffer->_Ymax - ctx->DrawBuffer->_Ymin;
 
       clear.x1 = cx;
       clear.y1 = cy;
@@ -321,11 +353,7 @@ static void intelClearWithTris(struct intel_context *intel,
 
 
 
-static void intelClear(GLcontext *ctx, 
-		       GLbitfield mask, 
-		       GLboolean all,
-		       GLint cx, GLint cy, 
-		       GLint cw, GLint ch)
+static void intelClear(GLcontext *ctx, GLbitfield mask)
 {
    struct intel_context *intel = intel_context( ctx );
    const GLuint colorMask = *((GLuint *) &ctx->Color.ColorMask);
@@ -334,8 +362,7 @@ static void intelClear(GLcontext *ctx,
    GLbitfield swrast_mask = 0;
 
    if (INTEL_DEBUG & DEBUG_DRI)
-      fprintf(stderr, "%s %x all %d dims %d,%d %dx%d\n", __FUNCTION__,
-	      mask, all, cx, cy, cw, ch);
+      fprintf(stderr, "%s %x\n", __FUNCTION__, mask);
 
 
    if (mask & BUFFER_BIT_FRONT_LEFT) {
@@ -386,13 +413,13 @@ static void intelClear(GLcontext *ctx,
    intelFlush( ctx );
 
    if (blit_mask)
-      intelClearWithBlit( ctx, blit_mask, all, cx, cy, cw, ch );
+      intelClearWithBlit( ctx, blit_mask );
 
    if (tri_mask) 
-      intelClearWithTris( intel, tri_mask, all, cx, cy, cw, ch);
+      intelClearWithTris( intel, tri_mask );
 
    if (swrast_mask)
-      _swrast_Clear( ctx, swrast_mask, all, cx, cy, cw, ch );
+      _swrast_Clear( ctx, swrast_mask );
 }
 
 
@@ -549,7 +576,6 @@ void intelInitBufferFuncs( struct dd_function_table *functions )
 {
    functions->Clear = intelClear;
    functions->GetBufferSize = intelBufferSize;
-   functions->ResizeBuffers = _mesa_resize_framebuffer;
    functions->DrawBuffer = intelDrawBuffer;
    functions->ReadBuffer = intelReadBuffer;
 }

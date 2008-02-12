@@ -1,8 +1,8 @@
 /*
  * Mesa 3-D graphics library
- * Version:  6.5.1
+ * Version:  7.0.2
  *
- * Copyright (C) 1999-2006  Brian Paul   All Rights Reserved.
+ * Copyright (C) 1999-2007  Brian Paul   All Rights Reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -66,10 +66,10 @@
 #include "dlist.h"
 #include "macros.h"
 #include "matrix.h"
-#include "occlude.h"
 #include "pixel.h"
 #include "points.h"
 #include "polygon.h"
+#include "queryobj.h"
 #include "state.h"
 #include "texobj.h"
 #include "teximage.h"
@@ -343,8 +343,6 @@ typedef enum
    OPCODE_ATTR_3F_ARB,
    OPCODE_ATTR_4F_ARB,
    OPCODE_MATERIAL,
-   OPCODE_INDEX,
-   OPCODE_EDGEFLAG,
    OPCODE_BEGIN,
    OPCODE_END,
    OPCODE_RECTF,
@@ -2718,21 +2716,20 @@ save_PolygonMode(GLenum face, GLenum mode)
 }
 
 
-/*
- * Polygon stipple must have been upacked already!
- */
 static void GLAPIENTRY
 save_PolygonStipple(const GLubyte * pattern)
 {
    GET_CURRENT_CONTEXT(ctx);
+   GLvoid *image = unpack_image(2, 32, 32, 1, GL_COLOR_INDEX, GL_BITMAP,
+                                pattern, &ctx->Unpack);
    Node *n;
    ASSERT_OUTSIDE_SAVE_BEGIN_END_AND_FLUSH(ctx);
    n = ALLOC_INSTRUCTION(ctx, OPCODE_POLYGON_STIPPLE, 1);
    if (n) {
-      void *data;
-      n[1].data = _mesa_malloc(32 * 4);
-      data = n[1].data;         /* This needed for Acorn compiler */
-      MEMCPY(data, pattern, 32 * 4);
+      n[1].data = image; 
+   }
+   else if (image) {
+      _mesa_free(image);
    }
    if (ctx->ExecuteFlag) {
       CALL_PolygonStipple(ctx->Exec, ((GLubyte *) pattern));
@@ -4476,7 +4473,7 @@ save_ProgramLocalParameters4fvEXT(GLenum target, GLuint index, GLsizei count,
    ASSERT_OUTSIDE_SAVE_BEGIN_END_AND_FLUSH(ctx);
 
    if (count > 0) {
-      unsigned i;
+      GLint i;
       const GLfloat * p = params;
 
       for (i = 0 ; i < count ; i++) {
@@ -4710,7 +4707,7 @@ save_ProgramEnvParameters4fvEXT(GLenum target, GLuint index, GLsizei count,
    ASSERT_OUTSIDE_SAVE_BEGIN_END_AND_FLUSH(ctx);
 
    if (count > 0) {
-      unsigned i;
+      GLint i;
       const GLfloat * p = params;
 
       for (i = 0 ; i < count ; i++) {
@@ -5110,45 +5107,19 @@ save_EvalPoint2(GLint x, GLint y)
 static void GLAPIENTRY
 save_Indexf(GLfloat x)
 {
-   GET_CURRENT_CONTEXT(ctx);
-   Node *n;
-   SAVE_FLUSH_VERTICES(ctx);
-   n = ALLOC_INSTRUCTION(ctx, OPCODE_INDEX, 1);
-   if (n) {
-      n[1].f = x;
-   }
-
-   ctx->ListState.ActiveIndex = 1;
-   ctx->ListState.CurrentIndex = x;
-
-   if (ctx->ExecuteFlag) {
-      CALL_Indexf(ctx->Exec, (x));
-   }
+   save_Attr1fNV(VERT_ATTRIB_COLOR_INDEX, x);
 }
 
 static void GLAPIENTRY
 save_Indexfv(const GLfloat * v)
 {
-   save_Indexf(v[0]);
+   save_Attr1fNV(VERT_ATTRIB_COLOR_INDEX, v[0]);
 }
 
 static void GLAPIENTRY
 save_EdgeFlag(GLboolean x)
 {
-   GET_CURRENT_CONTEXT(ctx);
-   Node *n;
-   SAVE_FLUSH_VERTICES(ctx);
-   n = ALLOC_INSTRUCTION(ctx, OPCODE_EDGEFLAG, 1);
-   if (n) {
-      n[1].b = x;
-   }
-
-   ctx->ListState.ActiveEdgeFlag = 1;
-   ctx->ListState.CurrentEdgeFlag = x;
-
-   if (ctx->ExecuteFlag) {
-      CALL_EdgeFlag(ctx->Exec, (x));
-   }
+   save_Attr1fNV(VERT_ATTRIB_EDGEFLAG, x ? 1.0 : 0.0);
 }
 
 static void GLAPIENTRY
@@ -5766,7 +5737,7 @@ execute_list(GLcontext *ctx, GLuint list)
    if (!dlist)
       return;
 
-   ctx->ListState.CallStack[ctx->ListState.CallDepth++] = dlist;
+   ctx->ListState.CallDepth++;
 
    if (ctx->Driver.BeginCallList)
       ctx->Driver.BeginCallList(ctx, dlist);
@@ -6197,7 +6168,12 @@ execute_list(GLcontext *ctx, GLuint list)
             CALL_PolygonMode(ctx->Exec, (n[1].e, n[2].e));
             break;
          case OPCODE_POLYGON_STIPPLE:
-            CALL_PolygonStipple(ctx->Exec, ((GLubyte *) n[1].data));
+            {
+               const struct gl_pixelstore_attrib save = ctx->Unpack;
+               ctx->Unpack = ctx->DefaultPacking;
+               CALL_PolygonStipple(ctx->Exec, ((GLubyte *) n[1].data));
+               ctx->Unpack = save;      /* restore */
+            }
             break;
          case OPCODE_POLYGON_OFFSET:
             CALL_PolygonOffset(ctx->Exec, (n[1].f, n[2].f));
@@ -6602,12 +6578,6 @@ execute_list(GLcontext *ctx, GLuint list)
                CALL_Materialfv(ctx->Exec, (n[1].e, n[2].e, f));
             }
             break;
-         case OPCODE_INDEX:
-            CALL_Indexf(ctx->Exec, (n[1].f));
-            break;
-         case OPCODE_EDGEFLAG:
-            CALL_EdgeFlag(ctx->Exec, (n[1].b));
-            break;
          case OPCODE_BEGIN:
             CALL_Begin(ctx->Exec, (n[1].e));
             break;
@@ -6659,7 +6629,7 @@ execute_list(GLcontext *ctx, GLuint list)
    if (ctx->Driver.EndCallList)
       ctx->Driver.EndCallList(ctx);
 
-   ctx->ListState.CallStack[ctx->ListState.CallDepth--] = NULL;
+   ctx->ListState.CallDepth--;
 }
 
 
@@ -6792,9 +6762,6 @@ _mesa_NewList(GLuint list, GLenum mode)
 
    for (i = 0; i < MAT_ATTRIB_MAX; i++)
       ctx->ListState.ActiveMaterialSize[i] = 0;
-
-   ctx->ListState.ActiveIndex = 0;
-   ctx->ListState.ActiveEdgeFlag = 0;
 
    ctx->Driver.CurrentSavePrimitive = PRIM_UNKNOWN;
    ctx->Driver.NewList(ctx, list, mode);
@@ -7869,7 +7836,6 @@ _mesa_init_dlist_table(struct _glapi_table *table)
 
    /* GL 1.1 */
    SET_AreTexturesResident(table, exec_AreTexturesResident);
-   SET_AreTexturesResidentEXT(table, exec_AreTexturesResident);
    SET_BindTexture(table, save_BindTexture);
    SET_ColorPointer(table, exec_ColorPointer);
    SET_CopyTexImage1D(table, save_CopyTexImage1D);
@@ -7881,12 +7847,10 @@ _mesa_init_dlist_table(struct _glapi_table *table)
    SET_EdgeFlagPointer(table, exec_EdgeFlagPointer);
    SET_EnableClientState(table, exec_EnableClientState);
    SET_GenTextures(table, exec_GenTextures);
-   SET_GenTexturesEXT(table, exec_GenTextures);
    SET_GetPointerv(table, exec_GetPointerv);
    SET_IndexPointer(table, exec_IndexPointer);
    SET_InterleavedArrays(table, exec_InterleavedArrays);
    SET_IsTexture(table, exec_IsTexture);
-   SET_IsTextureEXT(table, exec_IsTexture);
    SET_NormalPointer(table, exec_NormalPointer);
    SET_PopClientAttrib(table, exec_PopClientAttrib);
    SET_PrioritizeTextures(table, save_PrioritizeTextures);
@@ -7925,31 +7889,18 @@ _mesa_init_dlist_table(struct _glapi_table *table)
    SET_CopyConvolutionFilter1D(table, exec_CopyConvolutionFilter1D);
    SET_CopyConvolutionFilter2D(table, exec_CopyConvolutionFilter2D);
    SET_GetColorTable(table, exec_GetColorTable);
-   SET_GetColorTableSGI(table, exec_GetColorTable);
    SET_GetColorTableParameterfv(table, exec_GetColorTableParameterfv);
-   SET_GetColorTableParameterfvSGI(table, exec_GetColorTableParameterfv);
    SET_GetColorTableParameteriv(table, exec_GetColorTableParameteriv);
-   SET_GetColorTableParameterivSGI(table, exec_GetColorTableParameteriv);
    SET_GetConvolutionFilter(table, exec_GetConvolutionFilter);
-   SET_GetConvolutionFilterEXT(table, exec_GetConvolutionFilter);
    SET_GetConvolutionParameterfv(table, exec_GetConvolutionParameterfv);
-   SET_GetConvolutionParameterfvEXT(table, exec_GetConvolutionParameterfv);
    SET_GetConvolutionParameteriv(table, exec_GetConvolutionParameteriv);
-   SET_GetConvolutionParameterivEXT(table, exec_GetConvolutionParameteriv);
    SET_GetHistogram(table, exec_GetHistogram);
-   SET_GetHistogramEXT(table, exec_GetHistogram);
    SET_GetHistogramParameterfv(table, exec_GetHistogramParameterfv);
-   SET_GetHistogramParameterfvEXT(table, exec_GetHistogramParameterfv);
    SET_GetHistogramParameteriv(table, exec_GetHistogramParameteriv);
-   SET_GetHistogramParameterivEXT(table, exec_GetHistogramParameteriv);
    SET_GetMinmax(table, exec_GetMinmax);
-   SET_GetMinmaxEXT(table, exec_GetMinmax);
    SET_GetMinmaxParameterfv(table, exec_GetMinmaxParameterfv);
-   SET_GetMinmaxParameterfvEXT(table, exec_GetMinmaxParameterfv);
    SET_GetMinmaxParameteriv(table, exec_GetMinmaxParameteriv);
-   SET_GetMinmaxParameterivEXT(table, exec_GetMinmaxParameteriv);
    SET_GetSeparableFilter(table, exec_GetSeparableFilter);
-   SET_GetSeparableFilterEXT(table, exec_GetSeparableFilter);
    SET_Histogram(table, save_Histogram);
    SET_Minmax(table, save_Minmax);
    SET_ResetHistogram(table, save_ResetHistogram);
@@ -7975,10 +7926,10 @@ _mesa_init_dlist_table(struct _glapi_table *table)
 #if 0
    SET_ColorTableSGI(table, save_ColorTable);
    SET_ColorSubTableSGI(table, save_ColorSubTable);
-#endif
    SET_GetColorTableSGI(table, exec_GetColorTable);
    SET_GetColorTableParameterfvSGI(table, exec_GetColorTableParameterfv);
    SET_GetColorTableParameterivSGI(table, exec_GetColorTableParameteriv);
+#endif
 
    /* 30. GL_EXT_vertex_array */
    SET_ColorPointerEXT(table, exec_ColorPointerEXT);
@@ -8068,7 +8019,7 @@ _mesa_init_dlist_table(struct _glapi_table *table)
    SET_GetVertexAttribfvNV(table, _mesa_GetVertexAttribfvNV);
    SET_GetVertexAttribivNV(table, _mesa_GetVertexAttribivNV);
    SET_GetVertexAttribPointervNV(table, _mesa_GetVertexAttribPointervNV);
-   SET_IsProgramNV(table, _mesa_IsProgram);
+   SET_IsProgramNV(table, _mesa_IsProgramARB);
    SET_LoadProgramNV(table, save_LoadProgramNV);
    SET_ProgramParameter4dNV(table, save_ProgramParameter4dNV);
    SET_ProgramParameter4dvNV(table, save_ProgramParameter4dvNV);
@@ -8161,7 +8112,7 @@ _mesa_init_dlist_table(struct _glapi_table *table)
    SET_BindProgramNV(table, save_BindProgramNV);
    SET_DeleteProgramsNV(table, _mesa_DeletePrograms);
    SET_GenProgramsNV(table, _mesa_GenPrograms);
-   SET_IsProgramNV(table, _mesa_IsProgram);
+   SET_IsProgramNV(table, _mesa_IsProgramARB);
    SET_GetVertexAttribdvNV(table, _mesa_GetVertexAttribdvNV);
    SET_GetVertexAttribfvNV(table, _mesa_GetVertexAttribfvNV);
    SET_GetVertexAttribivNV(table, _mesa_GetVertexAttribivNV);
@@ -8436,12 +8387,6 @@ print_list(GLcontext *ctx, GLuint list)
          case OPCODE_MATERIAL:
             _mesa_printf("MATERIAL %x %x: %f %f %f %f\n",
                          n[1].i, n[2].i, n[3].f, n[4].f, n[5].f, n[6].f);
-            break;
-         case OPCODE_INDEX:
-            _mesa_printf("INDEX: %f\n", n[1].f);
-            break;
-         case OPCODE_EDGEFLAG:
-            _mesa_printf("EDGEFLAG: %d\n", n[1].i);
             break;
          case OPCODE_BEGIN:
             _mesa_printf("BEGIN %x\n", n[1].i);

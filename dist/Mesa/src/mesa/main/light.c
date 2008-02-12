@@ -1,8 +1,8 @@
 /*
  * Mesa 3-D graphics library
- * Version:  6.5
+ * Version:  7.0
  *
- * Copyright (C) 1999-2005  Brian Paul   All Rights Reserved.
+ * Copyright (C) 1999-2007  Brian Paul   All Rights Reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -44,7 +44,7 @@ _mesa_ShadeModel( GLenum mode )
       _mesa_debug(ctx, "glShadeModel %s\n", _mesa_lookup_enum_by_nr(mode));
 
    if (mode != GL_FLAT && mode != GL_SMOOTH) {
-      _mesa_error( ctx, GL_INVALID_ENUM, "glShadeModel" );
+      _mesa_error(ctx, GL_INVALID_ENUM, "glShadeModel");
       return;
    }
 
@@ -53,9 +53,13 @@ _mesa_ShadeModel( GLenum mode )
 
    FLUSH_VERTICES(ctx, _NEW_LIGHT);
    ctx->Light.ShadeModel = mode;
-   ctx->_TriangleCaps ^= DD_FLATSHADE;
+   if (mode == GL_FLAT)
+      ctx->_TriangleCaps |= DD_FLATSHADE;
+   else
+      ctx->_TriangleCaps &= ~DD_FLATSHADE;
+
    if (ctx->Driver.ShadeModel)
-      (*ctx->Driver.ShadeModel)( ctx, mode );
+      ctx->Driver.ShadeModel( ctx, mode );
 }
 
 
@@ -442,11 +446,10 @@ _mesa_LightModelfv( GLenum pname, const GLfloat *params )
 	    return;
 	 FLUSH_VERTICES(ctx, _NEW_LIGHT);
 	 ctx->Light.Model.TwoSide = newbool;
-
-	 if (ctx->Light.Enabled && ctx->Light.Model.TwoSide)
-	    ctx->_TriangleCaps |= DD_TRI_LIGHT_TWOSIDE;
-	 else
-	    ctx->_TriangleCaps &= ~DD_TRI_LIGHT_TWOSIDE;
+         if (ctx->Light.Enabled && ctx->Light.Model.TwoSide)
+            ctx->_TriangleCaps |= DD_TRI_LIGHT_TWOSIDE;
+         else
+            ctx->_TriangleCaps &= ~DD_TRI_LIGHT_TWOSIDE;
          break;
       case GL_LIGHT_MODEL_COLOR_CONTROL:
          if (params[0] == (GLfloat) GL_SINGLE_COLOR)
@@ -728,7 +731,7 @@ _mesa_ColorMaterial( GLenum face, GLenum mode )
    }
 
    if (ctx->Driver.ColorMaterial)
-      (*ctx->Driver.ColorMaterial)( ctx, face, mode );
+      ctx->Driver.ColorMaterial( ctx, face, mode );
 }
 
 
@@ -1123,6 +1126,13 @@ compute_light_positions( GLcontext *ctx )
 	 }
 	 light->_VP_inf_spot_attenuation = 1.0;
       }
+      else {
+         /* positional light w/ homogeneous coordinate, divide by W */
+         GLfloat wInv = 1.0 / light->_Position[3];
+         light->_Position[0] *= wInv;
+         light->_Position[1] *= wInv;
+         light->_Position[2] *= wInv;
+      }
 
       if (light->_Flags & LIGHT_SPOT) {
 	 if (ctx->_NeedEyeCoords) {
@@ -1340,6 +1350,7 @@ _mesa_init_lighting( GLcontext *ctx )
                                                NULL );
 
    ctx->Light.ColorMaterialEnabled = GL_FALSE;
+   ctx->Light.ClampVertexColor = GL_TRUE;
 
    /* Lighting miscellaneous */
    ctx->_ShineTabList = MALLOC_STRUCT( gl_shine_tab );

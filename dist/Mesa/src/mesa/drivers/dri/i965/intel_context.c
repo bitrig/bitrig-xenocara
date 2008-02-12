@@ -33,11 +33,12 @@
 #include "extensions.h"
 #include "framebuffer.h"
 #include "imports.h"
+#include "points.h"
 
 #include "swrast/swrast.h"
 #include "swrast_setup/swrast_setup.h"
 #include "tnl/tnl.h"
-#include "array_cache/acache.h"
+#include "vbo/vbo.h"
 
 #include "tnl/t_pipeline.h"
 #include "tnl/t_vertex.h"
@@ -60,6 +61,7 @@
 #include "bufmgr.h"
 
 #include "utils.h"
+#include "vblank.h"
 #ifndef INTEL_DEBUG
 int INTEL_DEBUG = (0);
 #endif
@@ -70,6 +72,7 @@ int INTEL_DEBUG = (0);
 #define need_GL_ARB_vertex_buffer_object
 #define need_GL_ARB_vertex_program
 #define need_GL_ARB_window_pos
+#define need_GL_ARB_occlusion_query
 #define need_GL_EXT_blend_color
 #define need_GL_EXT_blend_equation_separate
 #define need_GL_EXT_blend_func_separate
@@ -82,11 +85,6 @@ int INTEL_DEBUG = (0);
 
 #ifndef VERBOSE
 int VERBOSE = 0;
-#endif
-
-#if DEBUG_LOCKING
-char *prevLockFile;
-int prevLockLine;
 #endif
 
 /***************************************
@@ -116,6 +114,9 @@ static const GLubyte *intelGetString( GLcontext *ctx, GLenum name )
          break;
       case PCI_CHIP_I946_GZ:
 	 chipset = "Intel(R) 946GZ"; break;
+         break;
+      case PCI_CHIP_I965_GM:
+	 chipset = "Intel(R) 965GM"; break;
          break;
       default:
 	 chipset = "Unknown Intel Chipset"; break;
@@ -149,6 +150,10 @@ const struct dri_extension card_extensions[] =
     { "GL_ARB_texture_env_combine",        NULL },
     { "GL_ARB_texture_env_dot3",           NULL },
     { "GL_ARB_texture_mirrored_repeat",    NULL },
+    { "GL_ARB_texture_non_power_of_two",   NULL },
+    { "GL_ARB_texture_rectangle",          NULL },
+    { "GL_NV_texture_rectangle",           NULL },
+    { "GL_EXT_texture_rectangle",          NULL },
     { "GL_ARB_texture_rectangle",          NULL },
     { "GL_ARB_vertex_buffer_object",       GL_ARB_vertex_buffer_object_functions },
     { "GL_ARB_vertex_program",             GL_ARB_vertex_program_functions },
@@ -178,7 +183,16 @@ const struct dri_extension card_extensions[] =
     { NULL,                                NULL }
 };
 
+const struct dri_extension arb_oc_extension = 
+    { "GL_ARB_occlusion_query",            GL_ARB_occlusion_query_functions};
 
+void intelInitExtensions(GLcontext *ctx, GLboolean enable_imaging)
+{	     
+	struct intel_context *intel = ctx?intel_context(ctx):NULL;
+	driInitExtensions(ctx, card_extensions, enable_imaging);
+	if (!ctx || intel->intelScreen->drmMinor >= 8)
+		driInitSingleExtension (ctx, &arb_oc_extension);
+}
 
 static const struct dri_debug_control debug_control[] =
 {
@@ -212,7 +226,7 @@ static void intelInvalidateState( GLcontext *ctx, GLuint new_state )
 
    _swrast_InvalidateState( ctx, new_state );
    _swsetup_InvalidateState( ctx, new_state );
-   _ac_InvalidateState( ctx, new_state );
+   _vbo_InvalidateState( ctx, new_state );
    _tnl_InvalidateState( ctx, new_state );
    _tnl_invalidate_vertex_state( ctx, new_state );
    
@@ -237,6 +251,37 @@ void intelFinish( GLcontext *ctx )
    bmFinishFence(intel, bmLockAndFence(intel));
 }
 
+static void
+intelBeginQuery(GLcontext *ctx, GLenum target, struct gl_query_object *q)
+{
+	struct intel_context *intel = intel_context( ctx );
+	drmI830MMIO io = {
+		.read_write = MMIO_READ,
+		.reg = MMIO_REGS_PS_DEPTH_COUNT,
+		.data = &q->Result 
+	};
+	intel->stats_wm++;
+	intelFinish(&intel->ctx);
+	drmCommandWrite(intel->driFd, DRM_I830_MMIO, &io, sizeof(io));
+}
+
+static void
+intelEndQuery(GLcontext *ctx, GLenum target, struct gl_query_object *q)
+{
+	struct intel_context *intel = intel_context( ctx );
+	GLuint64EXT tmp;	
+	drmI830MMIO io = {
+		.read_write = MMIO_READ,
+		.reg = MMIO_REGS_PS_DEPTH_COUNT,
+		.data = &tmp
+	};
+	intelFinish(&intel->ctx);
+	drmCommandWrite(intel->driFd, DRM_I830_MMIO, &io, sizeof(io));
+	q->Result = tmp - q->Result;
+	q->Ready = GL_TRUE;
+	intel->stats_wm--;
+}
+
 
 void intelInitDriverFunctions( struct dd_function_table *functions )
 {
@@ -246,18 +291,16 @@ void intelInitDriverFunctions( struct dd_function_table *functions )
    functions->Finish = intelFinish;
    functions->GetString = intelGetString;
    functions->UpdateState = intelInvalidateState;
-   functions->CopyColorTable = _swrast_CopyColorTable;
-   functions->CopyColorSubTable = _swrast_CopyColorSubTable;
-   functions->CopyConvolutionFilter1D = _swrast_CopyConvolutionFilter1D;
-   functions->CopyConvolutionFilter2D = _swrast_CopyConvolutionFilter2D;
+   functions->BeginQuery = intelBeginQuery;
+   functions->EndQuery = intelEndQuery;
 
-   /* Pixel path fallbacks.
+   /* CopyPixels can be accelerated even with the current memory
+    * manager:
     */
-   functions->Accum = _swrast_Accum;
-   functions->Bitmap = _swrast_Bitmap;
-   functions->CopyPixels = _swrast_CopyPixels;
-   functions->ReadPixels = _swrast_ReadPixels;
-   functions->DrawPixels = _swrast_DrawPixels;
+   if (!getenv("INTEL_NO_BLIT")) {
+      functions->CopyPixels = intelCopyPixels;
+      functions->Bitmap = intelBitmap;
+   }
 
    intelInitTextureFuncs( functions );
    intelInitStateFuncs( functions );
@@ -292,6 +335,11 @@ GLboolean intelInitContext( struct intel_context *intel,
    intel->driScreen = sPriv;
    intel->sarea = saPriv;
 
+   driParseConfigFiles (&intel->optionCache, &intelScreen->optionCache,
+		   intel->driScreen->myNum, "i965");
+
+   intel->vblank_flags = (intel->intelScreen->irq_active != 0)
+	   ? driGetDefaultVBlankFlags(&intel->optionCache) : VBLANK_FLAG_NO_IRQ;
 
    ctx->Const.MaxTextureMaxAnisotropy = 2.0;
 
@@ -320,9 +368,14 @@ GLboolean intelInitContext( struct intel_context *intel,
    ctx->Const.MaxPointSizeAA = 3.0;
    ctx->Const.PointSizeGranularity = 1.0;
 
+   /* reinitialize the context point state.
+    * It depend on constants in __GLcontextRec::Const
+    */
+   _mesa_init_point(ctx);
+
    /* Initialize the software rasterizer and helper modules. */
    _swrast_CreateContext( ctx );
-   _ac_CreateContext( ctx );
+   _vbo_CreateContext( ctx );
    _tnl_CreateContext( ctx );
    _swsetup_CreateContext( ctx );
 
@@ -369,11 +422,7 @@ GLboolean intelInitContext( struct intel_context *intel,
       _mesa_printf("IRQs not active.  Exiting\n");
       exit(1);
    }
- 
-   _math_matrix_ctr (&intel->ViewportMatrix);
-
-   driInitExtensions( ctx, card_extensions, 
-		      GL_TRUE );
+   intelInitExtensions(ctx, GL_TRUE); 
 
    INTEL_DEBUG  = driParseDebugString( getenv( "INTEL_DEBUG" ),
 				       debug_control );
@@ -400,8 +449,8 @@ GLboolean intelInitContext( struct intel_context *intel,
 				 intelScreen->cpp,
 				 intelScreen->front.pitch / intelScreen->cpp,
 				 intelScreen->height,
-				 GL_FALSE);
-
+				 intelScreen->front.size,
+				 intelScreen->front.tiled != 0);
 
    intel->back_region = 
       intel_region_create_static(intel,
@@ -411,7 +460,8 @@ GLboolean intelInitContext( struct intel_context *intel,
 				 intelScreen->cpp,
 				 intelScreen->back.pitch / intelScreen->cpp,
 				 intelScreen->height,
-				 (INTEL_DEBUG & DEBUG_TILE) ? 0 : 1);
+				 intelScreen->back.size,
+                                 intelScreen->back.tiled != 0);
 
    /* Still assuming front.cpp == depth.cpp
     *
@@ -427,7 +477,8 @@ GLboolean intelInitContext( struct intel_context *intel,
 				 intelScreen->cpp,
 				 intelScreen->depth.pitch / intelScreen->cpp,
 				 intelScreen->height,
-				 (INTEL_DEBUG & DEBUG_TILE) ? 0 : 1);
+				 intelScreen->depth.size,
+                                 intelScreen->depth.tiled != 0);
    
    intel_bufferobj_init( intel );
    intel->batch = intel_batchbuffer_alloc( intel );
@@ -436,7 +487,7 @@ GLboolean intelInitContext( struct intel_context *intel,
       _mesa_enable_extension( ctx, "GL_EXT_texture_compression_s3tc" );
       _mesa_enable_extension( ctx, "GL_S3_s3tc" );
    }
-   else if (driQueryOptionb (&intelScreen->optionCache, "force_s3tc_enable")) {
+   else if (driQueryOptionb (&intel->optionCache, "force_s3tc_enable")) {
       _mesa_enable_extension( ctx, "GL_EXT_texture_compression_s3tc" );
    }
 
@@ -445,8 +496,6 @@ GLboolean intelInitContext( struct intel_context *intel,
 /* 			  DRI_TEXMGR_DO_TEXTURE_2D |  */
 /* 			  DRI_TEXMGR_DO_TEXTURE_RECT ); */
 
-
-   intel->prim.primitive = ~0;
 
    if (getenv("INTEL_NO_RAST")) {
       fprintf(stderr, "disabling 3D rasterization\n");
@@ -471,7 +520,7 @@ void intelDestroyContext(__DRIcontextPrivate *driContextPriv)
       release_texture_heaps = (intel->ctx.Shared->RefCount == 1);
       _swsetup_DestroyContext (&intel->ctx);
       _tnl_DestroyContext (&intel->ctx);
-      _ac_DestroyContext (&intel->ctx);
+      _vbo_DestroyContext (&intel->ctx);
 
       _swrast_DestroyContext (&intel->ctx);
       intel->Fallback = 0;	/* don't call _swrast_Flush later */
@@ -518,8 +567,15 @@ GLboolean intelMakeCurrent(__DRIcontextPrivate *driContextPriv,
    if (driContextPriv) {
       struct intel_context *intel = (struct intel_context *) driContextPriv->driverPrivate;
 
+      if (intel->driReadDrawable != driReadPriv) {
+          intel->driReadDrawable = driReadPriv;
+      }
+
       if ( intel->driDrawable != driDrawPriv ) {
 	 /* Shouldn't the readbuffer be stored also? */
+	 driDrawableInitVBlank( driDrawPriv, intel->vblank_flags,
+		      &intel->vbl_seq );
+
 	 intel->driDrawable = driDrawPriv;
 	 intelWindowMoved( intel );
       }
@@ -537,18 +593,13 @@ GLboolean intelMakeCurrent(__DRIcontextPrivate *driContextPriv,
 }
 
 
-static void lost_hardware( struct intel_context *intel )
-{
-   bm_fake_NotifyContendedLockTake( intel ); 
-   intel->vtbl.lost_hardware( intel );
-}
-
 static void intelContendedLock( struct intel_context *intel, GLuint flags )
 {
    __DRIdrawablePrivate *dPriv = intel->driDrawable;
    __DRIscreenPrivate *sPriv = intel->driScreen;
    volatile drmI830Sarea * sarea = intel->sarea;
    int me = intel->hHWContext;
+   int my_bufmgr = bmCtxId(intel);
 
    drmGetLock(intel->driFd, intel->hHWContext, flags);
 
@@ -562,12 +613,23 @@ static void intelContendedLock( struct intel_context *intel, GLuint flags )
 
 
    intel->locked = 1;
+   intel->need_flush = 1;
 
    /* Lost context?
     */
    if (sarea->ctxOwner != me) {
+      DBG("Lost Context: sarea->ctxOwner %x me %x\n", sarea->ctxOwner, me);
       sarea->ctxOwner = me;
-      lost_hardware(intel);
+      intel->vtbl.lost_hardware( intel );
+   }
+
+   /* As above, but don't evict the texture data on transitions
+    * between contexts which all share a local buffer manager.
+    */
+   if (sarea->texAge != my_bufmgr) {
+      DBG("Lost Textures: sarea->texAge %x my_bufmgr %x\n", sarea->ctxOwner, my_bufmgr);
+      sarea->texAge = my_bufmgr;
+      bm_fake_NotifyContendedLockTake( intel ); 
    }
 
    /* Drawable changed?
@@ -575,12 +637,6 @@ static void intelContendedLock( struct intel_context *intel, GLuint flags )
    if (dPriv && intel->lastStamp != dPriv->lastStamp) {
       intelWindowMoved( intel );
       intel->lastStamp = dPriv->lastStamp;
-
-      /* This works because the lock is always grabbed before emitting
-       * commands and commands are always flushed prior to releasing
-       * the lock.
-       */
-      intel->NewGLState |= _NEW_WINDOW_POS; 
    }
 }
 
@@ -653,4 +709,5 @@ void UNLOCK_HARDWARE( struct intel_context *intel )
    DRM_UNLOCK(intel->driFd, intel->driHwLock, intel->hHWContext);
    _glthread_UNLOCK_MUTEX(lockMutex); 
 }
+
 

@@ -182,7 +182,8 @@ static void r200UploadRectSubImage( r200ContextPtr rmesa,
       /* In this case, could also use GART texturing.  This is
        * currently disabled, but has been tested & works.
        */
-      t->pp_txoffset = r200GartOffsetFromVirtual( rmesa, texImage->Data );
+      if ( !t->image_override )
+         t->pp_txoffset = r200GartOffsetFromVirtual( rmesa, texImage->Data );
       t->pp_txpitch = texImage->RowStride * texFormat->TexelBytes - 32;
 
       if (R200_DEBUG & DEBUG_TEXTURE)
@@ -374,6 +375,10 @@ static void uploadSubImage( r200ContextPtr rmesa, r200TexObjPtr t,
       tex.height = imageHeight;
       tex.width = imageWidth;
       tex.format = t->pp_txformat & R200_TXFORMAT_FORMAT_MASK;
+      if (tex.format == R200_TXFORMAT_ABGR8888) {
+	 /* drm will refuse abgr8888 textures. */
+	 tex.format = R200_TXFORMAT_ARGB8888;
+      }
       tex.pitch = MAX2((texImage->Width * texImage->TexFormat->TexelBytes) / 64, 1);
       tex.offset += tmp.x & ~1023;
       tmp.x = tmp.x % 1024;
@@ -464,7 +469,7 @@ int r200UploadTexImages( r200ContextPtr rmesa, r200TexObjPtr t, GLuint face )
 	       t->base.firstLevel, t->base.lastLevel );
    }
 
-   if ( !t || t->base.totalSize == 0 )
+   if ( !t || t->base.totalSize == 0 || t->image_override )
       return 0;
 
    if (R200_DEBUG & DEBUG_SYNC) {

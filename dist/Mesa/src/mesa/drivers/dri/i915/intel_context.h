@@ -34,6 +34,7 @@
 #include "drm.h"
 #include "mm.h"
 #include "texmem.h"
+#include "vblank.h"
 
 #include "intel_screen.h"
 #include "i915_drm.h"
@@ -261,6 +262,8 @@ struct intel_context
 
    GLuint swap_count;
    GLuint swap_missed_count;
+
+   GLuint swap_scheduled;
 };
 
 
@@ -321,6 +324,17 @@ do {							\
     char __ret=0;					\
     DEBUG_CHECK_LOCK();					\
     assert(!(intel)->locked);				\
+    if ((intel)->swap_scheduled) {			\
+        drmVBlank vbl;					\
+        vbl.request.type = DRM_VBLANK_ABSOLUTE;		\
+        if ((intel)->vblank_flags &			\
+            VBLANK_FLAG_SECONDARY) {			\
+            vbl.request.type |= DRM_VBLANK_SECONDARY;	\
+        }						\
+        vbl.request.sequence = (intel)->vbl_seq;	\
+        drmWaitVBlank((intel)->driFd, &vbl);		\
+        (intel)->swap_scheduled = 0;			\
+    }							\
     DRM_CAS((intel)->driHwLock, (intel)->hHWContext,	\
         (DRM_LOCK_HELD|(intel)->hHWContext), __ret);	\
     if (__ret)						\
@@ -440,6 +454,10 @@ extern int INTEL_DEBUG;
 #define PCI_CHIP_I915_GM		0x2592
 #define PCI_CHIP_I945_G			0x2772
 #define PCI_CHIP_I945_GM		0x27A2
+#define PCI_CHIP_I945_GME		0x27AE
+#define PCI_CHIP_G33_G			0x29C2
+#define PCI_CHIP_Q35_G			0x29B2
+#define PCI_CHIP_Q33_G			0x29D2
 
 
 /* ================================================================
