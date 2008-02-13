@@ -20,7 +20,6 @@
  * SOFTWARE.
  *
 */
-/* $XConsortium: vgaStipple.c /main/5 1996/02/21 17:59:10 kaleb $ */
 
 #ifdef HAVE_XORG_CONFIG_H
 #include <xorg-config.h>
@@ -608,50 +607,6 @@ switch ( rasterOp ) {
 }
 
 return ( color & VGA_ALLPLANES ) | data_rotate_value | invert_existing_data ;
-}
-
-static void
-vgaDrawMonoImage
-(
-	WindowPtr pWin, /* GJA */
-	unsigned char *data,
-	int x,
-	int y,
-	int w,
-	int h,
-	unsigned long int fg,
-	int alu,
-	unsigned long int planes
-)
-{
-unsigned long regState ;
-
-if ( !xf86Screens[((DrawablePtr)pWin)->pScreen->myNum]->vtSema ) {
-	xf4bppOffDrawMonoImage( pWin, data, x, y, w, h, fg, alu, planes );
-	return;
-}
-
-if ( ( alu == GXnoop ) || !( planes &= VGA_ALLPLANES ) )
-	return ;
-
-#ifndef	PC98_EGC
-if ( ( regState = vgaCalcMonoMode( alu, fg ) ) & DO_RECURSE ) {
-	vgaDrawMonoImage( pWin, data, x, y, w, h,
-			  VGA_ALLPLANES, GXinvert, planes ) ;
-	regState &= ~DO_RECURSE ;
-}
-#else
-regState = vgaCalcMonoMode(alu, (char)fg);
-#endif
-
-
-vgaSetMonoRegisters( (DrawablePtr)pWin, planes, regState ) ;
-
-DoMonoSingle( pWin, w, x, y, (const unsigned char *) data, h,
-	      w, ( ( w + 31 ) & ~31 ) >> 3, h, 0, 0 ) ;
-
-
-return ;
 }
 
 void
