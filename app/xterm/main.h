@@ -1,8 +1,34 @@
-/* $XTermId: main.h,v 1.31 2006/02/13 01:14:59 tom Exp $ */
-
-/* $XFree86: xc/programs/xterm/main.h,v 3.15 2006/02/13 01:14:59 dickey Exp $ */
+/* $XTermId: main.h,v 1.38 2008/01/27 17:40:31 tom Exp $ */
 
 /*
+ * Copyright 2000-2007,2008 by Thomas E. Dickey
+ *
+ *                         All Rights Reserved
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included
+ * in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+ * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ * IN NO EVENT SHALL THE ABOVE LISTED COPYRIGHT HOLDER(S) BE LIABLE FOR ANY
+ * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
+ * Except as contained in this notice, the name(s) of the above copyright
+ * holders shall not be used in advertising or otherwise to promote the
+ * sale, use or other dealings in this Software without prior written
+ * authorization.
+ *
  * Copyright 1987 by Digital Equipment Corporation, Maynard, Massachusetts.
  *
  *                         All Rights Reserved
@@ -29,28 +55,54 @@
 
 #include <xterm.h>
 
+#ifndef DEFCLASS
 #define DEFCLASS		"XTerm"
+#endif
+
+#ifndef DEFFONT
 #define DEFFONT			"fixed"
+#endif
+
+#ifndef DEFWIDEFONT
 #define DEFWIDEFONT		NULL	/* grab one which is 2x as wide */
+#endif
+
+#ifndef DEFWIDEBOLDFONT
 #define DEFWIDEBOLDFONT		NULL
+#endif
+
+#ifndef DEFXIMFONT
 #define DEFXIMFONT		"*"
+#endif
+
+#ifndef DEFBOLDFONT
 #define DEFBOLDFONT		NULL	/* no bold font uses overstriking */
+#endif
+
+#ifndef DEFBORDER
 #define DEFBORDER		2
+#endif
+
+#ifndef DEFFACENAME
 #define DEFFACENAME		NULL
+#endif
+
+#ifndef DEFFACESIZE
 #define DEFFACESIZE		"14.0"
+#endif
 
 #if OPT_BLINK_TEXT
-#define DEFBLINKASBOLD		FALSE
+#define DEFBLINKASBOLD		False
 #else
-#define DEFBLINKASBOLD		TRUE
+#define DEFBLINKASBOLD		True
 #endif
 
 #ifndef DEFDELETE_DEL
-#define DEFDELETE_DEL		2
+#define DEFDELETE_DEL		Maybe
 #endif
 
 #ifndef DEF_BACKARO_ERASE
-#define DEF_BACKARO_ERASE	FALSE
+#define DEF_BACKARO_ERASE	False
 #endif
 
 #ifndef DEF_COLOR4
@@ -62,7 +114,19 @@
 #endif
 
 #ifndef DEF_INITIAL_ERASE
-#define DEF_INITIAL_ERASE	FALSE
+#define DEF_INITIAL_ERASE	False
+#endif
+
+#ifndef DEF_POINTER_MODE
+#define DEF_POINTER_MODE	pNever
+#endif
+
+#ifndef DEF_PTY_STTY_SIZE
+#if defined(linux) || defined(__APPLE__)
+#define DEF_PTY_STTY_SIZE	False
+#else
+#define DEF_PTY_STTY_SIZE	True
+#endif
 #endif
 
 #ifndef PROJECTROOT
