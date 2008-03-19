@@ -1,8 +1,8 @@
-/* $XTermId: cachedGCs.c,v 1.35 2007/03/21 23:21:50 tom Exp $ */
+/* $XTermId: cachedGCs.c,v 1.48 2008/02/20 20:54:54 Julien.Cristau Exp $ */
 
 /************************************************************
 
-Copyright 2007 by Thomas E. Dickey
+Copyright 2007,2008 by Thomas E. Dickey
 
                         All Rights Reserved
 
@@ -58,7 +58,7 @@ typedef struct {
     GC gc;
     unsigned used;
     unsigned cset;
-    XFontStruct *font;
+    XTermFonts *font;
     Pixel tile;
     Pixel fg;
     Pixel bg;
@@ -160,16 +160,18 @@ traceCSet(unsigned cset)
 }
 
 static String
-traceFont(XFontStruct * font)
+traceFont(XTermFonts * font)
 {
     static char result[80];
-    if (font != 0) {
+    XFontStruct *fs;
+
+    if (font != 0 && (fs = font->fs) != 0) {
 	sprintf(result, "%p(%dx%d %d %#lx)",
-		font,
-		font->max_bounds.width,
-		font->max_bounds.ascent + font->max_bounds.descent,
-		font->max_bounds.descent,
-		(unsigned long) (font->fid));
+		fs,
+		fs->max_bounds.width,
+		fs->max_bounds.ascent + fs->max_bounds.descent,
+		fs->max_bounds.descent,
+		(unsigned long) (fs->fid));
     } else {
 	strcpy(result, "null");
     }
@@ -245,26 +247,48 @@ tracePixel(XtermWidget xw, Pixel value)
 #endif /* OPT_TRACE > 1 */
 #endif /* OPT_TRACE */
 
+static CgsCache *
+allocCache(void **cache_pointer)
+{
+    if (*cache_pointer == 0) {
+	*cache_pointer = TypeCallocN(CgsCache, gcMAX);
+	TRACE(("allocCache %p\n", cache_pointer));
+    }
+    return *((CgsCache **) cache_pointer);
+}
+
+static int
+dataIndex(CgsCache * me)
+{
+    return ITEM();
+}
+
+static void
+relinkData(CgsCache * me, int item)
+{
+    LINK(item);
+}
+
 /*
- * FIXME: move the cache into XtermWidget
+ * Returns the appropriate cache pointer.
  */
 static CgsCache *
-myCache(XtermWidget xw GCC_UNUSED, VTwin * cgsWin GCC_UNUSED, CgsEnum cgsId)
+myCache(XtermWidget xw, VTwin * cgsWin, CgsEnum cgsId)
 {
-    static CgsCache *main_cache;
-    CgsCache *my_cache;
     CgsCache *result = 0;
 
-    if (main_cache == 0)
-	main_cache = (CgsCache *) calloc(gcMAX, sizeof(CgsCache));
-    my_cache = main_cache;
     if ((int) cgsId >= 0 && cgsId < gcMAX) {
-#ifndef NO_ACTIVE_ICON
-	static CgsCache icon_cache[gcMAX];
+#ifdef NO_ACTIVE_ICON
+	(void) xw;
+	(void) cgsWin;
+#else
 	if (cgsWin == &(xw->screen.iconVwin))
-	    my_cache = icon_cache;
+	    result = allocCache(&(xw->screen.icon_cgs_cache));
+	else
 #endif
-	result = my_cache + cgsId;
+	    result = allocCache(&(xw->screen.main_cgs_cache));
+
+	result += cgsId;
 	if (result->data == 0) {
 	    result->data = result->list;
 	}
@@ -303,7 +327,7 @@ newCache(XtermWidget xw, VTwin * cgsWin, CgsEnum cgsId, CgsCache * me)
     THIS(bg) = NEXT(bg);
 
     memset(&xgcv, 0, sizeof(xgcv));
-    xgcv.font = NEXT(font)->fid;
+    xgcv.font = NEXT(font)->fs->fid;
     mask = (GCForeground | GCBackground | GCFont);
 
     switch (cgsId) {
@@ -369,6 +393,24 @@ newCache(XtermWidget xw, VTwin * cgsWin, CgsEnum cgsId, CgsCache * me)
     return THIS(gc);
 }
 
+static Boolean
+HaveFont(XTermFonts * a)
+{
+    return (a != 0 && a->fs != 0);
+}
+
+static Boolean
+SameFont(XTermFonts * a, XTermFonts * b)
+{
+    return (HaveFont(a)
+	    && HaveFont(b)
+	    && ((a->fs == b->fs)
+		|| !memcmp(a->fs, b->fs, sizeof(*(a->fs)))));
+}
+
+#define SameColor(a,b) ((a) == (b))
+#define SameCSet(a,b)  ((a) == (b))
+
 static GC
 chgCache(XtermWidget xw, CgsEnum cgsId GCC_UNUSED, CgsCache * me)
 {
@@ -377,38 +419,39 @@ chgCache(XtermWidget xw, CgsEnum cgsId GCC_UNUSED, CgsCache * me)
 
     memset(&xgcv, 0, sizeof(xgcv));
 
-    TRACE2(("...Cgs old data fg=%s, bg=%s, font=%s cset %s\n",
+    TRACE2(("chgCache(%s) old data fg=%s, bg=%s, font=%s cset %s\n",
+	    traceCgsEnum(cgsId),
 	    tracePixel(xw, THIS(fg)),
 	    tracePixel(xw, THIS(bg)),
 	    traceFont(THIS(font)),
 	    traceCSet(THIS(cset))));
+#if OPT_TRACE > 1
+    if (!SameFont(THIS(font), NEXT(font)))
+	TRACE2(("...chgCache new font=%s\n", traceFont(NEXT(font))));
+    if (!SameCSet(THIS(cset), NEXT(cset)))
+	TRACE2(("...chgCache new cset=%s\n", traceCSet(NEXT(cset))));
+    if (!SameColor(THIS(fg), NEXT(fg)))
+	TRACE2(("...chgCache new fg=%s\n", tracePixel(xw, NEXT(fg))));
+    if (!SameColor(THIS(bg), NEXT(bg)))
+	TRACE2(("...chgCache new bg=%s\n", tracePixel(xw, NEXT(bg))));
+#endif
 
     THIS(font) = NEXT(font);
     THIS(cset) = NEXT(cset);
     THIS(fg) = NEXT(fg);
     THIS(bg) = NEXT(bg);
 
-    xgcv.font = THIS(font)->fid;
+    xgcv.font = THIS(font)->fs->fid;
     xgcv.foreground = THIS(fg);
     xgcv.background = THIS(bg);
 
     XChangeGC(myDisplay(xw), THIS(gc), mask, &xgcv);
-    TRACE(("getCgsGC(%s) updated gc %p(%d)\n",
-	   traceCgsEnum(cgsId), THIS(gc), ITEM()));
+    TRACE2(("...chgCache(%s) updated gc %p(%d)\n",
+	    traceCgsEnum(cgsId), THIS(gc), ITEM()));
 
     THIS(used) = 0;
     return THIS(gc);
 }
-
-static Boolean
-SameFont(XFontStruct * a, XFontStruct * b)
-{
-    return ((a != 0) && (b != 0) && (a == b) && !memcmp(a, b, sizeof(*a)));
-}
-
-#define SameColor(a,b) ((a) == (b))
-#define SameCSet(a,b)  ((a) == (b))
-
 /*
  * Use the "setCgsXXXX()" calls to initialize parameters for a new GC.
  */
@@ -456,22 +499,22 @@ setCgsCSet(XtermWidget xw, VTwin * cgsWin, CgsEnum cgsId, unsigned cset)
 #endif
 
 void
-setCgsFont(XtermWidget xw, VTwin * cgsWin, CgsEnum cgsId, XFontStruct * font)
+setCgsFont(XtermWidget xw, VTwin * cgsWin, CgsEnum cgsId, XTermFonts * font)
 {
     CgsCache *me;
 
     if ((me = myCache(xw, cgsWin, cgsId)) != 0) {
-	if (font == 0) {
+	if (!HaveFont(font)) {
 	    if (cgsId != gcNorm)
 		(void) getCgsGC(xw, cgsWin, gcNorm);
 #ifndef NO_ACTIVE_ICON
 	    if (cgsWin == &(xw->screen.iconVwin))
-		font = xw->screen.fnt_icon;
+		font = &(xw->screen.fnt_icon);
 	    else
 #endif
-		font = xw->screen.fnts[fNorm];
+		font = &(xw->screen.fnts[fNorm]);
 	}
-	if (okFont(font) && !SameFont(NEXT(font), font)) {
+	if (okFont(font->fs) && !SameFont(NEXT(font), font)) {
 	    TRACE2(("...updated next font for %s to %s\n",
 		    traceCgsEnum(cgsId), traceFont(font)));
 	    TRACE2(("...next font was %s\n", traceFont(NEXT(font))));
@@ -489,31 +532,33 @@ setCgsFont(XtermWidget xw, VTwin * cgsWin, CgsEnum cgsId, XFontStruct * font)
  * Keep the GC's so we can simply change them rather than creating new ones.
  */
 void
-clrCgsFonts(XtermWidget xw, VTwin * cgsWin, XFontStruct * font)
+clrCgsFonts(XtermWidget xw, VTwin * cgsWin, XTermFonts * font)
 {
     CgsCache *me;
     int j, k;
 
-    for_each_gc(j) {
-	if ((me = myCache(xw, cgsWin, (CgsEnum) j)) != 0) {
-	    for (k = 0; k < DEPTH; ++k) {
-		if (SameFont(LIST(k).font, font)) {
-		    TRACE2(("clrCgsFonts %s gc %p(%d) %s\n",
-			    traceCgsEnum((CgsEnum) j),
-			    LIST(k).gc,
-			    k,
-			    traceFont(font)));
-		    LIST(k).font = 0;
-		    LIST(k).cset = 0;
+    if (HaveFont(font)) {
+	for_each_gc(j) {
+	    if ((me = myCache(xw, cgsWin, (CgsEnum) j)) != 0) {
+		for (k = 0; k < DEPTH; ++k) {
+		    if (SameFont(LIST(k).font, font)) {
+			TRACE2(("clrCgsFonts %s gc %p(%d) %s\n",
+				traceCgsEnum((CgsEnum) j),
+				LIST(k).gc,
+				k,
+				traceFont(font)));
+			LIST(k).font = 0;
+			LIST(k).cset = 0;
+		    }
 		}
-	    }
-	    if (SameFont(NEXT(font), font)) {
-		TRACE2(("clrCgsFonts %s next %s\n",
-			traceCgsEnum((CgsEnum) j),
-			traceFont(font)));
-		NEXT(font) = 0;
-		NEXT(cset) = 0;
-		me->mask &= ~(GCFont | GC_CSet);
+		if (SameFont(NEXT(font), font)) {
+		    TRACE2(("clrCgsFonts %s next %s\n",
+			    traceCgsEnum((CgsEnum) j),
+			    traceFont(font)));
+		    NEXT(font) = 0;
+		    NEXT(cset) = 0;
+		    me->mask &= ~(GCFont | GC_CSet);
+		}
 	    }
 	}
     }
@@ -633,11 +678,11 @@ getCgsId(XtermWidget xw, VTwin * cgsWin, GC gc)
 /*
  * Return the font for the given GC.
  */
-XFontStruct *
+XTermFonts *
 getCgsFont(XtermWidget xw, VTwin * cgsWin, GC gc)
 {
     int n;
-    XFontStruct *result = 0;
+    XTermFonts *result = 0;
 
     for_each_gc(n) {
 	CgsCache *me;
@@ -762,13 +807,19 @@ swapCgs(XtermWidget xw, VTwin * cgsWin, CgsEnum dstCgsId, CgsEnum srcCgsId)
     if (dstCgsId != srcCgsId) {
 	CgsCache *dst;
 	CgsCache *src;
+	CgsCache tmp;
 
 	if ((src = myCache(xw, cgsWin, srcCgsId)) != 0) {
 	    if ((dst = myCache(xw, cgsWin, dstCgsId)) != 0) {
-		CgsCache tmp;
+		int srcIndex = dataIndex(src);
+		int dstIndex = dataIndex(dst);
+
 		tmp = *dst;
 		*dst = *src;
 		*src = tmp;
+
+		relinkData(src, dstIndex);
+		relinkData(dst, srcIndex);
 	    }
 	}
     }
@@ -803,3 +854,14 @@ freeCgs(XtermWidget xw, VTwin * cgsWin, CgsEnum cgsId)
     }
     return 0;
 }
+
+#ifdef NO_LEAKS
+void
+noleaks_cachedCgs(XtermWidget xw)
+{
+#ifndef NO_ACTIVE_ICON
+    free(xw->screen.icon_cgs_cache);
+#endif
+    free(xw->screen.main_cgs_cache);
+}
+#endif

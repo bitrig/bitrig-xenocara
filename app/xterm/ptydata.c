@@ -1,4 +1,4 @@
-/* $XTermId: ptydata.c,v 1.74 2006/07/11 21:53:15 tom Exp $ */
+/* $XTermId: ptydata.c,v 1.79 2008/02/21 22:19:03 tom Exp $ */
 
 /*
  * $XFree86: xc/programs/xterm/ptydata.c,v 1.25 2006/02/13 01:14:59 dickey Exp $
@@ -6,7 +6,7 @@
 
 /************************************************************
 
-Copyright 1999-2005,2006 by Thomas E. Dickey
+Copyright 1999-2006,2007 by Thomas E. Dickey
 
                         All Rights Reserved
 
@@ -62,7 +62,7 @@ authorization.
  * Convert the 8-bit codes in data->buffer[] into Unicode in data->utf_data.
  * The number of bytes converted will be nonzero iff there is data.
  */
-static Bool
+Bool
 decodeUtf8(PtyData * data)
 {
     int i;
@@ -110,22 +110,21 @@ decodeUtf8(PtyData * data)
 		if (!utf_char && !((c & 0x7f) >> (7 - utf_count))) {
 		    utf_char = UCS_REPL;
 		}
-		/* characters outside UCS-2 become UCS_REPL */
-		if (utf_char > 0x03ff) {
-		    /* value would be >0xffff */
-		    utf_char = UCS_REPL;
-		} else {
-		    utf_char <<= 6;
-		    utf_char |= (c & 0x3f);
-		}
+		utf_char <<= 6;
+		utf_char |= (c & 0x3f);
 		if ((utf_char >= 0xd800 &&
 		     utf_char <= 0xdfff) ||
 		    (utf_char == 0xfffe) ||
-		    (utf_char == 0xffff)) {
+		    (utf_char == HIDDEN_CHAR)) {
 		    utf_char = UCS_REPL;
 		}
 		utf_count--;
 		if (utf_count == 0) {
+		    /* characters outside UCS-2 become UCS_REPL */
+		    if (utf_char > 0xffff) {
+			TRACE(("using replacement for %#x\n", utf_char));
+			utf_char = UCS_REPL;
+		    }
 		    data->utf_data = utf_char;
 		    data->utf_size = (i + 1);
 		    break;
@@ -249,7 +248,7 @@ readPtyData(TScreen * screen, PtySelect * select_mask, PtyData * data)
  */
 #if OPT_WIDE_CHARS
 Bool
-morePtyData(TScreen * screen GCC_UNUSED, PtyData * data)
+morePtyData(TScreen * screen, PtyData * data)
 {
     Bool result = (data->last > data->next);
     if (result && screen->utf8_inparse) {
@@ -272,15 +271,27 @@ nextPtyData(TScreen * screen, PtyData * data)
 {
     IChar result;
     if (screen->utf8_inparse) {
-	result = data->utf_data;
-	data->next += data->utf_size;
-	data->utf_size = 0;
+	result = skipPtyData(data);
     } else {
 	result = *((data)->next++);
 	if (!screen->output_eight_bits)
 	    result &= 0x7f;
     }
     TRACE2(("nextPtyData returns %#x\n", result));
+    return result;
+}
+
+/*
+ * Simply return the data and skip past it.
+ */
+IChar
+skipPtyData(PtyData * data)
+{
+    IChar result = data->utf_data;
+
+    data->next += data->utf_size;
+    data->utf_size = 0;
+
     return result;
 }
 #endif
@@ -302,6 +313,9 @@ switchPtyData(TScreen * screen, int flag)
 }
 #endif
 
+/*
+ * Allocate a buffer.
+ */
 void
 initPtyData(PtyData ** result)
 {
@@ -327,6 +341,23 @@ initPtyData(PtyData ** result)
     data->last = data->buffer;
     *result = data;
 }
+
+/*
+ * Initialize a buffer for the caller, using its data in 'source'.
+ */
+#if OPT_WIDE_CHARS
+PtyData *
+fakePtyData(PtyData * result, Char * next, Char * last)
+{
+    PtyData *data = result;
+
+    memset(data, 0, sizeof(*data));
+    data->next = next;
+    data->last = last;
+
+    return data;
+}
+#endif
 
 /*
  * Remove used data by shifting the buffer down, to make room for more data,

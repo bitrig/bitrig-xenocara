@@ -1,10 +1,8 @@
-dnl $XTermId: configure.in,v 1.218 2006/07/15 12:21:26 tom Exp $
-dnl
-dnl $XFree86: xc/programs/xterm/configure.in,v 3.77 2006/06/19 00:36:51 dickey Exp $
+dnl $XTermId: configure.in,v 1.241 2008/02/24 21:46:37 tom Exp $
 dnl
 dnl ---------------------------------------------------------------------------
 dnl
-dnl Copyright 1997-2005,2006 by Thomas E. Dickey
+dnl Copyright 1997-2007,2008 by Thomas E. Dickey
 dnl
 dnl                         All Rights Reserved
 dnl
@@ -70,6 +68,8 @@ CF_SIGWINCH
 AC_CHECK_HEADERS( \
 ncurses/term.h \
 stdlib.h \
+sys/ttydefaults.h \
+term.h \
 termios.h \
 unistd.h \
 wchar.h \
@@ -120,6 +120,34 @@ no_appsdir=
 test "$appsdir" = no && no_appsdir="#"
 AC_SUBST(no_appsdir)
 
+AC_MSG_CHECKING(for directory to install icons)
+CF_WITH_PATH(icondir,
+	[  --with-icondir=DIR      directory in which to install icons],
+	[icondir],[EPREFIX/share/pixmaps],
+	['\$(exec_prefix)/share/pixmaps'])
+AC_MSG_RESULT($icondir)
+AC_SUBST(icondir)
+
+no_icondir=
+test "$icondir" = no && no_icondir="#"
+AC_SUBST(no_icondir)
+
+# Comment-out the install-desktop rule if the desktop-utils are not found.
+AC_MSG_CHECKING(if you want to install desktop files)
+CF_ARG_OPTION(desktop,
+	[  --disable-desktop       disable install of xterm desktop files],
+	[enable_desktop=$enableval],
+	[enable_desktop=$enableval],yes)
+AC_MSG_RESULT($enable_desktop)
+
+desktop_utils=
+if test "$enable_desktop" = yes ; then
+AC_CHECK_PROG(desktop_utils,desktop-file-install,yes,no)
+fi
+
+test "$desktop_utils" = yes && desktop_utils= || desktop_utils="#"
+AC_SUBST(DESKTOP_FLAGS)
+
 # inherit SINSTALL_OPTS from environment to allow packager to customize it.
 
 AC_MSG_CHECKING(for install-permissions reference)
@@ -146,6 +174,7 @@ AC_ARG_WITH(xterm-symlink,
 	[with_symlink=$withval],
 	[with_symlink=xterm])
 AC_MSG_RESULT($with_symlink)
+test "$with_symlink" = yes && with_symlink=xterm
 test -n "$with_symlink" && \
 	test "$with_symlink" != no && \
 	test "$with_symlink" != $cf_name && \
@@ -154,11 +183,19 @@ fi
 
 AC_MSG_CHECKING(if you want to disable setuid)
 CF_ARG_DISABLE(setuid,
-	[  --disable-setuid        disable setuid in xterm, do not install setuid],
+	[  --disable-setuid        disable setuid in xterm, do not install setuid/setgid],
 	[disable_setuid=yes],
 	[disable_setuid=no],
 	no)
 AC_MSG_RESULT($disable_setuid)
+
+AC_MSG_CHECKING(if you want to disable setgid)
+CF_ARG_DISABLE(setgid,
+	[  --disable-setgid        disable setgid in xterm, do not install setuid/setgid],
+	[disable_setgid=yes],
+	[disable_setgid=no],
+	no)
+AC_MSG_RESULT($disable_setgid)
 
 AC_MSG_CHECKING(if you want to run xterm setuid to a given user)
 AC_ARG_WITH(setuid,
@@ -207,7 +244,18 @@ AC_MSG_RESULT($use_utempter)
 
 if test "$use_utempter" = yes ; then
 	CF_UTEMPTER
-	test "$cf_cv_have_utempter" = yes && disable_setuid=yes
+	test "$cf_cv_have_utempter" != yes && use_utempter=no
+else
+	use_utempter=no
+fi
+
+# Some configurations permit (or require) either setuid or setgid mode.
+# Let the user decide.
+if test "$use_utempter" = yes ; then
+	if test "${enable_setuid+set}" != set ; then
+		disable_setuid=yes
+		CF_VERBOSE([No --disable-setuid option given, force to yes])
+	fi
 fi
 
 ###	checks for external data
@@ -224,6 +272,7 @@ CF_X_TOOLKIT
 AC_CHECK_HEADERS( \
 	X11/DECkeysym.h \
 	X11/Sunkeysym.h \
+	X11/XF86keysym.h \
 	X11/Xpoll.h \
 	)
 
@@ -458,6 +507,22 @@ CF_ARG_DISABLE(boxchars,
 AC_MSG_RESULT($enable_boxchars)
 test "$enable_boxchars" = no && AC_DEFINE(OPT_BOX_CHARS,0)
 
+AC_MSG_CHECKING(if you want to allow spawning new xterms)
+CF_ARG_ENABLE(exec-xterm,
+	[  --enable-exec-xterm     enable "spawn-new-terminal" action],
+	[enable_exec_xterm=yes],
+	[enable_exec_xterm=no])
+AC_MSG_RESULT($enable_exec_xterm)
+if test "$enable_exec_xterm" = yes ; then
+	CF_PROCFS_CWD
+	if test "$cf_cv_procfs_cwd" = no ; then
+		AC_MSG_WARN(no suitable proc filesystem found)
+	else
+		AC_DEFINE_UNQUOTED(PROCFS_ROOT,"$cf_cv_procfs_cwd")
+		AC_DEFINE(OPT_EXEC_XTERM)
+	fi
+fi
+
 AC_MSG_CHECKING(if you want to use FreeType library)
 CF_ARG_DISABLE(freetype,
 	[  --disable-freetype      disable freetype library-support],
@@ -656,6 +721,14 @@ CF_ARG_DISABLE(session-mgt,
 AC_MSG_RESULT($enable_session_mgt)
 test "$enable_session_mgt" = no && AC_DEFINE(OPT_SESSION_MGT,0)
 
+AC_MSG_CHECKING(if you want to use termcap function-keys)
+CF_ARG_DISABLE(tcap-fkeys,
+	[  --disable-tcap-fkeys    disable termcap function-keys support],
+	[enable_tcap_fkeys=no],
+	[enable_tcap_fkeys=yes])
+AC_MSG_RESULT($enable_tcap_fkeys)
+test "$enable_tcap_fkeys" = yes && AC_DEFINE(OPT_TCAP_FKEYS,1)
+
 AC_MSG_CHECKING(if you want to use termcap-query/report)
 CF_ARG_ENABLE(tcap-query,
 	[  --enable-tcap-query     compile-in termcap-query support],
@@ -751,6 +824,16 @@ if test "$enable_dec_locator" = yes ; then
 	AC_DEFINE(OPT_DEC_LOCATOR,1)
 fi
 
+AC_MSG_CHECKING(if you want VT420 rectangle support)
+CF_ARG_DISABLE(rectangles,
+	[  --disable-rectangles    disable VT420 rectangle support],
+	[enable_rectangles=no],
+	[enable_rectangles=yes])
+AC_MSG_RESULT($enable_rectangles)
+if test "$enable_rectangles" = yes ; then
+	AC_DEFINE(OPT_DEC_RECTOPS,1)
+fi
+
 AC_MSG_CHECKING(if you want -ziconbeep option)
 CF_ARG_DISABLE(ziconbeep,
 	[  --disable-ziconbeep     disable -ziconbeep option],
@@ -798,6 +881,9 @@ if test "$enable_xmc" = yes ; then
 	EXTRAOBJS="$EXTRAOBJS testxmc.o"
 fi
 
+dnl FIXME - extra test needed to make tcap-fkeys work on HPUX
+AC_CHECK_FUNCS(tigetstr)
+
 if test -n "$GCC" ; then
 AC_MSG_CHECKING(if you want to turn on gcc warnings)
 CF_ARG_ENABLE(warnings,
@@ -808,7 +894,7 @@ AC_MSG_RESULT($with_warnings)
 if test "$with_warnings" = yes
 then
 	CF_GCC_ATTRIBUTES
-	CF_GCC_WARNINGS
+	CF_GCC_WARNINGS(Wdeclaration-after-statement Wextra Wno-unknown-pragmas Wswitch-enum)
 fi
 fi
 
@@ -818,10 +904,15 @@ AC_SUBST(EXTRAHDRS)
 AC_SUBST(EXTRASRCS)
 AC_SUBST(EXTRAOBJS)
 
+test "$disable_setuid" = yes && AC_DEFINE(DISABLE_SETUID)
+test "$disable_setgid" = yes && AC_DEFINE(DISABLE_SETGID)
+
 if test $disable_setuid = yes ; then
 	MAY_SETUID="#"
 	NOT_SETUID=
-	AC_DEFINE(DISABLE_SETUID)
+elif test $disable_setgid = yes ; then
+	MAY_SETUID="#"
+	NOT_SETUID=
 else
 	MAY_SETUID=
 	NOT_SETUID="#"

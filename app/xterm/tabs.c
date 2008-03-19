@@ -1,11 +1,11 @@
-/* $XTermId: tabs.c,v 1.27 2006/07/23 20:27:31 tom Exp $ */
+/* $XTermId: tabs.c,v 1.31 2008/02/24 17:35:03 Nemeth Exp $ */
 
 /*
  *	$XFree86: xc/programs/xterm/tabs.c,v 3.14 2006/02/13 01:14:59 dickey Exp $
  */
 
 /*
- * Copyright 2000-2005,2006 by Thomas E. Dickey
+ * Copyright 2000-2006,2008 by Thomas E. Dickey
  *
  *                         All Rights Reserved
  *
@@ -60,11 +60,7 @@
 #include <xterm.h>
 #include <data.h>
 
-/*
- * This file presumes 32bits/word.  This is somewhat of a crock, and should
- * be fixed sometime.
- */
-#define TAB_INDEX(n) ((n) >> 5)
+#define TAB_INDEX(n) ((n) >> TAB_BITS_SHIFT)
 #define TAB_MASK(n)  (1 << ((n) & (TAB_BITS_WIDTH-1)))
 
 #define SET_TAB(tabs,n) tabs[TAB_INDEX(n)] |=  TAB_MASK(n)
@@ -79,8 +75,7 @@ TabReset(Tabs tabs)
 {
     int i;
 
-    for (i = 0; i < TAB_ARRAY_SIZE; ++i)
-	tabs[i] = 0;
+    TabZonk(tabs);
 
     for (i = 0; i < MAX_TABS; i += 8)
 	TabSet(tabs, i);
@@ -92,7 +87,9 @@ TabReset(Tabs tabs)
 void
 TabSet(Tabs tabs, int col)
 {
-    SET_TAB(tabs, col);
+    if (col >= 0 && col < MAX_TABS) {
+	SET_TAB(tabs, col);
+    }
 }
 
 /*
@@ -101,7 +98,9 @@ TabSet(Tabs tabs, int col)
 void
 TabClear(Tabs tabs, int col)
 {
-    CLR_TAB(tabs, col);
+    if (col >= 0 && col < MAX_TABS) {
+	CLR_TAB(tabs, col);
+    }
 }
 
 /*
@@ -179,8 +178,5 @@ TabToPrevStop(XtermWidget xw)
 void
 TabZonk(Tabs tabs)
 {
-    int i;
-
-    for (i = 0; i < TAB_ARRAY_SIZE; ++i)
-	tabs[i] = 0;
+    memset(tabs, 0, sizeof(*tabs) * TAB_ARRAY_SIZE);
 }
