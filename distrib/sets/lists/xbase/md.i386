@@ -435,7 +435,6 @@
 ./usr/X11R6/include/freetype2/freetype/ftpfr.h
 ./usr/X11R6/include/freetype2/freetype/ftwinfnt.h
 ./usr/X11R6/include/ft2build.h
-./usr/X11R6/include/xf86mm.h
 ./usr/X11R6/include/xorg/hotplug.h
 ./usr/X11R6/include/xorg/wfbrename.h
 ./usr/X11R6/include/xorg/xf86Crtc.h
