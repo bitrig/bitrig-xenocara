@@ -1,6 +1,4 @@
 /*
- * $Id: pixman-trap.c,v 1.1 2007/10/03 20:48:54 matthieu Exp $
- *
  * Copyright © 2004 Keith Packard
  *
  * Permission to use, copy, modify, distribute, and sell this software and its
@@ -22,7 +20,10 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
+#ifdef HAVE_CONFIG_H
 #include <config.h>
+#endif
+
 #include <stdio.h>
 #include "pixman-private.h"
 
@@ -48,7 +49,7 @@ pixman_add_traps (pixman_image_t *	image,
     height = image->bits.height;
     bpp = PIXMAN_FORMAT_BPP (image->bits.format);
     
-    x_off_fixed = pixman_int_to_fixed(y_off);
+    x_off_fixed = pixman_int_to_fixed(x_off);
     y_off_fixed = pixman_int_to_fixed(y_off);
 
     while (ntrap--)
@@ -82,8 +83,6 @@ pixman_add_traps (pixman_image_t *	image,
 	}
 	traps++;
     }
-
-    fbFinishAccess (pPicture->pDrawable);
 }
 
 static void
