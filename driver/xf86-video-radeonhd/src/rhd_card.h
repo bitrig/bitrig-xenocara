@@ -38,7 +38,9 @@ struct rhdConnectorInfo {
 /* Some card specific flags, where and when needed */
 enum rhdCardFlag {
     RHD_CARD_FLAG_NONE  = 0,
-    RHD_CARD_FLAG_DMS59 = 1 /* DMS59 connector is only reported as two DVI-I */
+    RHD_CARD_FLAG_DMS59 = 1, /* DMS59 connector is only reported as two DVI-I */
+    RHD_CARD_FLAG_HPDSWAP = 2, /* some cards have broken connector tables */
+    RHD_CARD_FLAG_HPDOFF = 4 /* some have *very* broken connector tables */
 };
 
 struct rhdCard {

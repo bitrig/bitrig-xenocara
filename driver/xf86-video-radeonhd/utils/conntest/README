@@ -16,12 +16,16 @@ Usage:
 ------
 
 As root run:
-./rhd_conntest <pci tag> [-s]
+./rhd_conntest <pci tag> [-d] [-s] [-x num]
 
 <pci tag> is in the form <bus>:<device>.<function>, the most common position
 is 1:0.0. lspci happily provides you with this information.
+
 The optional option -s will scan the known I2C for additional slaves (besides
 the DDC slave on 0xA0). Depending on your hardware this may take long.
+
+The optional argument -x <num> will dump <num> bytes of data from the
+available DDC slaves. <num> must not be higher than 256.
 
 To dump the content of the VBIOS run:
 ./rhd_conntest <pci tag> -d
@@ -79,7 +83,7 @@ support for your card.
 
 Create a small text file. Each step, mention which cable was connected where.
 
-Go over each connector seperately, and connect the analogue (VGA) cable once
+Go over each connector separately, and connect the analogue (VGA) cable once
 and connect the DVI cable once (when possible). Each time running rhd_conntest
 and saving the data rhd_conntest spews out.
 

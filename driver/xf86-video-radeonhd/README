@@ -28,8 +28,35 @@ This README file contains the following sections:
 
 
 
-Recent Changes
-==============
+Major Changes
+=============
+
+Read ChangeLog for a complete list.
+
+- Version 1.2.0
+
+  - Added support for RV620, RV635, and R680.
+  - Added 2D acceleration for R5xx (including RS6xx), both XAA and EXA.
+  - Added support for DDIA block (second digital output) on RS690.
+  - Added support for interlaced modes
+  - Added additional layers for splitting outputs into encoders and
+    transmitters as needed for new hardware.
+  - Added support for DragonFly BSD.
+  - Improved RandR corner cases.
+  - Improved handling of secondary cards.
+  - Implemented foundation work for future TV support.
+  - Huge number of bugfixes and minor updates.
+
+- Version 1.1.0
+
+  - Added Support for RS600, preliminary RV670.
+  - Allow panning in RandR mode.
+  - Preliminary (read: untested) support for HDMI connectors.
+  - Lots of bugfixes, e.g.
+    - Better monitor detection.
+    - Gamma + palette fixes.
+    - Mode stability + textmode restore.
+    - RandR mode selection fixes.
 
 - Version 1.0.0
 
@@ -50,7 +77,7 @@ More Resources
 
 The official radeonhd wiki:
    http://wiki.x.org/wiki/radeonhd
-   
+
 The mailing list on radeonhd:
    http://lists.opensuse.org/radeonhd/
 

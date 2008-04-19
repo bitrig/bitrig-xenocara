@@ -30,10 +30,11 @@
 
 #include "xf86.h"
 #include "xf86DDC.h"
-
-#ifndef _XF86_ANSIC_H
-#include <string.h>
-#include <stdio.h>
+#if HAVE_XF86_ANSIC_H
+# include "xf86_ansic.h"
+#else
+# include <string.h>
+# include <stdio.h>
 #endif
 
 #include "rhd.h"
@@ -120,9 +121,9 @@ EDIDModeFromDetailedTiming(int scrnIndex, struct detailed_timings *timing)
         return NULL;
     }
 
-    /* We only do seperate sync currently */
+    /* We only do separate sync currently */
     if (timing->sync != 0x03) {
-         xf86DrvMsg(scrnIndex, X_INFO, "%s: Ignoring: We only handle seperate"
+         xf86DrvMsg(scrnIndex, X_INFO, "%s: Ignoring: We only handle separate"
                     " sync.\n", __func__);
          return NULL;
     }
@@ -153,14 +154,14 @@ EDIDModeFromDetailedTiming(int scrnIndex, struct detailed_timings *timing)
         Mode->Flags |= V_INTERLACE;
 
     if (timing->misc & 0x02)
-        Mode->Flags |= V_PHSYNC;
-    else
-        Mode->Flags |= V_NHSYNC;
-
-    if (timing->misc & 0x01)
         Mode->Flags |= V_PVSYNC;
     else
         Mode->Flags |= V_NVSYNC;
+
+    if (timing->misc & 0x01)
+        Mode->Flags |= V_PHSYNC;
+    else
+        Mode->Flags |= V_NHSYNC;
 
     return Mode;
 }
@@ -180,9 +181,14 @@ EDIDGuessRangesFromModes(struct rhdMonitor *Monitor, DisplayModePtr Modes)
 	if (!Mode->HSync)
             Mode->HSync = ((float) Mode->Clock ) / ((float) Mode->HTotal);
 
-        if (!Mode->VRefresh)
+        if (!Mode->VRefresh) {
             Mode->VRefresh = (1000.0 * ((float) Mode->Clock)) /
                 ((float) (Mode->HTotal * Mode->VTotal));
+	    if (Mode->Flags & V_INTERLACE)
+		Mode->VRefresh *= 2.0;
+	    if (Mode->Flags & V_DBLSCAN)
+		Mode->VRefresh /= 2.0;
+	}
     }
 
     if (!Monitor->numHSync) {
@@ -297,8 +303,15 @@ RHDMonitorEDIDSet(struct rhdMonitor *Monitor, xf86MonPtr EDID)
             Mode = EDIDModeFromDetailedTiming(Monitor->scrnIndex,
                                               &EDID->det_mon[i].section.d_timings);
             if (Mode) {
-                if (preferred)
+                if (preferred) {
                     Mode->type |= M_T_PREFERRED;
+
+		    /* also grab the DPI while we are at it */
+		    Monitor->xDpi = (Mode->HDisplay * 25.4) /
+			((float) EDID->det_mon[i].section.d_timings.h_size) + 0.5;
+		    Monitor->yDpi = (Mode->VDisplay * 25.4) /
+			((float) EDID->det_mon[i].section.d_timings.v_size) + 0.5;
+		}
 		preferred = FALSE;
 
                 Modes = RHDModesAdd(Modes, Mode);
@@ -322,5 +335,27 @@ RHDMonitorEDIDSet(struct rhdMonitor *Monitor, xf86MonPtr EDID)
 	EDIDGuessRangesFromModes(Monitor, Modes);
 	EDIDReducedAllowed(Monitor, Modes);
         Monitor->Modes = RHDModesAdd(Monitor->Modes, Modes);
+    }
+
+    /* Calculate DPI when we still don't have this */
+    if (!Monitor->xDpi || !Monitor->yDpi) {
+	int HDisplay = 0, VDisplay = 0;
+
+	for (Mode = Monitor->Modes; Mode; Mode = Mode->next) {
+	    if (Mode->HDisplay > HDisplay)
+		HDisplay = Mode->HDisplay;
+	    if (Mode->VDisplay > VDisplay)
+		VDisplay = Mode->VDisplay;
+	}
+
+	if (HDisplay && EDID->features.hsize)
+	    Monitor->xDpi = (HDisplay * 2.54) / ((float) EDID->features.hsize) + 0.5;
+	if (VDisplay && EDID->features.vsize)
+	    Monitor->yDpi = (VDisplay * 2.54) / ((float) EDID->features.vsize) + 0.5;
+
+	if (!Monitor->xDpi && Monitor->yDpi)
+	    Monitor->xDpi = Monitor->yDpi;
+	if (!Monitor->yDpi && Monitor->xDpi)
+	    Monitor->yDpi = Monitor->xDpi;
     }
 }

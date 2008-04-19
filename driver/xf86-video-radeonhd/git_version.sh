@@ -5,13 +5,46 @@
 # Copyright (c) 2006-2007 Luc Verhaegen <libv@skynet.be>
 # Copyright (C) 2007 Hans Ulrich Niedermann <hun@n-dimensional.de>
 #
-# The author thanks the nice people on #git for the assistance!
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
+# THE COPYRIGHT HOLDER(S) OR AUTHOR(S) BE LIABLE FOR ANY CLAIM, DAMAGES OR
+# OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+# ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+# OTHER DEALINGS IN THE SOFTWARE.
+#
+# This script is based on the one written for xf86-video-unichrome by
+# Luc Verhaegen, but was rewritten almost completely by Hans Ulrich
+# Niedermann. The script contains a few bug fixes from Egbert Eich,
+# Matthias Hopf, Joerg Sonnenberger, and possibly others.
+#
+# The author thanks the nice people on #git for the assistance.
 #
 # Simple testing of this script:
 #   /sbin/busybox sh git_version.sh --example > moo.c \
 #     && gcc -Wall -Wextra -Wno-unused -o moo moo.c \
 #     && ./moo
 #   (bash should also do)
+#
+# For how to hook this up to your automake- and/or imake-based build
+# system, best take a look at how the RadeonHD.am and/or RadeonHD.tmpl
+# work in the xf86-video-radeonhd build system. For non-recursive make,
+# you can probably make things a little bit simpler.
+#
+# KNOWN BUGS:
+#  * Uses hyphenated ("git-foo-bar") program names, which git upstream
+#    have declared deprecated.
+#
 
 # Help messages
 USAGE="[<option>...]"
@@ -26,7 +59,7 @@ Options:
   -x, --example          Print complete example program."
 
 # The caller may have set these for us
-SED="${SED-"sed"}"
+SED="${SED-sed}"
 
 # Initialize
 working_dir="$(pwd)"
@@ -104,6 +137,7 @@ else
 fi
 
 # Done with creating output files, so we can change to source dir
+abs_srcdir="$(cd "$srcdir" && pwd)"
 cd "$srcdir"
 
 # Write program header
@@ -136,19 +170,23 @@ unset git_errors ||:
 if [ "x$git_found" = "xyes" ]; then
     git_version=`git --version`
     if [ "x$git_version" = "x" ]; then
-        git_errors="${git_errors+"${git_errors}; "}error running 'git --version'"
+        git_errors="${git_errors+${git_errors}; }error running 'git --version'"
     fi
 fi
 
 git_repo=no
 # "git-rev-parse --git-dir" since git-0.99.7
-if [ "x$(git-rev-parse --git-dir 2> /dev/null)" != "x" ]; then
+git_repo_dir="$(git-rev-parse --git-dir 2> /dev/null || true)"
+abs_repo_dir="$(cd "$git_repo_dir" && pwd)"
+# Only accept the found git repo iff it is in our top srcdir, as determined
+# by comparing absolute pathnames creaged by running pwd in the respective dir.
+if [ "x$git_repo_dir" != "x" ] && [ "x${abs_repo_dir}" = "x${abs_srcdir}/.git" ]; then
     git_repo=yes
     if [ "x$git_found" = "xyes" ]; then
         # git-1.4 and probably earlier understand "git-rev-parse HEAD"
         git_shaid=`git-rev-parse HEAD | $SED -n 's/^\(.\{8\}\).*/\1/p'`
         if [ "x$git_shaid" = "x" ]; then
-            git_errors="${git_errors+"${git_errors}; "}error running 'git-rev-parse HEAD'"
+            git_errors="${git_errors+${git_errors}; }error running 'git-rev-parse HEAD'"
         fi
         # git-1.4 and probably earlier understand "git-symbolic-ref HEAD"
         git_branch=`git-symbolic-ref HEAD | $SED -n 's|^refs/heads/||p'`

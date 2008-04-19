@@ -1,8 +1,8 @@
 /*
- * Copyright 2007  Luc Verhaegen <lverhaegen@novell.com>
- * Copyright 2007  Matthias Hopf <mhopf@novell.com>
- * Copyright 2007  Egbert Eich   <eich@novell.com>
- * Copyright 2007  Advanced Micro Devices, Inc.
+ * Copyright 2007, 2008  Luc Verhaegen <lverhaegen@novell.com>
+ * Copyright 2007, 2008  Matthias Hopf <mhopf@novell.com>
+ * Copyright 2007, 2008  Egbert Eich   <eich@novell.com>
+ * Copyright 2007, 2008  Advanced Micro Devices, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -32,6 +32,11 @@
 
 #include "xf86.h"
 #include "xf86DDC.h"
+#if HAVE_XF86_ANSIC_H
+# include "xf86_ansic.h"
+#else
+# include <string.h>
+#endif
 
 #include "rhd.h"
 #include "rhd_connector.h"
@@ -39,10 +44,6 @@
 #include "rhd_monitor.h"
 #ifdef ATOM_BIOS
 # include "rhd_atombios.h"
-#endif
-
-#ifndef _XF86_ANSIC_H
-#include <strings.h>
 #endif
 
 /* From rhd_edid.c */
@@ -65,7 +66,7 @@ RHDMonitorPrint(struct rhdMonitor *Monitor)
     for (i = 0; i < Monitor->numVRefresh; i++)
 	xf86Msg(X_NONE, "        %3.1f - %3.1fHz\n",  Monitor->VRefresh[i].lo,
 		Monitor->VRefresh[i].hi);
-
+    xf86Msg(X_NONE, "    DPI: %dx%d\n", Monitor->xDpi, Monitor->yDpi);
     if (Monitor->ReducedAllowed)
 	xf86Msg(X_NONE, "    Allows reduced blanking.\n");
     if (Monitor->UseFixedModes)
@@ -324,15 +325,14 @@ rhdMonitorPanel(struct rhdConnector *Connector)
 	if (Result == ATOM_SUCCESS) {
 	    Mode = data.mode;
 	    Mode->type |= M_T_PREFERRED;
-	} else {
-	    if (!EDID) {
-		Result = RHDAtomBiosFunc(Connector->scrnIndex,
-					 rhdPtr->atomBIOS,
-					 ATOMBIOS_GET_PANEL_EDID, &data);
-		if (Result == ATOM_SUCCESS)
-		    EDID = xf86InterpretEDID(Connector->scrnIndex,
-					     data.EDIDBlock);
-	    }
+	}
+	if (!EDID) {
+	    Result = RHDAtomBiosFunc(Connector->scrnIndex,
+				     rhdPtr->atomBIOS,
+				     ATOMBIOS_GET_PANEL_EDID, &data);
+	    if (Result == ATOM_SUCCESS)
+		EDID = xf86InterpretEDID(Connector->scrnIndex,
+					 data.EDIDBlock);
 	}
     }
 #endif
@@ -352,6 +352,15 @@ rhdMonitorPanel(struct rhdConnector *Connector)
 	Monitor->VRefresh[0].lo = Mode->VRefresh;
 	Monitor->VRefresh[0].hi = Mode->VRefresh;
 	Monitor->Bandwidth = Mode->SynthClock;
+
+	/* Clueless atombios does give us a mode, but doesn't give us a
+	 * DPI or a size. It is just perfect, right? */
+	if (EDID) {
+	    if (EDID->features.hsize)
+		Monitor->xDpi = (Mode->HDisplay * 2.54) / ((float) EDID->features.hsize) + 0.5;
+	    if (EDID->features.vsize)
+		Monitor->yDpi = (Mode->VDisplay * 2.54) / ((float) EDID->features.vsize) + 0.5;
+	}
     } else if (EDID) {
 	RHDMonitorEDIDSet(Monitor, EDID);
 	rhdPanelEDIDModesFilter(Monitor);
@@ -364,10 +373,62 @@ rhdMonitorPanel(struct rhdConnector *Connector)
 
     /* panel should be driven at native resolution only. */
     Monitor->UseFixedModes = TRUE;
+    Monitor->ReducedAllowed = TRUE;
 
     if (EDID)
 	rhdMonitorPrintEDID(Monitor, EDID);
 
+    return Monitor;
+}
+
+/*
+ * rhdMonitorTV(): get TV modes. Currently we can only get this from AtomBIOS.
+ */
+static struct rhdMonitor *
+rhdMonitorTV(struct rhdConnector *Connector)
+{
+    struct rhdMonitor *Monitor = NULL;
+#ifdef ATOM_BIOS
+    ScrnInfoPtr pScrn = xf86Screens[Connector->scrnIndex];
+    RHDPtr rhdPtr = RHDPTR(pScrn);
+    DisplayModeRec *Mode = NULL;
+    AtomBiosArgRec arg;
+
+    RHDFUNC(Connector);
+
+    arg.tvMode = rhdPtr->tvMode;
+    if (RHDAtomBiosFunc(Connector->scrnIndex, rhdPtr->atomBIOS, 
+			ATOM_ANALOG_TV_MODE, &arg)
+	!= ATOM_SUCCESS)
+	return NULL;
+
+    Mode = arg.mode;
+    Mode->type |= M_T_PREFERRED;
+
+    Monitor = xnfcalloc(sizeof(struct rhdMonitor), 1);
+
+    Monitor->scrnIndex = Connector->scrnIndex;
+    Monitor->EDID      = NULL;
+
+    Monitor->Name      = xstrdup("TV");
+    Monitor->Modes     = RHDModesAdd(Monitor->Modes, Mode);
+    Monitor->numHSync  = 1;
+    Monitor->HSync[0].lo = Mode->HSync;
+    Monitor->HSync[0].hi = Mode->HSync;
+    Monitor->numVRefresh = 1;
+    Monitor->VRefresh[0].lo = Mode->VRefresh;
+    Monitor->VRefresh[0].hi = Mode->VRefresh;
+    Monitor->Bandwidth = Mode->SynthClock;
+
+    /* TV should be driven at native resolution only. */
+    Monitor->UseFixedModes = TRUE;
+    Monitor->ReducedAllowed = FALSE;
+    /* 
+     *  hack: the TV encoder takes care of that. 
+     *  The mode that goes in isn't what comes out.
+     */
+    Mode->Flags &= ~(V_INTERLACE);
+#endif
     return Monitor;
 }
 
@@ -383,6 +444,8 @@ RHDMonitorInit(struct rhdConnector *Connector)
 
     if (Connector->Type == RHD_CONNECTOR_PANEL)
 	Monitor = rhdMonitorPanel(Connector);
+    else if (Connector->Type == RHD_CONNECTOR_TV)
+	Monitor = rhdMonitorTV(Connector);
     else if (Connector->DDC) {
 	xf86MonPtr EDID = xf86DoEDID_DDC2(Connector->scrnIndex, Connector->DDC);
 	if (EDID) {
