@@ -2,7 +2,7 @@
  * xrdb - X resource manager database utility
  *
  * $Xorg: xrdb.c,v 1.6 2000/08/17 19:54:56 cpqbld Exp $
- * $XdotOrg: app/xrdb/xrdb.c,v 1.6 2006/04/03 20:32:20 alanc Exp $
+ * $XdotOrg: app/xrdb/xrdb.c,v 1.5 2006/04/03 18:23:14 alanc Exp $
  */
 
 /*
@@ -1203,10 +1203,13 @@ Process(int scrno, Bool doScreen, Bool execute)
 #else
 	    if((cmd = (char *)
 		malloc(strlen(cpp_program) + strlen(includes.val) + 1 +
-		       strlen(defines.val) + 1)) ==
+		       strlen(defines.val) + 1 +
+		       strlen(filename ? filename : "") + 1)) ==
 	       NULL)
 		fatal("%s: Out of memory\n", ProgramName);
-	    sprintf(cmd, "%s%s %s", cpp_program, includes.val, defines.val);
+	    sprintf(cmd, "%s%s %s %s", cpp_program,
+		    includes.val, defines.val,
+		    filename ? filename : "");
 	    if (!(input = popen(cmd, "r")))
 		fatal("%s: cannot run '%s'\n", ProgramName, cmd);
 	    free(cmd);
