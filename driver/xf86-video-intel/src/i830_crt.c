@@ -39,7 +39,7 @@ i830_crt_dpms(xf86OutputPtr output, int mode)
 {
     ScrnInfoPtr	    pScrn = output->scrn;
     I830Ptr	    pI830 = I830PTR(pScrn);
-    CARD32	    temp;
+    uint32_t	    temp;
 
     temp = INREG(ADPA);
     temp &= ~(ADPA_HSYNC_CNTL_DISABLE | ADPA_VSYNC_CNTL_DISABLE);
@@ -109,7 +109,7 @@ i830_crt_mode_set(xf86OutputPtr output, DisplayModePtr mode,
     xf86CrtcPtr		    crtc = output->crtc;
     I830CrtcPrivatePtr	    i830_crtc = crtc->driver_private;
     int			    dpll_md_reg;
-    CARD32		    adpa, dpll_md;
+    uint32_t		    adpa, dpll_md;
 
     if (i830_crtc->pipe == 0) 
 	dpll_md_reg = DPLL_A_MD;
@@ -158,7 +158,7 @@ i830_crt_detect_hotplug(xf86OutputPtr output)
 {
     ScrnInfoPtr	pScrn = output->scrn;
     I830Ptr	pI830 = I830PTR(pScrn);
-    CARD32	temp;
+    uint32_t	temp;
     const int	timeout_ms = 1000;
     int		starttime, curtime;
 
@@ -199,13 +199,13 @@ i830_crt_detect_load (xf86CrtcPtr	    crtc,
     ScrnInfoPtr		    pScrn = output->scrn;
     I830Ptr		    pI830 = I830PTR(pScrn);
     I830CrtcPrivatePtr	    i830_crtc = I830CrtcPrivate(crtc);
-    CARD32		    save_bclrpat;
-    CARD32		    save_vtotal;
-    CARD32		    vtotal, vactive;
-    CARD32		    vsample;
-    CARD32		    vblank, vblank_start, vblank_end;
-    CARD32		    dsl;
-    CARD8		    st00;
+    uint32_t		    save_bclrpat;
+    uint32_t		    save_vtotal;
+    uint32_t		    vtotal, vactive;
+    uint32_t		    vsample;
+    uint32_t		    vblank, vblank_start, vblank_end;
+    uint32_t		    dsl;
+    uint8_t		    st00;
     int			    bclrpat_reg, pipeconf_reg, pipe_dsl_reg;
     int			    vtotal_reg, vblank_reg, vsync_reg;
     int			    pipe = i830_crtc->pipe;
@@ -245,7 +245,7 @@ i830_crt_detect_load (xf86CrtcPtr	    crtc,
     
     if (IS_I9XX (pI830))
     {
-	CARD32	pipeconf = INREG(pipeconf_reg);
+	uint32_t	pipeconf = INREG(pipeconf_reg);
 	OUTREG(pipeconf_reg, pipeconf | PIPECONF_FORCE_BORDER);
 	
 	st00 = pI830->readStandard (pI830, 0x3c2);
@@ -263,8 +263,8 @@ i830_crt_detect_load (xf86CrtcPtr	    crtc,
 	 */
 	if (vblank_start <= vactive && vblank_end >= vtotal)
 	{
-	    CARD32  vsync = INREG(vsync_reg);
-	    CARD32  vsync_start = (vsync & 0xffff) + 1;
+	    uint32_t  vsync = INREG(vsync_reg);
+	    uint32_t  vsync_start = (vsync & 0xffff) + 1;
 
 	    vblank_start = vsync_start;
 	    OUTREG(vblank_reg, (vblank_start - 1) | ((vblank_end - 1) << 16));
@@ -349,34 +349,39 @@ i830_crt_detect(xf86OutputPtr output)
     I830Ptr		    pI830 = I830PTR(pScrn);
     xf86CrtcPtr		    crtc;
     int			    dpms_mode;
-    
+    xf86OutputStatus	    status;
+    Bool		    connected;
+
+    crtc = i830GetLoadDetectPipe (output, NULL, &dpms_mode);
+    if (!crtc)
+	return XF86OutputStatusUnknown;
+
     if (IS_I945G(pI830) || IS_I945GM(pI830) || IS_I965G(pI830) ||
 	    IS_G33CLASS(pI830)) {
 	if (i830_crt_detect_hotplug(output))
-	    return XF86OutputStatusConnected;
+	    status = XF86OutputStatusConnected;
 	else
-	    return XF86OutputStatusDisconnected;
+	    status = XF86OutputStatusDisconnected;
+
+	goto out;
     }
 
-    if (i830_crt_detect_ddc(output))
-	return XF86OutputStatusConnected;
+    if (i830_crt_detect_ddc(output)) {
+	status = XF86OutputStatusConnected;
+	goto out;
+    }
 
     /* Use the load-detect method if we have no other way of telling. */
-    crtc = i830GetLoadDetectPipe (output, NULL, &dpms_mode);
-    
-    if (crtc)
-    {
-	Bool			connected;
+    connected = i830_crt_detect_load (crtc, output);
+    if (connected)
+	status = XF86OutputStatusConnected;
+    else
+	status = XF86OutputStatusDisconnected;
 
-	connected = i830_crt_detect_load (crtc, output);
-	i830ReleaseLoadDetectPipe (output, dpms_mode);
-	if (connected)
-	    return XF86OutputStatusConnected;
-	else
-	    return XF86OutputStatusDisconnected;
-    }
+out:
+    i830ReleaseLoadDetectPipe (output, dpms_mode);
 
-    return XF86OutputStatusUnknown;
+    return status;
 }
 
 static void
@@ -385,6 +390,18 @@ i830_crt_destroy (xf86OutputPtr output)
     if (output->driver_private)
 	xfree (output->driver_private);
 }
+
+#ifdef RANDR_GET_CRTC_INTERFACE
+static xf86CrtcPtr
+i830_crt_get_crtc(xf86OutputPtr output)
+{
+    ScrnInfoPtr	pScrn = output->scrn;
+    I830Ptr pI830 = I830PTR(pScrn);
+    int pipe = !!(INREG(ADPA) & ADPA_PIPE_SELECT_MASK);
+   
+    return i830_pipe_to_crtc(pScrn, pipe);
+}
+#endif
 
 static const xf86OutputFuncsRec i830_crt_output_funcs = {
     .dpms = i830_crt_dpms,
@@ -397,7 +414,10 @@ static const xf86OutputFuncsRec i830_crt_output_funcs = {
     .commit = i830_output_commit,
     .detect = i830_crt_detect,
     .get_modes = i830_ddc_get_modes,
-    .destroy = i830_crt_destroy
+    .destroy = i830_crt_destroy,
+#ifdef RANDR_GET_CRTC_INTERFACE
+    .get_crtc = i830_crt_get_crtc,
+#endif
 };
 
 void

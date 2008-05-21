@@ -39,6 +39,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _I810_H_
 #define _I810_H_
 
+#include <stdint.h>
 #include "compiler.h"
 #include "xf86PciInfo.h"
 #include "xf86Pci.h"
@@ -50,6 +51,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "vbe.h"
 #include "vgaHW.h"
 
+#include "xorg-server.h"
+#ifdef XSERVER_LIBPCIACCESS
+#include <pciaccess.h>
+#endif
+
 #ifdef XF86DRI
 #include "xf86drm.h"
 #include "sarea.h"
@@ -60,10 +66,16 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 
 #include "common.h"
+#include "i810_ring.h"
 
 #define I810_VERSION 4000
-#define I810_NAME "I810"
-#define I810_DRIVER_NAME "i810"
+#define I810_NAME "intel"
+#define I810_DRIVER_NAME "intel"
+#define I810_LEGACY_DRIVER_NAME "i810"
+
+#define INTEL_VERSION_MAJOR PACKAGE_VERSION_MAJOR
+#define INTEL_VERSION_MINOR PACKAGE_VERSION_MINOR
+#define INTEL_VERSION_PATCH PACKAGE_VERSION_PATCHLEVEL
 
 /* HWMC Surfaces */
 #define I810_MAX_SURFACES 7
@@ -75,11 +87,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 typedef struct _I810Rec *I810Ptr;
 
 typedef void (*I810WriteIndexedByteFunc)(I810Ptr pI810, IOADDRESS addr,
-					 CARD8 index, CARD8 value);
-typedef CARD8(*I810ReadIndexedByteFunc)(I810Ptr pI810, IOADDRESS addr,
-					CARD8 index);
-typedef void (*I810WriteByteFunc)(I810Ptr pI810, IOADDRESS addr, CARD8 value);
-typedef CARD8(*I810ReadByteFunc)(I810Ptr pI810, IOADDRESS addr);
+					 uint8_t index, uint8_t value);
+typedef uint8_t(*I810ReadIndexedByteFunc)(I810Ptr pI810, IOADDRESS addr,
+					  uint8_t index);
+typedef void (*I810WriteByteFunc)(I810Ptr pI810, IOADDRESS addr,
+				  uint8_t value);
+typedef uint8_t(*I810ReadByteFunc)(I810Ptr pI810, IOADDRESS addr);
 
 extern void I810SetTiledMemory(ScrnInfoPtr pScrn, int nr, unsigned start,
 			       unsigned pitch, unsigned size);
@@ -179,8 +192,12 @@ typedef struct _I810Rec {
    unsigned long MMIOAddr;
    IOADDRESS ioBase;
    EntityInfoPtr pEnt;
+#if XSERVER_LIBPCIACCESS
+   struct pci_device *PciInfo;
+#else
    pciVideoPtr PciInfo;
    PCITAG PciTag;
+#endif
 
    I810RingBuffer *LpRing;
    unsigned int BR[20];

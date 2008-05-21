@@ -28,44 +28,53 @@ THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "xf86_OSproc.h"
 
 typedef struct {
-   CARD32 YBuf0offset;
-   CARD32 UBuf0offset;
-   CARD32 VBuf0offset;
+   uint32_t YBuf0offset;
+   uint32_t UBuf0offset;
+   uint32_t VBuf0offset;
 
-   CARD32 YBuf1offset;
-   CARD32 UBuf1offset;
-   CARD32 VBuf1offset;
+   uint32_t YBuf1offset;
+   uint32_t UBuf1offset;
+   uint32_t VBuf1offset;
 
    unsigned char currentBuf;
 
    int brightness;
    int contrast;
-   int pipe;
+   int saturation;
+   xf86CrtcPtr current_crtc;
+   xf86CrtcPtr desired_crtc;
    int doubleBuffer;
 
    RegionRec clip;
-   CARD32 colorKey;
+   uint32_t colorKey;
 
-   CARD32 gamma0;
-   CARD32 gamma1;
-   CARD32 gamma2;
-   CARD32 gamma3;
-   CARD32 gamma4;
-   CARD32 gamma5;
+   uint32_t gamma0;
+   uint32_t gamma1;
+   uint32_t gamma2;
+   uint32_t gamma3;
+   uint32_t gamma4;
+   uint32_t gamma5;
 
-   CARD32 videoStatus;
+   uint32_t videoStatus;
    Time offTime;
    Time freeTime;
-   FBLinearPtr linear;
+   i830_memory *buf; /** YUV data buffer */
+   unsigned int extra_offset;
 
    Bool overlayOK;
    int oneLineMode;
    int scaleRatio;
    Bool textured;
+   Rotation rotation; /* should remove I830->rotation later*/
 } I830PortPrivRec, *I830PortPrivPtr;
 
 #define GET_PORT_PRIVATE(pScrn) \
    (I830PortPrivPtr)((I830PTR(pScrn))->adaptor->pPortPrivates[0].ptr)
+
+/*
+ * Broadwater requires a bit of extra video memory for state information
+ */
+#define BRW_LINEAR_EXTRA	(36*1024)
 
 void I915DisplayVideoTextured(ScrnInfoPtr pScrn, I830PortPrivPtr pPriv,
 			      int id, RegionPtr dstRegion, short width,
@@ -73,4 +82,15 @@ void I915DisplayVideoTextured(ScrnInfoPtr pScrn, I830PortPrivPtr pPriv,
 			      int x1, int y1, int x2, int y2,
 			      short src_w, short src_h,
 			      short drw_w, short drw_h,
-			      DrawablePtr pDraw);
+			      PixmapPtr pPixmap);
+
+void I965DisplayVideoTextured(ScrnInfoPtr pScrn, I830PortPrivPtr pPriv,
+			      int id, RegionPtr dstRegion, short width,
+			      short height, int video_pitch,
+			      int x1, int y1, int x2, int y2,
+			      short src_w, short src_h,
+			      short drw_w, short drw_h,
+			      PixmapPtr pPixmap);
+
+void I830VideoBlockHandler(int i, pointer blockData, pointer pTimeout,
+			   pointer pReadmask);
