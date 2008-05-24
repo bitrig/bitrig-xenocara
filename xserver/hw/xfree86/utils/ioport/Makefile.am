@@ -25,7 +25,7 @@
 # or other dealings in this Software without prior written authorization
 # of the copyright holder.
 # 
-
+if BUILD_IOPORT
 bin_PROGRAMS = ioport
 
 XFREE86_SRCDIR 	= $(top_srcdir)/hw/xfree86
@@ -33,7 +33,7 @@ DUMMYLIB_SRCDIR	= $(XFREE86_SRCDIR)/dummylib
 
 INCLUDES = $(XORG_INCS) -I$(DUMMYLIB_SRCDIR)
 
-ioport_CFLAGS = $(XORG_CFLAGS)
+ioport_CFLAGS = $(DIX_CFLAGS) $(XORG_CFLAGS)
 ioport_LDADD = \
 	../../os-support/libxorgos.la \
 	../../dummylib/libdummy-nonserver.a \
@@ -56,3 +56,6 @@ install-exec-hook:
 	        (cd $(DESTDIR)$(bindir); $(LN_S) ioport $$i)); \
         done
 
+else
+all-local:
+endif
