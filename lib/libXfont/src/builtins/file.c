@@ -27,6 +27,7 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
+#include <string.h>
 #include "builtin.h"
 
 typedef struct _BuiltinIO {
@@ -35,8 +36,7 @@ typedef struct _BuiltinIO {
 } BuiltinIORec, *BuiltinIOPtr;
 
 static int
-BuiltinFill (f)
-    BufFilePtr	f;
+BuiltinFill (BufFilePtr	f)
 {
     int	    left, len;
     BuiltinIOPtr    io = ((BuiltinIOPtr) f->private);
@@ -50,7 +50,7 @@ BuiltinFill (f)
     len = BUFFILESIZE;
     if (len > left)
 	len = left;
-    bcopy (io->file->bits + io->offset, f->buffer, len);
+    memcpy (f->buffer, io->file->bits + io->offset, len);
     io->offset += len;
     f->left = len - 1;
     f->bufp = f->buffer + 1;
@@ -58,15 +58,12 @@ BuiltinFill (f)
 }
 
 static int
-BuiltinSkip (f, count)
-    BufFilePtr	f;
-    int		count;
+BuiltinSkip (BufFilePtr	f, int count)
 {
     BuiltinIOPtr    io = ((BuiltinIOPtr) f->private);
     int	    curoff;
     int	    fileoff;
     int	    todo;
-    int	    left;
 
     curoff = f->bufp - f->buffer;
     fileoff = curoff + f->left;
@@ -86,8 +83,7 @@ BuiltinSkip (f, count)
 }
 
 static int
-BuiltinClose (f, doClose)
-    BufFilePtr	f;
+BuiltinClose (BufFilePtr f, int unused)
 {
     BuiltinIOPtr    io = ((BuiltinIOPtr) f->private);
     
@@ -97,8 +93,7 @@ BuiltinClose (f, doClose)
 
 
 FontFilePtr
-BuiltinFileOpen (name)
-    char    *name;
+BuiltinFileOpen (char *name)
 {
     int		    i;
     BuiltinIOPtr    io;
@@ -121,7 +116,7 @@ BuiltinFileOpen (name)
 	xfree (io);
 	return NULL;
     }
-    if (cooked = BufFilePushZIP (raw))
+    if ((cooked = BufFilePushZIP (raw)))
 	raw = cooked;
     else
     {
@@ -132,8 +127,7 @@ BuiltinFileOpen (name)
 }
 
 int
-BuiltinFileClose (f)
-    FontFilePtr	f;
+BuiltinFileClose (FontFilePtr f, int unused)
 {
     return BufFileClose ((BufFilePtr) f, TRUE);
 }

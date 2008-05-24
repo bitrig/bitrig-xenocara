@@ -1,3 +1,352 @@
+commit b76df66d2c507898472bba0f9986ef5700029a36
+Author: Matthieu Herrb <matthieu@bluenote.herrb.com>
+Date:   Thu Jan 17 15:30:37 2008 +0100
+
+    Fix for CVE-2008-0006 - PCF Font parser buffer overflow.
+
+commit 2297c6390a1609fe810c2cd5b3443f3722610944
+Author: Matthieu Herrb <matthieu@bluenote.herrb.com>
+Date:   Thu Oct 18 21:46:49 2007 +0200
+
+    ftsystem.c is not needed anymore.
+
+commit 5bf703700ee4a5d6eae20da07cb7a29369667aef
+Author: Matthieu Herrb <matthieu@bluenote.herrb.com>
+Date:   Fri Sep 28 08:17:57 2007 +0200
+
+    catalogue.c: prevent a one character overflow
+    
+    this occurs if readlink writes a result that's exactly the
+    size of the buffer that's passed to it. Reported by
+    Joerg Sonnenberger.
+    
+    Re
+
+commit fd8a03fbbd74f5cbaa740e5d50fccdf5c1f78b5b
+Author: Jens Granseuer <jensgr@gmx.net>
+Date:   Thu Sep 27 23:12:00 2007 +0200
+
+    fix build with gcc 2.95.
+    
+    In addition to fixing the C89 issue, the patch also flags a few functions as
+    static to avoid "no previous prototype" warnings.
+
+commit 268f1bb1859e97944e8b63a5bb12677e874ed144
+Author: Tilman Sauerbeck <tilman@code-monkey.de>
+Date:   Thu Sep 13 20:40:26 2007 +0200
+
+    Replaced one instance of bcopy() with memcpy().
+    
+    f->buffer cannot overlap with io->file->bits, so it's safe to
+    use memcpy() rather than memmove().
+    Compile-tested only.
+
+commit f2725a5c9da771fb610d503ebfda3b4d1553bac4
+Author: Eric Anholt <eric@anholt.net>
+Date:   Wed Sep 5 13:10:43 2007 -0700
+
+    Bump version to 1.3.1.
+
+commit aca95d12a8b35de7ae914632fc9e8a723d58a860
+Author: Matthieu Herrb <matthieu@bluenote.herrb.com>
+Date:   Sat Aug 25 23:32:54 2007 +0200
+
+    Kill unused macro definition.
+
+commit 3c3b47bf6f080ddb700886de3e5bfa42c2f0774e
+Merge: 9f86614... 32d2d33...
+Author: Dodji Seketeli <dodji@openedhand.com>
+Date:   Sat Aug 11 23:09:50 2007 +0200
+
+    Merge branch 'master' of ssh://dodji@git.freedesktop.org/git/xorg/lib/libXfont
+
+commit 9f86614394af81bc484cf00f3e9996510d3718cb
+Author: Ademar de Souza Reis Jr <ademar@mandriva.com.br>
+Date:   Mon Jul 30 14:36:21 2007 -0400
+
+    Fix dirfd leak on CatalogueRescan().
+
+commit 87f50267181887ed9214536608bd2035d2dd70f7
+Author: Ademar de Souza Reis Jr <ademar@mandriva.com.br>
+Date:   Mon Jul 30 14:35:01 2007 -0400
+
+    Support relative paths in catalogue:<dir> symlinks.
+    
+    Relative symlinks are common inside the catalogue directory and
+    should be supported as well.
+
+commit 32d2d335eacd1b55980323a71ef35cdf7c22366d
+Author: Ademar de Souza Reis Jr <ademar@mandriva.com.br>
+Date:   Mon Jul 30 14:36:21 2007 -0400
+
+    Fix dirfd leak on CatalogueRescan().
+
+commit 0a5b31a40c4933f4c69157c61d4d4890af2205b1
+Author: Ademar de Souza Reis Jr <ademar@mandriva.com.br>
+Date:   Mon Jul 30 14:35:01 2007 -0400
+
+    Support relative paths in catalogue:<dir> symlinks.
+    
+    Relative symlinks are common inside the catalogue directory and
+    should be supported as well.
+
+commit 7670d4a2720c61fbc7b989fed14c676f04ac3ad1
+Author: Dodji Seketeli <dodji@seketeli.org>
+Date:   Mon Jul 16 12:24:34 2007 +0200
+
+    Remove side effects from BuiltinReadDirectory()
+    
+    The first time BuiltinReadDirectory() is called,
+    save the content of builtin_dir and builtin_alias,
+    before calling FontFileAddFontFile(), because that fonction
+    will modify those.
+    
+    Then, in subsequent calls to BuiltinReadDirectory(), restore
+    builtin_dir and builtin_alias so that the side effect incurred
+    by the first call disappears.
+
+commit e3642d9b2c0819a607d4cce413b9f0541285545b
+Author: Kristian Høgsberg <krh@redhat.com>
+Date:   Mon Jul 2 15:01:05 2007 -0400
+
+    Bump version to 1.3.0.
+
+commit f33f9361086db3cf1d09cec067f38fe751ed22eb
+Author: Kristian Høgsberg <krh@redhat.com>
+Date:   Mon Jul 2 14:59:11 2007 -0400
+
+    Fix crash when no attributes are present for symlink.
+
+commit 8d47483711be6076e7bfefab14aa890c5f37e1aa
+Author: Kristian Høgsberg <krh@redhat.com>
+Date:   Thu Jun 21 21:44:02 2007 -0400
+
+    Bump version to 1.2.9.
+
+commit c5ab59762c4ad5def68436d55937a2bd558d5c99
+Author: Kristian Høgsberg <krh@redhat.com>
+Date:   Tue Jun 19 10:38:02 2007 -0400
+
+    Add a new 'catalogue' FPE, which takes font paths from symlinks in a dir.
+    
+    This patch adds a new FPE type, which will match font path elements of the
+    form
+    
+    	catalogue:<dir>
+    
+    The dir specified after the catalogue: prefix will be scanned for symlinks
+    and each symlink destination will be added as a local fontfile FPE.
+    The symlink can be suffixed by attributes, such as 'unscaled', which
+    will be passed through to the underlying fontfile FPE.  Except the new
+    attribute 'pri' which will be used for ordering the fontfile FPEs.
+    
+    An example configuration:
+    
+    	75dpi:unscaled:pri=20 -> /usr/share/X11/fonts/75dpi
+    	ghostscript:pri=60 -> /usr/share/fonts/default/ghostscript
+    	misc:unscaled:pri=10 -> /usr/share/X11/fonts/misc
+    	type1:pri=40 -> /usr/share/X11/fonts/Type1
+    	type1:pri=50 -> /usr/share/fonts/default/Type1
+    
+    will add /usr/share/X11/fonts/misc as the first FPE with the attribute
+    'unscaled', second FPE will be /usr/share/X11/fonts/75dpi, also with
+    the attribute unscaled etc.  This is functionally equivalent to setting
+    the following font path:
+    
+    	/usr/share/X11/fonts/misc:unscaled,
+    	/usr/share/X11/fonts/75dpi:unscaled,
+    	/usr/share/X11/fonts/Type1,
+    	/usr/share/fonts/default/Type1,
+    	/usr/share/fonts/default/ghostscript
+    
+    The motivation is to let font packages add a symlink to the new font
+    directory they provide instead of rewriting either the Xorg config file
+    or the xfs config file.
+
+commit 1a690feaf7c416da9b01861af381d15a661e5f52
+Author: Adam Jackson <ajax@benzedrine.nwnk.net>
+Date:   Thu Jun 7 16:01:03 2007 -0400
+
+    Minor fontfile cleanup.
+
+commit 3b1bcd7676fe810ce60d6a4758067b571796cceb
+Author: Adam Jackson <ajax@benzedrine.nwnk.net>
+Date:   Thu Jun 7 15:54:51 2007 -0400
+
+    Dead code cull from fontserver code.
+
+commit 6257af0e547095483331b8c8ed588e5467852671
+Author: Adam Jackson <ajax@benzedrine.nwnk.net>
+Date:   Thu Jun 7 15:41:19 2007 -0400
+
+    Static markup over bitmap and builtins.
+
+commit 8c31fadabd706af63381007d666e685a66b58fd9
+Author: Adam Jackson <ajax@benzedrine.nwnk.net>
+Date:   Thu Jun 7 15:28:09 2007 -0400
+
+    Dead code cull from FreeType.
+
+commit fabf5458f1acbfc967bdaea3b89d707c22b97364
+Author: Adam Jackson <ajax@benzedrine.nwnk.net>
+Date:   Thu Jun 7 15:17:16 2007 -0400
+
+    Death to open-coded strcasecmp.
+    
+    Seriously, if you don't already have this, you've already lost.
+
+commit d50de26430c1a114a22597de40a3e5ac3c8e1ab7
+Author: Adam Jackson <ajax@benzedrine.nwnk.net>
+Date:   Thu Jun 7 15:13:44 2007 -0400
+
+    Dead code cull from Speedo.
+
+commit 3fd7a510b5467479d6e2559819b96b222c7328e8
+Author: Adam Jackson <ajax@benzedrine.nwnk.net>
+Date:   Thu Jun 7 14:39:03 2007 -0400
+
+    One more missed static in Type1
+
+commit 440166a027b78eb53d7686937148b755ad51f7f9
+Author: Adam Jackson <ajax@benzedrine.nwnk.net>
+Date:   Thu Jun 7 14:24:46 2007 -0400
+
+    Dead code removal and static markup for Type1.
+
+commit 9739e750a7ca4b86ddb89674b104e9b9a8b61014
+Author: Adam Jackson <ajax@benzedrine.nwnk.net>
+Date:   Thu Jun 7 14:20:27 2007 -0400
+
+    Warning cleanup.
+
+commit 87db45f5eb7880395735f7bf3a8ee2d89b7e0122
+Author: Alan Coopersmith <alan.coopersmith@sun.com>
+Date:   Wed Apr 4 17:05:13 2007 -0700
+
+    Version bump: 1.2.8
+
+commit 224fb6403a328e70b370540cc5cefd74421fafac
+Merge: e7a59cf... 0fbb37c...
+Author: Matthieu Herrb <matthieu@roadrock.(none)>
+Date:   Tue Apr 3 16:05:48 2007 +0200
+
+    Merge branch 'master' of git+ssh://herrb@git.freedesktop.org/git/xorg/lib/libXfont
+
+commit e7a59cfb5d442d2965cfcffeff405a4b05591190
+Author: Matthieu Herrb <matthieu@roadrock.(none)>
+Date:   Tue Apr 3 15:45:21 2007 +0200
+
+    Integer overflow vulnerabilities
+    
+    CVE-2007-1351: BDFFont Parsing Integer Overflow
+    CVE-2007-1352: fonts.dir File Parsing Integer Overflow
+
+commit 0fbb37ccc630ced42d6a973c81d947870cca7637
+Author: Alan Coopersmith <alan.coopersmith@sun.com>
+Date:   Mon Apr 2 17:40:19 2007 -0700
+
+    Add #pragma weak for Sun cc where needed
+
+commit cc824e4f2c9a53a00b36a6f83bf065c363027087
+Author: Alan Coopersmith <alan.coopersmith@sun.com>
+Date:   Fri Mar 23 15:57:29 2007 -0700
+
+    Actually use loadable font modules
+    
+    Loadable font modules were not being initialized, and all font renderers
+    known at build time were always being initialized, regardless of Xorg
+    module configuration.
+
+commit fc6e22f238d34918156ded34148730075b7b9cc2
+Author: Ben Byer <bbyer@bbyer.(none)>
+Date:   Tue Feb 20 00:20:23 2007 -0800
+
+    added -flat_namespace to CFLAGS for Darwin
+
+commit 9509d5c7ee5d5e78c6eef54e8faceede5ca5f24e
+Author: Kristian Høgsberg <krh@redhat.com>
+Date:   Mon Jan 22 18:24:19 2007 -0500
+
+    Bump to 1.2.7.
+
+commit 63af35b908b51690a6c12fd42b54cf4ee08c762a
+Author: Simon Law <sfllaw@debian.org>
+Date:   Fri Jan 19 08:50:39 2007 +1100
+
+    fontfile: accept empty (but valid) font paths (bug #3091)
+    If a path has a valid fonts.dir or fonts.alias, but does not contain any
+    fonts (either fonts.dir specifies zero fonts, or fonts could not be
+    loaded), load it as a valid font path anyway.
+
+commit 931b777108526dd0761f948dcd9f1603ac02efc8
+Author: Kristian Høgsberg <krh@redhat.com>
+Date:   Wed Jan 17 17:19:53 2007 -0500
+
+    Add stubs for the scalable renderer callbacks.
+    
+    Trying to scale a bitmap font provided by the built-in backend will
+    crash the X server as it calls into a NULL pointer.  This patch
+    adds "return BadFont;" stubs to prevent the crash.
+
+commit 2e4ae1b524a0149479c46f3f12a9ce2413092442
+Author: Daniel Stone <daniel@fooishbar.org>
+Date:   Sat Dec 16 00:53:43 2006 +0200
+
+    bump to 1.2.6
+
+commit facc7ce4892eab4353fff0f45d2d3fd6be7d3e3d
+Author: Daniel Stone <daniel@fooishbar.org>
+Date:   Sat Dec 16 00:53:32 2006 +0200
+
+    build Type1 by default
+    Build Type1 by default, instead of needing to explicitly enable it.
+
+commit 257db35656d5bf9385080e1d173260f0076f849c
+Author: Daniel Stone <daniel@fooishbar.org>
+Date:   Sat Dec 16 00:53:07 2006 +0200
+
+    don't distribute fontconf.h
+    Since fontconf.h is a generated file, don't distribute it.
+
+commit ab0f05dcfb5537ba5aec7e48ddb713d4fdba7e75
+Author: Daniel Stone <daniel@fooishbar.org>
+Date:   Wed Dec 6 18:53:54 2006 +0200
+
+    Makefile.am: make ChangeLog hook safer
+    Make ChangeLog hook as safe as possible.
+
+commit da20e256b786eaa6357e3d55baa9e90e38f14614
+Author: Daniel Stone <daniel@fooishbar.org>
+Date:   Fri Dec 1 01:05:59 2006 +0200
+
+    bump to 1.2.5
+
+commit 16a0c282a673136c0bbb116f35e6e89d8b43a877
+Author: Daniel Stone <daniel@fooishbar.org>
+Date:   Fri Dec 1 01:05:40 2006 +0200
+
+    post-CID fixes
+    Curiously, make distcheck succeeded ... go figure.
+
+commit e47fb944a8f485c4ad6be9c2cf6a4866eff7a07f
+Author: Daniel Stone <daniel@fooishbar.org>
+Date:   Fri Dec 1 00:35:48 2006 +0200
+
+    bump to 1.2.4
+
+commit 47084ba39920068030c3e59523701d1205161a9f
+Author: Daniel Stone <daniel@fooishbar.org>
+Date:   Fri Dec 1 00:35:04 2006 +0200
+
+    remove CID font support (bug #5553)
+    Remove non-free CID font support, which was unused anyway.
+
+commit c4741cdd83bcdedcc6f7a072a73b16668fc905eb
+Author: Adam Jackson <ajax@benzedrine.nwnk.net>
+Date:   Fri Oct 13 16:17:26 2006 -0400
+
+    Bump to 1.2.3
+
 commit 5dfff0eb0f532edb1f4a25daa5529e08dd832ecb
 Author: Alan Coopersmith <alan.coopersmith@sun.com>
 Date:   Thu Oct 5 18:12:50 2006 -0700

@@ -1,6 +1,3 @@
-dnl 
-dnl  $Id: configure.ac,v 1.1 2006/11/25 17:14:16 matthieu Exp $
-dnl 
 dnl  Copyright © 2003 Keith Packard
 dnl 
 dnl  Permission to use, copy, modify, distribute, and sell this software and its
@@ -26,7 +23,7 @@ dnl Process this file with autoconf to create configure.
 AC_PREREQ([2.57])
 
 AC_INIT([libXfont],
-	1.2.3,
+	1.3.2,
 	[https://bugs.freedesktop.org/enter_bug.cgi?product=xorg],
 	libXfont)
 dnl
@@ -106,27 +103,11 @@ AC_SUBST(FREETYPE_LIBS)
 AC_SUBST(FREETYPE_CFLAGS)
 AC_SUBST(FREETYPE_REQUIRES)
 
-#
-# A bit tricky here; CID font support uses the IBM Type1 rasterizer,
-# but it's generally better to use FreeType for regular Type1 files,
-# so we make CID build the IBM rasterizer, but not also make the Type1
-# rasterizer used for normal Type1 files
-#
-
-AC_ARG_ENABLE(type1, [ --enable-type1 ], [XFONT_TYPE1=$enableval], [XFONT_TYPE1=no])
+AC_ARG_ENABLE(type1, [ --enable-type1 ], [XFONT_TYPE1=$enableval], [XFONT_TYPE1=yes])
 if test "x$XFONT_TYPE1" = xyes; then
 	AC_DEFINE(XFONT_TYPE1,1,[Support IBM Type 1 rasterizer for Type1 font files])
 	XFONT_FONTFILE=yes
 fi
-
-AC_ARG_ENABLE(cid, [ --disable-cid ], [XFONT_CID=$enableval], [XFONT_CID=yes])
-AM_CONDITIONAL(XFONT_CID, [test "x$XFONT_CID" = xyes ])
-if test "x$XFONT_CID" = xyes; then
-	AC_DEFINE(XFONT_CID,1,[Support Type 1 CID font files])
-	XFONT_TYPE1=yes
-	XFONT_FONTFILE=yes
-fi
-
 AM_CONDITIONAL(XFONT_TYPE1, [test "x$XFONT_TYPE1" = xyes ])
 
 AC_ARG_ENABLE(speedo, [ --disable-speedo ], [XFONT_SPEEDO=$enableval], [XFONT_SPEEDO=yes])
@@ -187,6 +168,14 @@ if test "x$XFONT_FONTFILE" = xyes; then
 	AC_DEFINE(XFONT_FONTFILE,1,[Support fonts in files])
 fi
 
+AC_ARG_ENABLE(loadable-font-modules, 
+  AC_HELP_STRING([--disable-loadable-font-modules], 
+       	 [support dynamically loaded font modules (default is enabled)]),
+	[LOADABLE_FONTS=$enableval], [LOADABLE_FONTS=yes])
+if test "x$LOADABLE_FONTS" = xyes; then
+	AC_DEFINE(LOADABLEFONTS,1,[Support dynamically loaded font modules])
+fi
+
 #
 # Font cache extension support?
 #
@@ -234,6 +223,9 @@ case $host_os in
     linux*)
         OS_CFLAGS="-D_XOPEN_SOURCE"
         ;;
+    darwin*)
+        OS_CFLAGS="-Wl,-flat_namespace"
+	;;
     *)
         OS_CFLAGS=
         ;;
