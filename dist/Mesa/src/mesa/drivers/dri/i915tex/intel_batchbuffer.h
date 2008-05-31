@@ -9,7 +9,7 @@ struct intel_context;
 #define BATCH_SZ 16384
 #define BATCH_RESERVED 16
 
-#define MAX_RELOCS 100
+#define MAX_RELOCS 400
 
 #define INTEL_BATCH_NO_CLIPRECTS 0x1
 #define INTEL_BATCH_CLIPRECTS    0x2
@@ -38,6 +38,9 @@ struct intel_batchbuffer
    struct buffer_reloc reloc[MAX_RELOCS];
    GLuint nr_relocs;
    GLuint size;
+
+   GLuint dirty_state;
+   GLuint id;
 };
 
 struct intel_batchbuffer *intel_batchbuffer_alloc(struct intel_context

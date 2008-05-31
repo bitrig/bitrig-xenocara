@@ -67,13 +67,11 @@ typedef struct {
     * that clip{XYZ} were multiplied by to get ndc{XYZ}.
     */
    GLfloat win[4];
-   GLfloat texcoord[MAX_TEXTURE_COORD_UNITS][4];
    GLchan color[4];
    GLchan specular[4];
-   GLfloat fog;
    GLfloat index;
    GLfloat pointSize;
-   GLfloat attribute[MAX_VERTEX_ATTRIBS][4];
+   GLfloat attrib[FRAG_ATTRIB_MAX][4]; /**< texcoords & varying, more to come */
 } SWvertex;
 
 
@@ -130,13 +128,10 @@ _swrast_BlitFramebuffer(GLcontext *ctx,
                         GLbitfield mask, GLenum filter);
 
 extern void
-_swrast_Clear( GLcontext *ctx, GLbitfield mask, GLboolean all,
-	       GLint x, GLint y, GLint width, GLint height );
+_swrast_Clear(GLcontext *ctx, GLbitfield buffers);
 
 extern void
-_swrast_Accum( GLcontext *ctx, GLenum op,
-	       GLfloat value, GLint xpos, GLint ypos,
-	       GLint width, GLint height );
+_swrast_Accum(GLcontext *ctx, GLenum op, GLfloat value);
 
 
 
@@ -144,6 +139,13 @@ _swrast_Accum( GLcontext *ctx, GLenum op,
  */
 extern void
 _swrast_ResetLineStipple( GLcontext *ctx );
+
+/**
+ * Indicates front/back facing for subsequent points/lines when drawing
+ * unfilled polygons.  Needed for two-side stencil.
+ */
+extern void
+_swrast_SetFacing(GLcontext *ctx, GLuint facing);
 
 /* These will always render the correct point/line/triangle for the
  * current state.
@@ -253,6 +255,13 @@ _swrast_copy_texsubimage3d(GLcontext *ctx,
 
 extern void
 _swrast_eject_texture_images(GLcontext *ctx);
+
+
+#if FEATURE_MESA_program_debug
+extern void
+_swrast_get_program_register(GLcontext *, enum register_file file,
+                             GLuint index, GLfloat val[4]);
+#endif /* FEATURE_MESA_program_debug */
 
 
 /**

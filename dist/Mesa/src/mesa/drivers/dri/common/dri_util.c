@@ -323,6 +323,7 @@ static GLboolean DoBindContext(__DRInativeDisplay *dpy,
 
     /* Bind the drawable to the context */
     pcp->driDrawablePriv = pdp;
+    pcp->driReadablePriv = prp;
     pdp->driContextPriv = pcp;
     pdp->refcount++;
     if ( pdp != prp ) {
@@ -336,6 +337,12 @@ static GLboolean DoBindContext(__DRInativeDisplay *dpy,
     if (!pdp->pStamp || *pdp->pStamp != pdp->lastStamp) {
 	DRM_SPINLOCK(&psp->pSAREA->drawable_lock, psp->drawLockID);
 	__driUtilUpdateDrawableInfo(pdp);
+	DRM_SPINUNLOCK(&psp->pSAREA->drawable_lock, psp->drawLockID);
+    }
+
+    if ((pdp != prp) && (!prp->pStamp || *prp->pStamp != prp->lastStamp)) {
+	DRM_SPINLOCK(&psp->pSAREA->drawable_lock, psp->drawLockID);
+	__driUtilUpdateDrawableInfo(prp);
 	DRM_SPINUNLOCK(&psp->pSAREA->drawable_lock, psp->drawLockID);
     }
 
@@ -402,23 +409,31 @@ __driUtilUpdateDrawableInfo(__DRIdrawablePrivate *pdp)
     __DRIscreenPrivate *psp;
     __DRIcontextPrivate *pcp = pdp->driContextPriv;
     
-    if (!pcp || (pdp != pcp->driDrawablePriv)) {
-	/* ERROR!!! */
-	return;
+    if (!pcp 
+	|| ((pdp != pcp->driDrawablePriv) && (pdp != pcp->driReadablePriv))) {
+	/* ERROR!!! 
+	 * ...but we must ignore it. There can be many contexts bound to a
+	 * drawable.
+	 */
     }
 
     psp = pdp->driScreenPriv;
     if (!psp) {
 	/* ERROR!!! */
+       _mesa_problem(NULL, "Warning! Possible infinite loop due to bug "
+		     "in file %s, line %d\n",
+		     __FILE__, __LINE__);
 	return;
     }
 
     if (pdp->pClipRects) {
 	_mesa_free(pdp->pClipRects); 
+	pdp->pClipRects = NULL;
     }
 
     if (pdp->pBackClipRects) {
 	_mesa_free(pdp->pBackClipRects); 
+	pdp->pBackClipRects = NULL;
     }
 
     DRM_SPINUNLOCK(&psp->pSAREA->drawable_lock, psp->drawLockID);
@@ -469,8 +484,30 @@ __driUtilUpdateDrawableInfo(__DRIdrawablePrivate *pdp)
 static void driSwapBuffers( __DRInativeDisplay *dpy, void *drawablePrivate )
 {
     __DRIdrawablePrivate *dPriv = (__DRIdrawablePrivate *) drawablePrivate;
+    drm_clip_rect_t rect;
+
+    if (!dPriv->numClipRects)
+        return;
+
     dPriv->swapBuffers(dPriv);
-    (void) dpy;
+
+    /* Check that we actually have the new damage report method */
+    if (api_ver < 20070105 || dri_interface->reportDamage == NULL)
+	return;
+
+    /* Assume it's affecting the whole drawable for now */
+    rect.x1 = 0;
+    rect.y1 = 0;
+    rect.x2 = rect.x1 + dPriv->w;
+    rect.y2 = rect.y1 + dPriv->h;
+
+    /* Report the damage.  Currently, all our drivers draw directly to the
+     * front buffer, so we report the damage there rather than to the backing
+     * store (if any).
+     */
+    (*dri_interface->reportDamage)(dpy, dPriv->screen, dPriv->draw,
+				   dPriv->x, dPriv->y,
+				   &rect, 1, GL_TRUE);
 }
 
 /**
@@ -841,7 +878,7 @@ static void driDestroyScreen(__DRInativeDisplay *dpy, int scrn, void *screenPriv
 	(void)drmUnmap((drmAddress)psp->pSAREA, SAREA_MAX);
 	(void)drmUnmap((drmAddress)psp->pFB, psp->fbSize);
 	_mesa_free(psp->pDevPriv);
-	(void)drmClose(psp->fd);
+	(void)drmCloseOnce(psp->fd);
 	if ( psp->modes != NULL ) {
 	    (*dri_interface->destroyContextModes)( psp->modes );
 	}
@@ -962,6 +999,9 @@ __driUtilCreateNewScreen(__DRInativeDisplay *dpy, int scrn, __DRIscreen *psc,
     psc->getDrawable       = driGetDrawable;
     psc->getMSC            = driGetMSC;
     psc->createNewContext  = driCreateNewContext;
+
+    if (internal_api_version >= 20070121)
+	psc->setTexOffset  = psp->DriverAPI.setTexOffset;
 
     if ( (psp->DriverAPI.InitDriver != NULL)
 	 && !(*psp->DriverAPI.InitDriver)(psp) ) {

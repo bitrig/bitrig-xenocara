@@ -117,6 +117,7 @@ struct bufmgr {
    struct block fenced;		/* after bmFenceBuffers (mi_flush, emit irq, write dword) */
                                 /* then to pool->lru or free() */
 
+   unsigned ctxId;
    unsigned last_fence;
    unsigned free_on_hardware;
 
@@ -335,7 +336,6 @@ static int evict_mru( struct intel_context *intel, GLuint *pool )
 
    return 0;
 }
-
 
 
 static int check_fenced( struct intel_context *intel )
@@ -578,6 +578,12 @@ struct bufmgr *bm_fake_intel_Attach( struct intel_context *intel )
       make_empty_list(&bm.referenced);
       make_empty_list(&bm.fenced);
       make_empty_list(&bm.on_hardware);
+      
+      /* The context id of any of the share group.  This won't be used
+       * in communication with the kernel, so it doesn't matter if
+       * this context is eventually deleted.
+       */
+      bm.ctxId = intel->hHWContext;
    }
 
    nr_attach++;
@@ -697,6 +703,9 @@ void bmDeleteBuffers(struct intel_context *intel, unsigned n, struct buffer **bu
 
 	 if (buf && buf->block)
 	    free_block(intel, buf->block);
+
+	 if (buf && buf->backing_store)
+	    free_backing_store(intel, buf);
 
 	 if (buf) 
 	    free(buf);	 
@@ -1242,7 +1251,6 @@ void bmReleaseBuffers( struct intel_context *intel )
    LOCK(bm);
    {
       struct block *block, *tmp;
-      assert(intel->locked);
 
       foreach_s (block, tmp, &bm->referenced) {
 
@@ -1301,7 +1309,7 @@ unsigned bmSetFence( struct intel_context *intel )
       GLuint dword[2];
       dword[0] = intel->vtbl.flush_cmd();
       dword[1] = 0;
-      intel_cmd_ioctl(intel, (char *)&dword, sizeof(dword), GL_TRUE);
+      intel_cmd_ioctl(intel, (char *)&dword, sizeof(dword));
       
       intel->bm->last_fence = intelEmitIrqLocked( intel );
       
@@ -1322,11 +1330,21 @@ unsigned bmSetFence( struct intel_context *intel )
    return intel->bm->last_fence;
 }
 
+unsigned bmSetFenceLock( struct intel_context *intel )
+{
+  unsigned last;
+  LOCK(intel->bm);
+  last = bmSetFence(intel);
+  UNLOCK(intel->bm);
+  return last;
+}
 unsigned bmLockAndFence( struct intel_context *intel )
 {
    if (intel->bm->need_fence) {
       LOCK_HARDWARE(intel);
+      LOCK(intel->bm);
       bmSetFence(intel);
+      UNLOCK(intel->bm);
       UNLOCK_HARDWARE(intel);
    }
 
@@ -1344,7 +1362,12 @@ void bmFinishFence( struct intel_context *intel, unsigned fence )
    check_fenced(intel);
 }
 
-
+void bmFinishFenceLock( struct intel_context *intel, unsigned fence )
+{
+   LOCK(intel->bm);
+   bmFinishFence(intel, fence);
+   UNLOCK(intel->bm);
+}
 
 
 /* Specifically ignore texture memory sharing.
@@ -1431,4 +1454,10 @@ GLboolean bmError( struct intel_context *intel )
    UNLOCK(bm);
 
    return retval;
+}
+
+
+GLuint bmCtxId( struct intel_context *intel )
+{
+   return intel->bm->ctxId;
 }

@@ -1,8 +1,8 @@
 /*
  * Mesa 3-D graphics library
- * Version:  6.5
+ * Version:  6.5.3
  *
- * Copyright (C) 1999-2005  Brian Paul   All Rights Reserved.
+ * Copyright (C) 1999-2007  Brian Paul   All Rights Reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -28,8 +28,9 @@
 #include "buffers.h"
 #include "context.h"
 #include "framebuffer.h"
-#include "occlude.h"
 #include "program.h"
+#include "prog_execute.h"
+#include "queryobj.h"
 #include "renderbuffer.h"
 #include "texcompress.h"
 #include "texformat.h"
@@ -43,6 +44,7 @@
 #include "fbobject.h"
 #include "texrender.h"
 #endif
+#include "shader_api.h"
 #include "arrayobj.h"
 
 #include "driverfuncs.h"
@@ -110,6 +112,8 @@ _mesa_init_driver_functions(struct dd_function_table *driver)
    driver->DeleteTexture = _mesa_delete_texture_object;
    driver->NewTextureImage = _mesa_new_texture_image;
    driver->FreeTexImageData = _mesa_free_texture_image_data; 
+   driver->MapTexture = NULL;
+   driver->UnmapTexture = NULL;
    driver->TextureMemCpy = _mesa_memcpy; 
    driver->IsTextureResident = NULL;
    driver->PrioritizeTexture = NULL;
@@ -126,6 +130,9 @@ _mesa_init_driver_functions(struct dd_function_table *driver)
    driver->BindProgram = NULL;
    driver->NewProgram = _mesa_new_program;
    driver->DeleteProgram = _mesa_delete_program;
+#if FEATURE_MESA_program_debug
+   driver->GetProgramRegister = _mesa_get_program_register;
+#endif /* FEATURE_MESA_program_debug */
 
    /* simple state commands */
    driver->AlphaFunc = NULL;
@@ -245,4 +252,45 @@ _mesa_init_driver_functions(struct dd_function_table *driver)
    driver->EndList = NULL;
    driver->BeginCallList = NULL;
    driver->EndCallList = NULL;
+
+
+   /* XXX temporary here */
+   _mesa_init_glsl_driver_functions(driver);
+}
+
+
+/**
+ * Plug in Mesa's GLSL functions.
+ */
+void
+_mesa_init_glsl_driver_functions(struct dd_function_table *driver)
+{
+   driver->AttachShader = _mesa_attach_shader;
+   driver->BindAttribLocation = _mesa_bind_attrib_location;
+   driver->CompileShader = _mesa_compile_shader;
+   driver->CreateProgram = _mesa_create_program;
+   driver->CreateShader = _mesa_create_shader;
+   driver->DeleteProgram2 = _mesa_delete_program2;
+   driver->DeleteShader = _mesa_delete_shader;
+   driver->DetachShader = _mesa_detach_shader;
+   driver->GetActiveAttrib = _mesa_get_active_attrib;
+   driver->GetActiveUniform = _mesa_get_active_uniform;
+   driver->GetAttachedShaders = _mesa_get_attached_shaders;
+   driver->GetAttribLocation = _mesa_get_attrib_location;
+   driver->GetHandle = _mesa_get_handle;
+   driver->GetProgramiv = _mesa_get_programiv;
+   driver->GetProgramInfoLog = _mesa_get_program_info_log;
+   driver->GetShaderiv = _mesa_get_shaderiv;
+   driver->GetShaderInfoLog = _mesa_get_shader_info_log;
+   driver->GetShaderSource = _mesa_get_shader_source;
+   driver->GetUniformfv = _mesa_get_uniformfv;
+   driver->GetUniformLocation = _mesa_get_uniform_location;
+   driver->IsProgram = _mesa_is_program;
+   driver->IsShader = _mesa_is_shader;
+   driver->LinkProgram = _mesa_link_program;
+   driver->ShaderSource = _mesa_shader_source;
+   driver->Uniform = _mesa_uniform;
+   driver->UniformMatrix = _mesa_uniform_matrix;
+   driver->UseProgram = _mesa_use_program;
+   driver->ValidateProgram = _mesa_validate_program;
 }

@@ -39,7 +39,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "mtypes.h"
 #include "enums.h"
 
-#include "array_cache/acache.h"
+#include "vbo/vbo.h"
 #include "tnl/tnl.h"
 #include "tnl/t_pipeline.h"
 
@@ -418,7 +418,7 @@ static GLboolean radeon_run_tcl_render( GLcontext *ctx,
 
    for (i = 0 ; i < VB->PrimitiveCount ; i++)
    {
-      GLuint prim = VB->Primitive[i].mode;
+      GLuint prim = _tnl_translate_prim(&VB->Primitive[i]);
       GLuint start = VB->Primitive[i].start;
       GLuint length = VB->Primitive[i].count;
 

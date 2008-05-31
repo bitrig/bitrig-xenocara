@@ -323,7 +323,7 @@ _mesa_GetBooleanv( GLenum pname, GLboolean *params )
       case GL_EDGE_FLAG:
          {
          FLUSH_CURRENT(ctx, 0);
-         params[0] = ctx->Current.EdgeFlag;
+         params[0] = (ctx->Current.Attrib[VERT_ATTRIB_EDGEFLAG][0] == 1.0);
          }
          break;
       case GL_FEEDBACK_BUFFER_SIZE:
@@ -677,34 +677,34 @@ _mesa_GetBooleanv( GLenum pname, GLboolean *params )
          params[0] = ENUM_TO_BOOLEAN(ctx->Hint.PerspectiveCorrection);
          break;
       case GL_PIXEL_MAP_A_TO_A_SIZE:
-         params[0] = INT_TO_BOOLEAN(ctx->Pixel.MapAtoAsize);
+         params[0] = INT_TO_BOOLEAN(ctx->PixelMaps.AtoA.Size);
          break;
       case GL_PIXEL_MAP_B_TO_B_SIZE:
-         params[0] = INT_TO_BOOLEAN(ctx->Pixel.MapBtoBsize);
+         params[0] = INT_TO_BOOLEAN(ctx->PixelMaps.BtoB.Size);
          break;
       case GL_PIXEL_MAP_G_TO_G_SIZE:
-         params[0] = INT_TO_BOOLEAN(ctx->Pixel.MapGtoGsize);
+         params[0] = INT_TO_BOOLEAN(ctx->PixelMaps.GtoG.Size);
          break;
       case GL_PIXEL_MAP_I_TO_A_SIZE:
-         params[0] = INT_TO_BOOLEAN(ctx->Pixel.MapItoAsize);
+         params[0] = INT_TO_BOOLEAN(ctx->PixelMaps.ItoA.Size);
          break;
       case GL_PIXEL_MAP_I_TO_B_SIZE:
-         params[0] = INT_TO_BOOLEAN(ctx->Pixel.MapItoBsize);
+         params[0] = INT_TO_BOOLEAN(ctx->PixelMaps.ItoB.Size);
          break;
       case GL_PIXEL_MAP_I_TO_G_SIZE:
-         params[0] = INT_TO_BOOLEAN(ctx->Pixel.MapItoGsize);
+         params[0] = INT_TO_BOOLEAN(ctx->PixelMaps.ItoG.Size);
          break;
       case GL_PIXEL_MAP_I_TO_I_SIZE:
-         params[0] = INT_TO_BOOLEAN(ctx->Pixel.MapItoIsize);
+         params[0] = INT_TO_BOOLEAN(ctx->PixelMaps.ItoI.Size);
          break;
       case GL_PIXEL_MAP_I_TO_R_SIZE:
-         params[0] = INT_TO_BOOLEAN(ctx->Pixel.MapItoRsize);
+         params[0] = INT_TO_BOOLEAN(ctx->PixelMaps.ItoR.Size);
          break;
       case GL_PIXEL_MAP_R_TO_R_SIZE:
-         params[0] = INT_TO_BOOLEAN(ctx->Pixel.MapRtoRsize);
+         params[0] = INT_TO_BOOLEAN(ctx->PixelMaps.RtoR.Size);
          break;
       case GL_PIXEL_MAP_S_TO_S_SIZE:
-         params[0] = INT_TO_BOOLEAN(ctx->Pixel.MapStoSsize);
+         params[0] = INT_TO_BOOLEAN(ctx->PixelMaps.StoS.Size);
          break;
       case GL_POINT_SIZE:
          params[0] = FLOAT_TO_BOOLEAN(ctx->Point.Size);
@@ -793,7 +793,7 @@ _mesa_GetBooleanv( GLenum pname, GLboolean *params )
          params[0] = FLOAT_TO_BOOLEAN(ctx->Pixel.RedBias);
          break;
       case GL_RED_BITS:
-         params[0] = INT_TO_BOOLEAN( ctx->DrawBuffer->Visual.redBits );
+         params[0] = INT_TO_BOOLEAN(ctx->DrawBuffer->Visual.redBits);
          break;
       case GL_RED_SCALE:
          params[0] = FLOAT_TO_BOOLEAN(ctx->Pixel.RedScale);
@@ -1283,15 +1283,15 @@ _mesa_GetBooleanv( GLenum pname, GLboolean *params )
          break;
       case GL_COLOR_TABLE_SGI:
          CHECK_EXT1(SGI_color_table, "GetBooleanv");
-         params[0] = ctx->Pixel.ColorTableEnabled;
+         params[0] = ctx->Pixel.ColorTableEnabled[COLORTABLE_PRECONVOLUTION];
          break;
       case GL_POST_CONVOLUTION_COLOR_TABLE_SGI:
          CHECK_EXT1(SGI_color_table, "GetBooleanv");
-         params[0] = ctx->Pixel.PostConvolutionColorTableEnabled;
+         params[0] = ctx->Pixel.ColorTableEnabled[COLORTABLE_POSTCONVOLUTION];
          break;
       case GL_POST_COLOR_MATRIX_COLOR_TABLE_SGI:
          CHECK_EXT1(SGI_color_table, "GetBooleanv");
-         params[0] = ctx->Pixel.PostColorMatrixColorTableEnabled;
+         params[0] = ctx->Pixel.ColorTableEnabled[COLORTABLE_POSTCOLORMATRIX];
          break;
       case GL_TEXTURE_COLOR_TABLE_SGI:
          CHECK_EXT1(SGI_texture_color_table, "GetBooleanv");
@@ -1833,6 +1833,9 @@ _mesa_GetBooleanv( GLenum pname, GLboolean *params )
       case GL_STENCIL_BACK_VALUE_MASK:
          params[0] = INT_TO_BOOLEAN(ctx->Stencil.ValueMask[1]);
          break;
+      case GL_STENCIL_BACK_WRITEMASK:
+         params[0] = INT_TO_BOOLEAN(ctx->Stencil.WriteMask[1]);
+         break;
       case GL_STENCIL_BACK_REF:
          params[0] = INT_TO_BOOLEAN(ctx->Stencil.Ref[1]);
          break;
@@ -1861,9 +1864,13 @@ _mesa_GetBooleanv( GLenum pname, GLboolean *params )
          CHECK_EXT1(EXT_framebuffer_object, "GetBooleanv");
          params[0] = INT_TO_BOOLEAN(ctx->Const.MaxRenderbufferSize);
          break;
+      case GL_READ_FRAMEBUFFER_BINDING_EXT:
+         CHECK_EXT1(EXT_framebuffer_blit, "GetBooleanv");
+         params[0] = INT_TO_BOOLEAN(ctx->ReadBuffer->Name);
+         break;
       case GL_MAX_FRAGMENT_UNIFORM_COMPONENTS_ARB:
          CHECK_EXT1(ARB_fragment_shader, "GetBooleanv");
-         params[0] = INT_TO_BOOLEAN(MAX_FRAGMENT_UNIFORM_COMPONENTS);
+         params[0] = INT_TO_BOOLEAN(ctx->Const.FragmentProgram.MaxUniformComponents);
          break;
       case GL_FRAGMENT_SHADER_DERIVATIVE_HINT_ARB:
          CHECK_EXT1(ARB_fragment_shader, "GetBooleanv");
@@ -1871,19 +1878,23 @@ _mesa_GetBooleanv( GLenum pname, GLboolean *params )
          break;
       case GL_MAX_VERTEX_UNIFORM_COMPONENTS_ARB:
          CHECK_EXT1(ARB_vertex_shader, "GetBooleanv");
-         params[0] = INT_TO_BOOLEAN(MAX_VERTEX_UNIFORM_COMPONENTS);
+         params[0] = INT_TO_BOOLEAN(ctx->Const.VertexProgram.MaxUniformComponents);
          break;
       case GL_MAX_VARYING_FLOATS_ARB:
          CHECK_EXT1(ARB_vertex_shader, "GetBooleanv");
-         params[0] = INT_TO_BOOLEAN(MAX_VARYING_FLOATS);
+         params[0] = INT_TO_BOOLEAN(ctx->Const.MaxVarying * 4);
          break;
       case GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS_ARB:
          CHECK_EXT1(ARB_vertex_shader, "GetBooleanv");
-         params[0] = INT_TO_BOOLEAN(MAX_VERTEX_TEXTURE_IMAGE_UNITS);
+         params[0] = INT_TO_BOOLEAN(ctx->Const.MaxVertexTextureImageUnits);
          break;
       case GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS_ARB:
          CHECK_EXT1(ARB_vertex_shader, "GetBooleanv");
          params[0] = INT_TO_BOOLEAN(MAX_COMBINED_TEXTURE_IMAGE_UNITS);
+         break;
+      case GL_CURRENT_PROGRAM:
+         CHECK_EXT1(ARB_shader_objects, "GetBooleanv");
+         params[0] = INT_TO_BOOLEAN(ctx->Shader.CurrentProgram ? ctx->Shader.CurrentProgram->Name : 0);
          break;
       default:
          _mesa_error(ctx, GL_INVALID_ENUM, "glGetBooleanv(pname=0x%x)", pname);
@@ -2147,7 +2158,7 @@ _mesa_GetFloatv( GLenum pname, GLfloat *params )
       case GL_EDGE_FLAG:
          {
          FLUSH_CURRENT(ctx, 0);
-         params[0] = BOOLEAN_TO_FLOAT(ctx->Current.EdgeFlag);
+         params[0] = BOOLEAN_TO_FLOAT((ctx->Current.Attrib[VERT_ATTRIB_EDGEFLAG][0] == 1.0));
          }
          break;
       case GL_FEEDBACK_BUFFER_SIZE:
@@ -2501,34 +2512,34 @@ _mesa_GetFloatv( GLenum pname, GLfloat *params )
          params[0] = ENUM_TO_FLOAT(ctx->Hint.PerspectiveCorrection);
          break;
       case GL_PIXEL_MAP_A_TO_A_SIZE:
-         params[0] = (GLfloat)(ctx->Pixel.MapAtoAsize);
+         params[0] = (GLfloat)(ctx->PixelMaps.AtoA.Size);
          break;
       case GL_PIXEL_MAP_B_TO_B_SIZE:
-         params[0] = (GLfloat)(ctx->Pixel.MapBtoBsize);
+         params[0] = (GLfloat)(ctx->PixelMaps.BtoB.Size);
          break;
       case GL_PIXEL_MAP_G_TO_G_SIZE:
-         params[0] = (GLfloat)(ctx->Pixel.MapGtoGsize);
+         params[0] = (GLfloat)(ctx->PixelMaps.GtoG.Size);
          break;
       case GL_PIXEL_MAP_I_TO_A_SIZE:
-         params[0] = (GLfloat)(ctx->Pixel.MapItoAsize);
+         params[0] = (GLfloat)(ctx->PixelMaps.ItoA.Size);
          break;
       case GL_PIXEL_MAP_I_TO_B_SIZE:
-         params[0] = (GLfloat)(ctx->Pixel.MapItoBsize);
+         params[0] = (GLfloat)(ctx->PixelMaps.ItoB.Size);
          break;
       case GL_PIXEL_MAP_I_TO_G_SIZE:
-         params[0] = (GLfloat)(ctx->Pixel.MapItoGsize);
+         params[0] = (GLfloat)(ctx->PixelMaps.ItoG.Size);
          break;
       case GL_PIXEL_MAP_I_TO_I_SIZE:
-         params[0] = (GLfloat)(ctx->Pixel.MapItoIsize);
+         params[0] = (GLfloat)(ctx->PixelMaps.ItoI.Size);
          break;
       case GL_PIXEL_MAP_I_TO_R_SIZE:
-         params[0] = (GLfloat)(ctx->Pixel.MapItoRsize);
+         params[0] = (GLfloat)(ctx->PixelMaps.ItoR.Size);
          break;
       case GL_PIXEL_MAP_R_TO_R_SIZE:
-         params[0] = (GLfloat)(ctx->Pixel.MapRtoRsize);
+         params[0] = (GLfloat)(ctx->PixelMaps.RtoR.Size);
          break;
       case GL_PIXEL_MAP_S_TO_S_SIZE:
-         params[0] = (GLfloat)(ctx->Pixel.MapStoSsize);
+         params[0] = (GLfloat)(ctx->PixelMaps.StoS.Size);
          break;
       case GL_POINT_SIZE:
          params[0] = ctx->Point.Size;
@@ -2617,7 +2628,7 @@ _mesa_GetFloatv( GLenum pname, GLfloat *params )
          params[0] = ctx->Pixel.RedBias;
          break;
       case GL_RED_BITS:
-         params[0] = (GLfloat)( ctx->DrawBuffer->Visual.redBits );
+         params[0] = (GLfloat)(ctx->DrawBuffer->Visual.redBits);
          break;
       case GL_RED_SCALE:
          params[0] = ctx->Pixel.RedScale;
@@ -3107,15 +3118,15 @@ _mesa_GetFloatv( GLenum pname, GLfloat *params )
          break;
       case GL_COLOR_TABLE_SGI:
          CHECK_EXT1(SGI_color_table, "GetFloatv");
-         params[0] = BOOLEAN_TO_FLOAT(ctx->Pixel.ColorTableEnabled);
+         params[0] = BOOLEAN_TO_FLOAT(ctx->Pixel.ColorTableEnabled[COLORTABLE_PRECONVOLUTION]);
          break;
       case GL_POST_CONVOLUTION_COLOR_TABLE_SGI:
          CHECK_EXT1(SGI_color_table, "GetFloatv");
-         params[0] = BOOLEAN_TO_FLOAT(ctx->Pixel.PostConvolutionColorTableEnabled);
+         params[0] = BOOLEAN_TO_FLOAT(ctx->Pixel.ColorTableEnabled[COLORTABLE_POSTCONVOLUTION]);
          break;
       case GL_POST_COLOR_MATRIX_COLOR_TABLE_SGI:
          CHECK_EXT1(SGI_color_table, "GetFloatv");
-         params[0] = BOOLEAN_TO_FLOAT(ctx->Pixel.PostColorMatrixColorTableEnabled);
+         params[0] = BOOLEAN_TO_FLOAT(ctx->Pixel.ColorTableEnabled[COLORTABLE_POSTCOLORMATRIX]);
          break;
       case GL_TEXTURE_COLOR_TABLE_SGI:
          CHECK_EXT1(SGI_texture_color_table, "GetFloatv");
@@ -3657,6 +3668,9 @@ _mesa_GetFloatv( GLenum pname, GLfloat *params )
       case GL_STENCIL_BACK_VALUE_MASK:
          params[0] = (GLfloat)(ctx->Stencil.ValueMask[1]);
          break;
+      case GL_STENCIL_BACK_WRITEMASK:
+         params[0] = (GLfloat)(ctx->Stencil.WriteMask[1]);
+         break;
       case GL_STENCIL_BACK_REF:
          params[0] = (GLfloat)(ctx->Stencil.Ref[1]);
          break;
@@ -3685,9 +3699,13 @@ _mesa_GetFloatv( GLenum pname, GLfloat *params )
          CHECK_EXT1(EXT_framebuffer_object, "GetFloatv");
          params[0] = (GLfloat)(ctx->Const.MaxRenderbufferSize);
          break;
+      case GL_READ_FRAMEBUFFER_BINDING_EXT:
+         CHECK_EXT1(EXT_framebuffer_blit, "GetFloatv");
+         params[0] = (GLfloat)(ctx->ReadBuffer->Name);
+         break;
       case GL_MAX_FRAGMENT_UNIFORM_COMPONENTS_ARB:
          CHECK_EXT1(ARB_fragment_shader, "GetFloatv");
-         params[0] = (GLfloat)(MAX_FRAGMENT_UNIFORM_COMPONENTS);
+         params[0] = (GLfloat)(ctx->Const.FragmentProgram.MaxUniformComponents);
          break;
       case GL_FRAGMENT_SHADER_DERIVATIVE_HINT_ARB:
          CHECK_EXT1(ARB_fragment_shader, "GetFloatv");
@@ -3695,19 +3713,23 @@ _mesa_GetFloatv( GLenum pname, GLfloat *params )
          break;
       case GL_MAX_VERTEX_UNIFORM_COMPONENTS_ARB:
          CHECK_EXT1(ARB_vertex_shader, "GetFloatv");
-         params[0] = (GLfloat)(MAX_VERTEX_UNIFORM_COMPONENTS);
+         params[0] = (GLfloat)(ctx->Const.VertexProgram.MaxUniformComponents);
          break;
       case GL_MAX_VARYING_FLOATS_ARB:
          CHECK_EXT1(ARB_vertex_shader, "GetFloatv");
-         params[0] = (GLfloat)(MAX_VARYING_FLOATS);
+         params[0] = (GLfloat)(ctx->Const.MaxVarying * 4);
          break;
       case GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS_ARB:
          CHECK_EXT1(ARB_vertex_shader, "GetFloatv");
-         params[0] = (GLfloat)(MAX_VERTEX_TEXTURE_IMAGE_UNITS);
+         params[0] = (GLfloat)(ctx->Const.MaxVertexTextureImageUnits);
          break;
       case GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS_ARB:
          CHECK_EXT1(ARB_vertex_shader, "GetFloatv");
          params[0] = (GLfloat)(MAX_COMBINED_TEXTURE_IMAGE_UNITS);
+         break;
+      case GL_CURRENT_PROGRAM:
+         CHECK_EXT1(ARB_shader_objects, "GetFloatv");
+         params[0] = (GLfloat)(ctx->Shader.CurrentProgram ? ctx->Shader.CurrentProgram->Name : 0);
          break;
       default:
          _mesa_error(ctx, GL_INVALID_ENUM, "glGetFloatv(pname=0x%x)", pname);
@@ -3971,7 +3993,7 @@ _mesa_GetIntegerv( GLenum pname, GLint *params )
       case GL_EDGE_FLAG:
          {
          FLUSH_CURRENT(ctx, 0);
-         params[0] = BOOLEAN_TO_INT(ctx->Current.EdgeFlag);
+         params[0] = BOOLEAN_TO_INT((ctx->Current.Attrib[VERT_ATTRIB_EDGEFLAG][0] == 1.0));
          }
          break;
       case GL_FEEDBACK_BUFFER_SIZE:
@@ -4325,34 +4347,34 @@ _mesa_GetIntegerv( GLenum pname, GLint *params )
          params[0] = ENUM_TO_INT(ctx->Hint.PerspectiveCorrection);
          break;
       case GL_PIXEL_MAP_A_TO_A_SIZE:
-         params[0] = ctx->Pixel.MapAtoAsize;
+         params[0] = ctx->PixelMaps.AtoA.Size;
          break;
       case GL_PIXEL_MAP_B_TO_B_SIZE:
-         params[0] = ctx->Pixel.MapBtoBsize;
+         params[0] = ctx->PixelMaps.BtoB.Size;
          break;
       case GL_PIXEL_MAP_G_TO_G_SIZE:
-         params[0] = ctx->Pixel.MapGtoGsize;
+         params[0] = ctx->PixelMaps.GtoG.Size;
          break;
       case GL_PIXEL_MAP_I_TO_A_SIZE:
-         params[0] = ctx->Pixel.MapItoAsize;
+         params[0] = ctx->PixelMaps.ItoA.Size;
          break;
       case GL_PIXEL_MAP_I_TO_B_SIZE:
-         params[0] = ctx->Pixel.MapItoBsize;
+         params[0] = ctx->PixelMaps.ItoB.Size;
          break;
       case GL_PIXEL_MAP_I_TO_G_SIZE:
-         params[0] = ctx->Pixel.MapItoGsize;
+         params[0] = ctx->PixelMaps.ItoG.Size;
          break;
       case GL_PIXEL_MAP_I_TO_I_SIZE:
-         params[0] = ctx->Pixel.MapItoIsize;
+         params[0] = ctx->PixelMaps.ItoI.Size;
          break;
       case GL_PIXEL_MAP_I_TO_R_SIZE:
-         params[0] = ctx->Pixel.MapItoRsize;
+         params[0] = ctx->PixelMaps.ItoR.Size;
          break;
       case GL_PIXEL_MAP_R_TO_R_SIZE:
-         params[0] = ctx->Pixel.MapRtoRsize;
+         params[0] = ctx->PixelMaps.RtoR.Size;
          break;
       case GL_PIXEL_MAP_S_TO_S_SIZE:
-         params[0] = ctx->Pixel.MapStoSsize;
+         params[0] = ctx->PixelMaps.StoS.Size;
          break;
       case GL_POINT_SIZE:
          params[0] = IROUND(ctx->Point.Size);
@@ -4441,7 +4463,7 @@ _mesa_GetIntegerv( GLenum pname, GLint *params )
          params[0] = IROUND(ctx->Pixel.RedBias);
          break;
       case GL_RED_BITS:
-         params[0] =  ctx->DrawBuffer->Visual.redBits ;
+         params[0] = ctx->DrawBuffer->Visual.redBits;
          break;
       case GL_RED_SCALE:
          params[0] = IROUND(ctx->Pixel.RedScale);
@@ -4931,15 +4953,15 @@ _mesa_GetIntegerv( GLenum pname, GLint *params )
          break;
       case GL_COLOR_TABLE_SGI:
          CHECK_EXT1(SGI_color_table, "GetIntegerv");
-         params[0] = BOOLEAN_TO_INT(ctx->Pixel.ColorTableEnabled);
+         params[0] = BOOLEAN_TO_INT(ctx->Pixel.ColorTableEnabled[COLORTABLE_PRECONVOLUTION]);
          break;
       case GL_POST_CONVOLUTION_COLOR_TABLE_SGI:
          CHECK_EXT1(SGI_color_table, "GetIntegerv");
-         params[0] = BOOLEAN_TO_INT(ctx->Pixel.PostConvolutionColorTableEnabled);
+         params[0] = BOOLEAN_TO_INT(ctx->Pixel.ColorTableEnabled[COLORTABLE_POSTCONVOLUTION]);
          break;
       case GL_POST_COLOR_MATRIX_COLOR_TABLE_SGI:
          CHECK_EXT1(SGI_color_table, "GetIntegerv");
-         params[0] = BOOLEAN_TO_INT(ctx->Pixel.PostColorMatrixColorTableEnabled);
+         params[0] = BOOLEAN_TO_INT(ctx->Pixel.ColorTableEnabled[COLORTABLE_POSTCOLORMATRIX]);
          break;
       case GL_TEXTURE_COLOR_TABLE_SGI:
          CHECK_EXT1(SGI_texture_color_table, "GetIntegerv");
@@ -5481,6 +5503,9 @@ _mesa_GetIntegerv( GLenum pname, GLint *params )
       case GL_STENCIL_BACK_VALUE_MASK:
          params[0] = ctx->Stencil.ValueMask[1];
          break;
+      case GL_STENCIL_BACK_WRITEMASK:
+         params[0] = ctx->Stencil.WriteMask[1];
+         break;
       case GL_STENCIL_BACK_REF:
          params[0] = ctx->Stencil.Ref[1];
          break;
@@ -5509,9 +5534,13 @@ _mesa_GetIntegerv( GLenum pname, GLint *params )
          CHECK_EXT1(EXT_framebuffer_object, "GetIntegerv");
          params[0] = ctx->Const.MaxRenderbufferSize;
          break;
+      case GL_READ_FRAMEBUFFER_BINDING_EXT:
+         CHECK_EXT1(EXT_framebuffer_blit, "GetIntegerv");
+         params[0] = ctx->ReadBuffer->Name;
+         break;
       case GL_MAX_FRAGMENT_UNIFORM_COMPONENTS_ARB:
          CHECK_EXT1(ARB_fragment_shader, "GetIntegerv");
-         params[0] = MAX_FRAGMENT_UNIFORM_COMPONENTS;
+         params[0] = ctx->Const.FragmentProgram.MaxUniformComponents;
          break;
       case GL_FRAGMENT_SHADER_DERIVATIVE_HINT_ARB:
          CHECK_EXT1(ARB_fragment_shader, "GetIntegerv");
@@ -5519,19 +5548,23 @@ _mesa_GetIntegerv( GLenum pname, GLint *params )
          break;
       case GL_MAX_VERTEX_UNIFORM_COMPONENTS_ARB:
          CHECK_EXT1(ARB_vertex_shader, "GetIntegerv");
-         params[0] = MAX_VERTEX_UNIFORM_COMPONENTS;
+         params[0] = ctx->Const.VertexProgram.MaxUniformComponents;
          break;
       case GL_MAX_VARYING_FLOATS_ARB:
          CHECK_EXT1(ARB_vertex_shader, "GetIntegerv");
-         params[0] = MAX_VARYING_FLOATS;
+         params[0] = ctx->Const.MaxVarying * 4;
          break;
       case GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS_ARB:
          CHECK_EXT1(ARB_vertex_shader, "GetIntegerv");
-         params[0] = MAX_VERTEX_TEXTURE_IMAGE_UNITS;
+         params[0] = ctx->Const.MaxVertexTextureImageUnits;
          break;
       case GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS_ARB:
          CHECK_EXT1(ARB_vertex_shader, "GetIntegerv");
          params[0] = MAX_COMBINED_TEXTURE_IMAGE_UNITS;
+         break;
+      case GL_CURRENT_PROGRAM:
+         CHECK_EXT1(ARB_shader_objects, "GetIntegerv");
+         params[0] = ctx->Shader.CurrentProgram ? ctx->Shader.CurrentProgram->Name : 0;
          break;
       default:
          _mesa_error(ctx, GL_INVALID_ENUM, "glGetIntegerv(pname=0x%x)", pname);

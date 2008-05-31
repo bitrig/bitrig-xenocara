@@ -138,46 +138,8 @@ _mesa_get_current_context(void);
 /*@}*/
 
 
-/** \name OpenGL SI-style export functions */
-/*@{*/
-
-extern GLboolean
-_mesa_destroyContext(__GLcontext *gc);
-
-extern GLboolean
-_mesa_loseCurrent(__GLcontext *gc);
-
-extern GLboolean
-_mesa_makeCurrent(__GLcontext *gc);
-
-extern GLboolean
-_mesa_shareContext(__GLcontext *gc, __GLcontext *gcShare);
-
-extern GLboolean
-_mesa_copyContext(__GLcontext *dst, const __GLcontext *src, GLuint mask);
-
-extern GLboolean
-_mesa_forceCurrent(__GLcontext *gc);
-
-extern GLboolean
-_mesa_notifyResize(__GLcontext *gc);
-
-extern void
-_mesa_notifyDestroy(__GLcontext *gc);
-
 extern void
 _mesa_notifySwapBuffers(__GLcontext *gc);
-
-extern struct __GLdispatchStateRec *
-_mesa_dispatchExec(__GLcontext *gc);
-
-extern void
-_mesa_beginDispatchOverride(__GLcontext *gc);
-
-extern void
-_mesa_endDispatchOverride(__GLcontext *gc);
-
-/*@}*/
 
 
 extern struct _glapi_table *
@@ -310,11 +272,19 @@ do {									\
    (((CTX)->Light.Enabled &&						\
      (CTX)->Light.Model.ColorControl == GL_SEPARATE_SPECULAR_COLOR)	\
     || (CTX)->Fog.ColorSumEnabled					\
-    || ((CTX)->VertexProgram._Enabled &&				\
-        ((CTX)->VertexProgram.Current->Base.InputsRead & VERT_BIT_COLOR1)) \
-    || ((CTX)->FragmentProgram._Enabled &&				\
-        ((CTX)->FragmentProgram.Current->Base.InputsRead & FRAG_BIT_COL1)) \
+    || ((CTX)->VertexProgram._Current &&				\
+        ((CTX)->VertexProgram._Current->Base.InputsRead & VERT_BIT_COLOR1)) \
+    || ((CTX)->FragmentProgram._Current &&				\
+        ((CTX)->FragmentProgram._Current->Base.InputsRead & FRAG_BIT_COL1)) \
    )
+
+
+/**
+ * Is RGBA LogicOp enabled?
+ */
+#define RGBA_LOGICOP_ENABLED(CTX) \
+  ((CTX)->Color.ColorLogicOpEnabled || \
+   ((CTX)->Color.BlendEnabled && (CTX)->Color.BlendEquationRGB == GL_LOGIC_OP))
 
 
 #endif /* CONTEXT_H */

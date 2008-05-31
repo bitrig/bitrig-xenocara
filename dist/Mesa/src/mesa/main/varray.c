@@ -76,7 +76,8 @@ update_array(GLcontext *ctx, struct gl_client_array *array,
     */
    if (ctx->Array.ArrayBufferObj->Name)
       array->_MaxElement = ((GLsizeiptrARB) ctx->Array.ArrayBufferObj->Size
-                            - (GLsizeiptrARB) array->Ptr) / array->StrideB;
+                            - (GLsizeiptrARB) array->Ptr + array->StrideB
+                            - elementSize) / array->StrideB;
    else
 #endif
       array->_MaxElement = 2 * 1000 * 1000 * 1000; /* just a big number */
@@ -442,7 +443,7 @@ void GLAPIENTRY
 _mesa_VertexAttribPointerNV(GLuint index, GLint size, GLenum type,
                             GLsizei stride, const GLvoid *ptr)
 {
-   const GLboolean normalized = GL_FALSE;
+   GLboolean normalized = GL_FALSE;
    GLsizei elementSize;
    GET_CURRENT_CONTEXT(ctx);
    ASSERT_OUTSIDE_BEGIN_END(ctx);
@@ -470,6 +471,7 @@ _mesa_VertexAttribPointerNV(GLuint index, GLint size, GLenum type,
    /* check for valid 'type' and compute StrideB right away */
    switch (type) {
       case GL_UNSIGNED_BYTE:
+         normalized = GL_TRUE;
          elementSize = size * sizeof(GLubyte);
          break;
       case GL_SHORT:

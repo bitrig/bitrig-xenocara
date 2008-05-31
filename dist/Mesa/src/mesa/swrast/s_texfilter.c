@@ -1,8 +1,8 @@
 /*
  * Mesa 3-D graphics library
- * Version:  6.5.1
+ * Version:  7.0.3
  *
- * Copyright (C) 1999-2006  Brian Paul   All Rights Reserved.
+ * Copyright (C) 1999-2007  Brian Paul   All Rights Reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -590,13 +590,13 @@ compute_min_mag_ranges(const struct gl_texture_object *tObj,
    }
 #endif /* DEBUG */
 
-   if (lambda[0] <= minMagThresh && lambda[n-1] <= minMagThresh) {
+   if (lambda[0] <= minMagThresh && (n <= 1 || lambda[n-1] <= minMagThresh)) {
       /* magnification for whole span */
       *magStart = 0;
       *magEnd = n;
       *minStart = *minEnd = 0;
    }
-   else if (lambda[0] > minMagThresh && lambda[n-1] > minMagThresh) {
+   else if (lambda[0] > minMagThresh && (n <=1 || lambda[n-1] > minMagThresh)) {
       /* minification for whole span */
       *minStart = 0;
       *minEnd = n;
@@ -1043,7 +1043,7 @@ sample_2d_linear_repeat(GLcontext *ctx,
    ASSERT(tObj->WrapS == GL_REPEAT);
    ASSERT(tObj->WrapT == GL_REPEAT);
    ASSERT(img->Border == 0);
-   ASSERT(img->_BaseFormat != GL_COLOR_INDEX);
+   ASSERT(img->TexFormat->BaseFormat != GL_COLOR_INDEX);
    ASSERT(img->_IsPowerOfTwo);
 
    COMPUTE_LINEAR_REPEAT_TEXEL_LOCATION(texcoord[0], u, width,  i0, i1);
@@ -1196,7 +1196,10 @@ sample_linear_2d( GLcontext *ctx,
    GLuint i;
    struct gl_texture_image *image = tObj->Image[0][tObj->BaseLevel];
    (void) lambda;
-   if (tObj->WrapS == GL_REPEAT && tObj->WrapT == GL_REPEAT) {
+   if (tObj->WrapS == GL_REPEAT &&
+       tObj->WrapT == GL_REPEAT &&
+       image->Border == 0 &&
+       image->_IsPowerOfTwo) {
       for (i=0;i<n;i++) {
          sample_2d_linear_repeat(ctx, tObj, image, texcoords[i], rgba[i]);
       }
@@ -1235,7 +1238,7 @@ opt_sample_rgb_2d( GLcontext *ctx,
    ASSERT(tObj->WrapS==GL_REPEAT);
    ASSERT(tObj->WrapT==GL_REPEAT);
    ASSERT(img->Border==0);
-   ASSERT(img->_BaseFormat==GL_RGB);
+   ASSERT(img->TexFormat->MesaFormat==MESA_FORMAT_RGB);
    ASSERT(img->_IsPowerOfTwo);
 
    for (k=0; k<n; k++) {
@@ -1276,7 +1279,7 @@ opt_sample_rgba_2d( GLcontext *ctx,
    ASSERT(tObj->WrapS==GL_REPEAT);
    ASSERT(tObj->WrapT==GL_REPEAT);
    ASSERT(img->Border==0);
-   ASSERT(img->_BaseFormat==GL_RGBA);
+   ASSERT(img->TexFormat->MesaFormat==MESA_FORMAT_RGBA);
    ASSERT(img->_IsPowerOfTwo);
 
    for (i = 0; i < n; i++) {
@@ -1306,7 +1309,7 @@ sample_lambda_2d( GLcontext *ctx,
    const GLboolean repeatNoBorderPOT = (tObj->WrapS == GL_REPEAT)
       && (tObj->WrapT == GL_REPEAT)
       && (tImg->Border == 0 && (tImg->Width == tImg->RowStride))
-      && (tImg->_BaseFormat != GL_COLOR_INDEX)
+      && (tImg->TexFormat->BaseFormat != GL_COLOR_INDEX)
       && tImg->_IsPowerOfTwo;
 
    ASSERT(lambda != NULL);
@@ -1321,16 +1324,10 @@ sample_lambda_2d( GLcontext *ctx,
          if (repeatNoBorderPOT) {
             switch (tImg->TexFormat->MesaFormat) {
             case MESA_FORMAT_RGB:
-            case MESA_FORMAT_RGB888:
-            /*case MESA_FORMAT_BGR888:*/
                opt_sample_rgb_2d(ctx, tObj, m, texcoords + minStart,
                                  NULL, rgba + minStart);
                break;
             case MESA_FORMAT_RGBA:
-            case MESA_FORMAT_RGBA8888:
-            case MESA_FORMAT_ARGB8888:
-            /*case MESA_FORMAT_ABGR8888:*/
-            /*case MESA_FORMAT_BGRA8888:*/
 	       opt_sample_rgba_2d(ctx, tObj, m, texcoords + minStart,
                                   NULL, rgba + minStart);
                break;
@@ -1384,16 +1381,10 @@ sample_lambda_2d( GLcontext *ctx,
          if (repeatNoBorderPOT) {
             switch (tImg->TexFormat->MesaFormat) {
             case MESA_FORMAT_RGB:
-            case MESA_FORMAT_RGB888:
-            /*case MESA_FORMAT_BGR888:*/
                opt_sample_rgb_2d(ctx, tObj, m, texcoords + magStart,
                                  NULL, rgba + magStart);
                break;
             case MESA_FORMAT_RGBA:
-            case MESA_FORMAT_RGBA8888:
-            case MESA_FORMAT_ARGB8888:
-            /*case MESA_FORMAT_ABGR8888:*/
-            /*case MESA_FORMAT_BGRA8888:*/
 	       opt_sample_rgba_2d(ctx, tObj, m, texcoords + magStart,
                                   NULL, rgba + magStart);
                break;
@@ -2024,6 +2015,60 @@ sample_lambda_cube( GLcontext *ctx,
 /*               Texture Rectangle Sampling Functions                 */
 /**********************************************************************/
 
+
+/**
+ * Do clamp/wrap for a texture rectangle coord, GL_NEAREST filter mode.
+ */
+static INLINE GLint
+clamp_rect_coord_nearest(GLenum wrapMode, GLfloat coord, GLint max)
+{
+   if (wrapMode == GL_CLAMP) {
+      return IFLOOR( CLAMP(coord, 0.0F, max - 1) );
+   }
+   else if (wrapMode == GL_CLAMP_TO_EDGE) {
+      return IFLOOR( CLAMP(coord, 0.5F, max - 0.5F) );
+   }
+   else {
+      return IFLOOR( CLAMP(coord, -0.5F, max + 0.5F) );
+   }
+}
+
+
+/*
+ * As above, but GL_LINEAR filtering.
+ */
+static INLINE void
+clamp_rect_coord_linear(GLenum wrapMode, GLfloat coord, GLint max,
+                        GLint *i0out, GLint *i1out)
+{
+   GLfloat fcol;
+   GLint i0, i1;
+   if (wrapMode == GL_CLAMP) {
+      /* Not exactly what the spec says, but it matches NVIDIA output */
+      fcol = CLAMP(coord - 0.5F, 0.0, max-1);
+      i0 = IFLOOR(fcol);
+      i1 = i0 + 1;
+   }
+   else if (wrapMode == GL_CLAMP_TO_EDGE) {
+      fcol = CLAMP(coord, 0.5F, max - 0.5F);
+      fcol -= 0.5F;
+      i0 = IFLOOR(fcol);
+      i1 = i0 + 1;
+      if (i1 > max - 1)
+         i1 = max - 1;
+   }
+   else {
+      ASSERT(wrapMode == GL_CLAMP_TO_BORDER);
+      fcol = CLAMP(coord, -0.5F, max + 0.5F);
+      fcol -= 0.5F;
+      i0 = IFLOOR(fcol);
+      i1 = i0 + 1;
+   }
+   *i0out = i0;
+   *i1out = i1;
+}
+
+
 static void
 sample_nearest_rect(GLcontext *ctx,
 		    const struct gl_texture_object *tObj, GLuint n,
@@ -2046,31 +2091,12 @@ sample_nearest_rect(GLcontext *ctx,
    ASSERT(tObj->WrapT == GL_CLAMP ||
           tObj->WrapT == GL_CLAMP_TO_EDGE ||
           tObj->WrapT == GL_CLAMP_TO_BORDER);
-   ASSERT(img->_BaseFormat != GL_COLOR_INDEX);
+   ASSERT(img->TexFormat->BaseFormat != GL_COLOR_INDEX);
 
-   /* XXX move Wrap mode tests outside of loops for common cases */
    for (i = 0; i < n; i++) {
       GLint row, col;
-      /* NOTE: we DO NOT use [0, 1] texture coordinates! */
-      if (tObj->WrapS == GL_CLAMP) {
-         col = IFLOOR( CLAMP(texcoords[i][0], 0.0F, width - 1) );
-      }
-      else if (tObj->WrapS == GL_CLAMP_TO_EDGE) {
-         col = IFLOOR( CLAMP(texcoords[i][0], 0.5F, width - 0.5F) );
-      }
-      else {
-         col = IFLOOR( CLAMP(texcoords[i][0], -0.5F, width + 0.5F) );
-      }
-      if (tObj->WrapT == GL_CLAMP) {
-         row = IFLOOR( CLAMP(texcoords[i][1], 0.0F, height - 1) );
-      }
-      else if (tObj->WrapT == GL_CLAMP_TO_EDGE) {
-         row = IFLOOR( CLAMP(texcoords[i][1], 0.5F, height - 0.5F) );
-      }
-      else {
-         row = IFLOOR( CLAMP(texcoords[i][1], -0.5F, height + 0.5F) );
-      }
-
+      col = clamp_rect_coord_nearest(tObj->WrapS, texcoords[i][0], width);
+      row = clamp_rect_coord_nearest(tObj->WrapT, texcoords[i][1], height);
       if (col < 0 || col > width_minus_1 || row < 0 || row > height_minus_1)
          COPY_CHAN4(rgba[i], tObj->_BorderChan);
       else
@@ -2101,7 +2127,7 @@ sample_linear_rect(GLcontext *ctx,
    ASSERT(tObj->WrapT == GL_CLAMP ||
           tObj->WrapT == GL_CLAMP_TO_EDGE ||
           tObj->WrapT == GL_CLAMP_TO_BORDER);
-   ASSERT(img->_BaseFormat != GL_COLOR_INDEX);
+   ASSERT(img->TexFormat->BaseFormat != GL_COLOR_INDEX);
 
    /* XXX lots of opportunity for optimization in this loop */
    for (i = 0; i < n; i++) {
@@ -2249,8 +2275,8 @@ sample_depth_texture( GLcontext *ctx,
 
    (void) lambda;
 
-   ASSERT(tObj->Image[0][tObj->BaseLevel]->_BaseFormat == GL_DEPTH_COMPONENT ||
-          tObj->Image[0][tObj->BaseLevel]->_BaseFormat == GL_DEPTH_STENCIL_EXT);
+   ASSERT(img->TexFormat->BaseFormat == GL_DEPTH_COMPONENT ||
+          img->TexFormat->BaseFormat == GL_DEPTH_STENCIL_EXT);
 
    ASSERT(tObj->Target == GL_TEXTURE_1D ||
           tObj->Target == GL_TEXTURE_2D ||
@@ -2284,9 +2310,17 @@ sample_depth_texture( GLcontext *ctx,
       for (i = 0; i < n; i++) {
          GLfloat depthSample;
          GLint col, row;
-         /* XXX fix for texture rectangle! */
-         COMPUTE_NEAREST_TEXEL_LOCATION(tObj->WrapS, texcoords[i][0], width, col);
-         COMPUTE_NEAREST_TEXEL_LOCATION(tObj->WrapT, texcoords[i][1], height, row);
+
+         if (tObj->Target == GL_TEXTURE_RECTANGLE_ARB) {
+            col = clamp_rect_coord_nearest(tObj->WrapS, texcoords[i][0], width);
+            row = clamp_rect_coord_nearest(tObj->WrapT, texcoords[i][1], height);
+         }
+         else {
+            COMPUTE_NEAREST_TEXEL_LOCATION(tObj->WrapS, texcoords[i][0],
+                                           width, col);
+            COMPUTE_NEAREST_TEXEL_LOCATION(tObj->WrapT, texcoords[i][1],
+                                           height, row);
+         }
          if (col >= 0 && row >= 0 && col < width && row < height) {
             img->FetchTexelf(img, col, row, 0, &depthSample);
          }
@@ -2360,9 +2394,18 @@ sample_depth_texture( GLcontext *ctx,
          GLfloat u, v;
          GLuint useBorderTexel;
 
-         /* XXX fix for texture rectangle! */
-         COMPUTE_LINEAR_TEXEL_LOCATIONS(tObj->WrapS, texcoords[i][0], u, width, i0, i1);
-         COMPUTE_LINEAR_TEXEL_LOCATIONS(tObj->WrapT, texcoords[i][1], v, height,j0, j1);
+         if (tObj->Target == GL_TEXTURE_RECTANGLE_ARB) {
+            clamp_rect_coord_linear(tObj->WrapS, texcoords[i][0],
+                                    width, &i0, &i1);
+            clamp_rect_coord_linear(tObj->WrapT, texcoords[i][1],
+                                    height, &j0, &j1);
+         }
+         else {
+            COMPUTE_LINEAR_TEXEL_LOCATIONS(tObj->WrapS, texcoords[i][0],
+                                           u, width, i0, i1);
+            COMPUTE_LINEAR_TEXEL_LOCATIONS(tObj->WrapT, texcoords[i][1],
+                                           v, height,j0, j1);
+         }
 
          useBorderTexel = 0;
          if (img->Border) {
@@ -2550,7 +2593,7 @@ sample_depth_texture2(const GLcontext *ctx,
     * GL_TEXTURE_COMPARE_SGIX == GL_TRUE but the current texture object
     * isn't a depth texture.
     */
-   if (texImage->_BaseFormat != GL_DEPTH_COMPONENT) {
+   if (texImage->TexFormat->BaseFormat != GL_DEPTH_COMPONENT) {
       _mesa_problem(ctx,"GL_TEXTURE_COMPARE_SGIX enabled with non-depth texture");
       return;
    }
@@ -2653,7 +2696,7 @@ _swrast_choose_texture_sample_func( GLcontext *ctx,
    }
    else {
       const GLboolean needLambda = (GLboolean) (t->MinFilter != t->MagFilter);
-      const GLenum format = t->Image[0][t->BaseLevel]->_BaseFormat;
+      const GLenum format = t->Image[0][t->BaseLevel]->TexFormat->BaseFormat;
 
       switch (t->Target) {
       case GL_TEXTURE_1D:
@@ -2725,7 +2768,10 @@ _swrast_choose_texture_sample_func( GLcontext *ctx,
             return &sample_nearest_cube;
          }
       case GL_TEXTURE_RECTANGLE_NV:
-         if (needLambda) {
+         if (format == GL_DEPTH_COMPONENT || format == GL_DEPTH_STENCIL_EXT) {
+            return &sample_depth_texture;
+         }
+         else if (needLambda) {
             return &sample_lambda_rect;
          }
          else if (t->MinFilter == GL_LINEAR) {

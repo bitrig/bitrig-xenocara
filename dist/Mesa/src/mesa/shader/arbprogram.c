@@ -1,8 +1,8 @@
 /*
  * Mesa 3-D graphics library
- * Version:  6.5
+ * Version:  7.0
  *
- * Copyright (C) 1999-2006  Brian Paul   All Rights Reserved.
+ * Copyright (C) 1999-2007  Brian Paul   All Rights Reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -36,6 +36,7 @@
 #include "imports.h"
 #include "macros.h"
 #include "mtypes.h"
+#include "program.h"
 
 
 void GLAPIENTRY
@@ -101,7 +102,7 @@ _mesa_GetVertexAttribfvARB(GLuint index, GLenum pname, GLfloat *params)
    GET_CURRENT_CONTEXT(ctx);
    ASSERT_OUTSIDE_BEGIN_END(ctx);
 
-   if (index == 0 || index >= MAX_VERTEX_PROGRAM_ATTRIBS) {
+   if (index >= MAX_VERTEX_PROGRAM_ATTRIBS) {
       _mesa_error(ctx, GL_INVALID_VALUE, "glGetVertexAttribfvARB(index)");
       return;
    }
@@ -123,6 +124,11 @@ _mesa_GetVertexAttribfvARB(GLuint index, GLenum pname, GLfloat *params)
          params[0] = ctx->Array.ArrayObj->VertexAttrib[index].Normalized;
          break;
       case GL_CURRENT_VERTEX_ATTRIB_ARB:
+         if (index == 0) {
+            _mesa_error(ctx, GL_INVALID_OPERATION,
+                        "glGetVertexAttribfvARB(index==0)");
+            return;
+         }
          FLUSH_CURRENT(ctx, 0);
          COPY_4V(params, ctx->Current.Attrib[VERT_ATTRIB_GENERIC0 + index]);
          break;
@@ -179,6 +185,31 @@ _mesa_GetVertexAttribPointervARB(GLuint index, GLenum pname, GLvoid **pointer)
 }
 
 
+/**
+ * Determine if id names a vertex or fragment program.
+ * \note Not compiled into display lists.
+ * \note Called from both glIsProgramNV and glIsProgramARB.
+ * \param id is the program identifier
+ * \return GL_TRUE if id is a program, else GL_FALSE.
+ */
+GLboolean GLAPIENTRY
+_mesa_IsProgramARB(GLuint id)
+{
+   struct gl_program *prog = NULL; 
+   GET_CURRENT_CONTEXT(ctx);
+   ASSERT_OUTSIDE_BEGIN_END_WITH_RETVAL(ctx, GL_FALSE);
+
+   if (id == 0)
+      return GL_FALSE;
+
+   prog = _mesa_lookup_program(ctx, id);
+   if (prog && (prog != &_mesa_DummyProgram))
+      return GL_TRUE;
+   else
+      return GL_FALSE;
+}
+
+
 void GLAPIENTRY
 _mesa_ProgramStringARB(GLenum target, GLenum format, GLsizei len,
                        const GLvoid *string)
@@ -198,7 +229,7 @@ _mesa_ProgramStringARB(GLenum target, GLenum format, GLsizei len,
       struct gl_vertex_program *prog = ctx->VertexProgram.Current;
       _mesa_parse_arb_vertex_program(ctx, target, string, len, prog);
       
-      if (ctx->Driver.ProgramStringNotify)
+      if (ctx->Program.ErrorPos == -1 && ctx->Driver.ProgramStringNotify)
 	 ctx->Driver.ProgramStringNotify( ctx, target, &prog->Base );
    }
    else if (target == GL_FRAGMENT_PROGRAM_ARB
@@ -206,7 +237,7 @@ _mesa_ProgramStringARB(GLenum target, GLenum format, GLsizei len,
       struct gl_fragment_program *prog = ctx->FragmentProgram.Current;
       _mesa_parse_arb_fragment_program(ctx, target, string, len, prog);
 
-      if (ctx->Driver.ProgramStringNotify)
+      if (ctx->Program.ErrorPos == -1 && ctx->Driver.ProgramStringNotify)
 	 ctx->Driver.ProgramStringNotify( ctx, target, &prog->Base );
    }
    else {
@@ -281,7 +312,7 @@ _mesa_ProgramEnvParameters4fvEXT(GLenum target, GLuint index, GLsizei count,
 				 const GLfloat *params)
 {
    GET_CURRENT_CONTEXT(ctx);
-   unsigned i;
+   GLint i;
    GLfloat * dest;
    ASSERT_OUTSIDE_BEGIN_END(ctx);
 
@@ -433,7 +464,7 @@ _mesa_ProgramLocalParameters4fvEXT(GLenum target, GLuint index, GLsizei count,
 {
    GET_CURRENT_CONTEXT(ctx);
    struct gl_program *prog;
-   unsigned i;
+   GLint i;
    ASSERT_OUTSIDE_BEGIN_END(ctx);
 
    FLUSH_VERTICES(ctx, _NEW_PROGRAM);
@@ -672,10 +703,18 @@ _mesa_GetProgramivARB(GLenum target, GLenum pname, GLint *params)
           * The spec says that even if this query returns true, there's
           * no guarantee that the program will run in hardware.
           */
-	 if (ctx->Driver.IsProgramNative) 
+         if (prog->Id == 0) {
+            /* default/null program */
+            *params = GL_FALSE;
+         }
+	 else if (ctx->Driver.IsProgramNative) {
+            /* ask the driver */
 	    *params = ctx->Driver.IsProgramNative( ctx, target, prog );
-	 else
+         }
+	 else {
+            /* probably running in software */
 	    *params = GL_TRUE;
+         }
          return;
       default:
          /* continue with fragment-program only queries below */
@@ -689,22 +728,22 @@ _mesa_GetProgramivARB(GLenum target, GLenum pname, GLint *params)
       const struct gl_fragment_program *fp = ctx->FragmentProgram.Current;
       switch (pname) {
          case GL_PROGRAM_ALU_INSTRUCTIONS_ARB:
-            *params = fp->NumNativeAluInstructions;
+            *params = fp->Base.NumNativeAluInstructions;
             return;
          case GL_PROGRAM_NATIVE_ALU_INSTRUCTIONS_ARB:
-            *params = fp->NumAluInstructions;
+            *params = fp->Base.NumAluInstructions;
             return;
          case GL_PROGRAM_TEX_INSTRUCTIONS_ARB:
-            *params = fp->NumTexInstructions;
+            *params = fp->Base.NumTexInstructions;
             return;
          case GL_PROGRAM_NATIVE_TEX_INSTRUCTIONS_ARB:
-            *params = fp->NumNativeTexInstructions;
+            *params = fp->Base.NumNativeTexInstructions;
             return;
          case GL_PROGRAM_TEX_INDIRECTIONS_ARB:
-            *params = fp->NumTexIndirections;
+            *params = fp->Base.NumTexIndirections;
             return;
          case GL_PROGRAM_NATIVE_TEX_INDIRECTIONS_ARB:
-            *params = fp->NumNativeTexIndirections;
+            *params = fp->Base.NumNativeTexIndirections;
             return;
          case GL_MAX_PROGRAM_ALU_INSTRUCTIONS_ARB:
             *params = limits->MaxAluInstructions;
@@ -736,6 +775,7 @@ void GLAPIENTRY
 _mesa_GetProgramStringARB(GLenum target, GLenum pname, GLvoid *string)
 {
    const struct gl_program *prog;
+   char *dst = (char *) string;
    GET_CURRENT_CONTEXT(ctx);
 
    if (!ctx->_CurrentProgram)
@@ -759,5 +799,8 @@ _mesa_GetProgramStringARB(GLenum target, GLenum pname, GLvoid *string)
       return;
    }
 
-   _mesa_memcpy(string, prog->String, _mesa_strlen((char *) prog->String));
+   if (prog->String)
+      _mesa_memcpy(dst, prog->String, _mesa_strlen((char *) prog->String));
+   else
+      *dst = '\0';
 }

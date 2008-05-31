@@ -35,7 +35,7 @@
 
 #include "brw_structs.h"
 #include "brw_defines.h"
-#include "shader/program.h"
+#include "shader/prog_instruction.h"
 
 #define BRW_SWIZZLE4(a,b,c,d) (((a)<<0) | ((b)<<2) | ((c)<<4) | ((d)<<6))
 #define BRW_GET_SWZ(swz, idx) (((swz) >> ((idx)*2)) & 0x3)
@@ -104,6 +104,8 @@ struct brw_compile {
    struct brw_instruction *current;
 
    GLuint flag_value;
+   GLboolean single_program_flow;
+   struct brw_context *brw;
 };
 
 
@@ -679,7 +681,7 @@ void brw_set_predicate_control_flag_value( struct brw_compile *p, GLuint value )
 void brw_set_predicate_control( struct brw_compile *p, GLuint pc );
 void brw_set_conditionalmod( struct brw_compile *p, GLuint conditional );
 
-void brw_init_compile( struct brw_compile *p );
+void brw_init_compile( struct brw_context *, struct brw_compile *p );
 const GLuint *brw_get_program( struct brw_compile *p, GLuint *sz );
 
 

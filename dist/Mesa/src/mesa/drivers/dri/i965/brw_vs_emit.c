@@ -30,10 +30,11 @@
   */
             
 
-#include "brw_context.h"
 #include "program.h"
-#include "program_instruction.h"
 #include "macros.h"
+#include "shader/prog_parameter.h"
+#include "shader/prog_print.h"
+#include "brw_context.h"
 #include "brw_vs.h"
 
 
@@ -77,7 +78,7 @@ static void brw_vs_alloc_regs( struct brw_vs_compile *c )
    /* Allocate input regs:  
     */
    c->nr_inputs = 0;
-   for (i = 0; i < BRW_ATTRIB_MAX; i++) {
+   for (i = 0; i < VERT_ATTRIB_MAX; i++) {
       if (c->prog_data.inputs_read & (1<<i)) {
 	 c->nr_inputs++;
 	 c->regs[PROGRAM_INPUT][i] = brw_vec8_grf(reg, 0);
@@ -791,19 +792,27 @@ static void emit_vertex_write( struct brw_vs_compile *c)
    if (c->key.copy_edgeflag) {
       brw_MOV(p, 
 	      get_reg(c, PROGRAM_OUTPUT, VERT_RESULT_EDGE),
-	      get_reg(c, PROGRAM_INPUT, BRW_ATTRIB_EDGEFLAG));
+	      get_reg(c, PROGRAM_INPUT, VERT_ATTRIB_EDGEFLAG));
    }
 
 
    /* Build ndc coords?   TODO: Shortcircuit when w is known to be one.
     */
-   ndc = get_tmp(c);
-   emit_math1(c, BRW_MATH_FUNCTION_INV, ndc, brw_swizzle1(pos, 3), BRW_MATH_PRECISION_FULL);
-   brw_MUL(p, brw_writemask(ndc, WRITEMASK_XYZ), pos, ndc);
+   if (!c->key.know_w_is_one) {
+      ndc = get_tmp(c);
+      emit_math1(c, BRW_MATH_FUNCTION_INV, ndc, brw_swizzle1(pos, 3), BRW_MATH_PRECISION_FULL);
+      brw_MUL(p, brw_writemask(ndc, WRITEMASK_XYZ), pos, ndc);
+   }
+   else {
+      ndc = pos;
+   }
 
    /* This includes the workaround for -ve rhw, so is no longer an
     * optional step:
     */
+   if ((c->prog_data.outputs_written & (1<<VERT_RESULT_PSIZ)) ||
+       c->key.nr_userclip ||
+       !c->key.know_w_is_one)
    {
       struct brw_reg header1 = retype(get_tmp(c), BRW_REGISTER_TYPE_UD);
       GLuint i;
@@ -836,26 +845,26 @@ static void emit_vertex_write( struct brw_vs_compile *c)
        * Later, clipping will detect ucp[6] and ensure the primitive is
        * clipped against all fixed planes.
        */
-      brw_CMP(p,
-	      vec8(brw_null_reg()),
-	      BRW_CONDITIONAL_L,
-	      brw_swizzle1(ndc, 3),
-	      brw_imm_f(0));
+      if (!BRW_IS_IGD(p->brw) && !c->key.know_w_is_one) {
+	 brw_CMP(p,
+		 vec8(brw_null_reg()),
+		 BRW_CONDITIONAL_L,
+		 brw_swizzle1(ndc, 3),
+		 brw_imm_f(0));
    
-      brw_OR(p, brw_writemask(header1, WRITEMASK_W), header1, brw_imm_ud(1<<6));
-      brw_MOV(p, ndc, brw_imm_f(0));
-      brw_set_predicate_control(p, BRW_PREDICATE_NONE);
-
-
-
-
-
+	 brw_OR(p, brw_writemask(header1, WRITEMASK_W), header1, brw_imm_ud(1<<6));
+	 brw_MOV(p, ndc, brw_imm_f(0));
+	 brw_set_predicate_control(p, BRW_PREDICATE_NONE);
+      }
 
       brw_set_access_mode(p, BRW_ALIGN_1);	/* why? */
       brw_MOV(p, retype(brw_message_reg(1), BRW_REGISTER_TYPE_UD), header1);
       brw_set_access_mode(p, BRW_ALIGN_16);
 
       release_tmp(c, header1);
+   }
+   else {
+      brw_MOV(p, retype(brw_message_reg(1), BRW_REGISTER_TYPE_UD), brw_imm_ud(0));
    }
 
 
