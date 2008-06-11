@@ -77,22 +77,22 @@ static GlyphHashSetRec glyphHashSets[] = {
 
 #define NGLYPHHASHSETS	(sizeof(glyphHashSets)/sizeof(glyphHashSets[0]))
 
-const CARD8	glyphDepths[GlyphFormatNum] = { 1, 4, 8, 16, 32 };
+static const CARD8	glyphDepths[GlyphFormatNum] = { 1, 4, 8, 16, 32 };
 
-GlyphHashRec	globalGlyphs[GlyphFormatNum];
+static GlyphHashRec	globalGlyphs[GlyphFormatNum];
 
-int		globalTotalGlyphPrivateSize = 0;
+static int	globalTotalGlyphPrivateSize = 0;
 
 static int	glyphPrivateCount = 0;
 
 void
-ResetGlyphPrivates ()
+ResetGlyphPrivates (void)
 {
     glyphPrivateCount = 0;
 }
 
 int
-AllocateGlyphPrivateIndex ()
+AllocateGlyphPrivateIndex (void)
 {
     return glyphPrivateCount++;
 }
@@ -626,8 +626,12 @@ AllocateGlyph (xGlyphInfo *gi, int fdepth)
     int		     size;
     GlyphPtr	     glyph;
     int		     i;
-
-    size = gi->height * PixmapBytePad (gi->width, glyphDepths[fdepth]);
+    size_t	     padded_width;
+    
+    padded_width = PixmapBytePad (gi->width, glyphDepths[fdepth]);
+    if (gi->height && padded_width > (UINT32_MAX - sizeof(GlyphRec))/gi->height)
+	return 0;
+    size = gi->height * padded_width;
     glyph = (GlyphPtr) xalloc (size + sizeof (GlyphRec));
     if (!glyph)
 	return 0;
