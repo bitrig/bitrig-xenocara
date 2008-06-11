@@ -62,11 +62,11 @@ SOFTWARE.
  * in the XStandardColormap structure.
  */
 
-void XSetStandardColormap(dpy, w, cmap, property)
-    Display *dpy;
-    Window w;
-    XStandardColormap *cmap;
-    Atom property;		/* XA_RGB_BEST_MAP, etc. */
+void XSetStandardColormap(
+    Display *dpy,
+    Window w,
+    XStandardColormap *cmap,
+    Atom property)		/* XA_RGB_BEST_MAP, etc. */
 {
     Screen *sp;
     XStandardColormap stdcmap;
@@ -88,6 +88,9 @@ void XSetStandardColormap(dpy, w, cmap, property)
     stdcmap.visualid	= sp->root_visual->visualid;
     stdcmap.killid	= None;		/* don't know how to kill this one */
 
+#ifdef XCMS
     XSetRGBColormaps (dpy, w, &stdcmap, 1, property);
+#endif
+
     return;
 }

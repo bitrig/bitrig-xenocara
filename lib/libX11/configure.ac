@@ -3,7 +3,7 @@
 
 AC_PREREQ(2.57)
 AC_INIT([libX11],
-        1.0.99.2,
+        1.1.4,
         [https://bugs.freedesktop.org/enter_bug.cgi?product=xorg],
         libX11)
 AC_CONFIG_SRCDIR([Makefile.am])
@@ -13,6 +13,10 @@ AM_MAINTAINER_MODE
 
 AM_CONFIG_HEADER([src/config.h])
 AC_CONFIG_HEADER([include/X11/XlibConf.h])
+
+# Require xorg-macros version 1.1.0 or newer for XORG_WITH_LINT macro
+m4_ifndef([XORG_MACROS_VERSION], [AC_FATAL([must install xorg-macros 1.1 or later before running autoconf/autogen])])
+XORG_MACROS_VERSION(1.1)
 
 # Checks for programs.
 AC_PROG_LIBTOOL
@@ -40,10 +44,12 @@ no)
 	;;
 *)
 	X11_REQUIRES="xcb-xlib >= 0.9.92"
+	X11_EXTRA_DEPS="xcb-xlib"
 	xdmauth="no" # XCB handles all auth
 	AC_DEFINE(USE_XCB, 1, [Use XCB for low-level protocol implementation])
 	;;
 esac
+AC_SUBST(X11_EXTRA_DEPS)
 PKG_CHECK_MODULES(X11, xextproto xtrans $X11_REQUIRES)
 
 dnl Issue an error if xtrans.m4 was not found and XTRANS_CONNECTION_FLAGS macro
@@ -142,6 +148,17 @@ AC_SUBST(WCHAR32)
 
 AM_CONDITIONAL(OS2, test x$os2 = xtrue)
 
+AC_ARG_WITH(launchd, AS_HELP_STRING([--with-launchd], [Build with support for Apple's launchd (default: auto)]), [LAUNCHD=$withval], [LAUNCHD=auto])
+if test "x$LAUNCHD" = xauto; then
+	unset LAUNCHD
+	AC_CHECK_PROG(LAUNCHD, [launchd], [yes], [no])
+fi
+
+if test "x$LAUNCHD" = xyes ; then
+	AC_DEFINE(HAVE_LAUNCHD, 1, [launchd support available])
+	AC_DEFINE(TRANS_REOPEN, 1, [launchd support available])
+fi
+
 AC_ARG_ENABLE(xthreads,
               AC_HELP_STRING([--disable-xthreads],
                 [Disable Xlib support for Multithreading]),
@@ -171,6 +188,9 @@ if test x$xthreads = xyes ; then
     case $host_os in
     linux*|openbsd*|gnu*|k*bsd*-gnu)
         XTHREADLIB=-lpthread ;;
+    netbsd*)
+	XTHREAD_CFLAGS="-D_POSIX_THREAD_SAFE_FUNCTIONS"
+	XTHREADLIB="-lpthread" ;;
     freebsd*)
         XTHREAD_CFLAGS="-D_THREAD_SAFE"
         XTHREADLIB="-pthread" ;;
@@ -292,8 +312,8 @@ AM_CONDITIONAL(MANPAGES, [ test x$LIBMAN '!=' xno ])
 
 AM_CONDITIONAL(XKB, [ test x$XKB = xyes ])
 if test x"$XKB" = "xyes"; then
-   XKBPROTO_REQUIRES="kbproto inputproto"
-   PKG_CHECK_MODULES(XKBPROTO, $XKBPROTO_REQUIRES)
+   XKBPROTO_REQUIRES="kbproto"
+   PKG_CHECK_MODULES(XKBPROTO, kbproto inputproto)
    AC_DEFINE(XKB,1,[Use XKB])
    X11_CFLAGS="$X11_CFLAGS $XKBPROTO_CFLAGS"
    X11_LIBS="$X11_LIBS $XKBPROTO_LIBS"
@@ -315,6 +335,7 @@ fi
 
 dnl Allow checking code with lint, sparse, etc.
 XORG_WITH_LINT
+XORG_LINT_LIBRARY([X11])
 LINT_FLAGS="${LINT_FLAGS} ${X11_CFLAGS} ${XPROTO_CFLAGS}"
 
 if test "x$GCC" = "xyes"; then
@@ -323,6 +344,14 @@ if test "x$GCC" = "xyes"; then
 	-Wnested-externs -fno-strict-aliasing"
 	X11_CFLAGS="$GCC_WARNINGS $X11_CFLAGS"
 fi
+
+AC_TRY_COMPILE([
+#include <features.h>
+#ifndef __GLIBC__
+#error not glibc
+#endif
+], [], [AC_DEFINE(_GNU_SOURCE, 1,
+    [ Enable GNU and other extensions to the C environment for glibc])])
 
 X11_DATADIR="${datadir}/X11"
 AC_DEFINE_DIR(X11_DATADIR, X11_DATADIR, [Location of libX11 data])
@@ -333,6 +362,7 @@ AC_DEFINE_DIR(X11_LIBDIR, X11_LIBDIR, [Location of libX11 library data])
 AC_SUBST(X11_LIBDIR)
 
 X11_CFLAGS="$X11_CFLAGS $XPROTO_CFLAGS"
+
 AC_SUBST(X11_CFLAGS)
 AC_SUBST(X11_LIBS)
 
@@ -369,6 +399,7 @@ XORG_RELEASE_VERSION
 AC_OUTPUT([Makefile
            include/Makefile
 	   man/Makefile
+           man/xkb/Makefile	   
            src/Makefile
            src/util/Makefile
 	   src/xcms/Makefile
@@ -385,6 +416,7 @@ AC_OUTPUT([Makefile
 	   modules/om/generic/Makefile
 	   src/xkb/Makefile
 	   nls/Makefile
+	   nls/am_ET.UTF-8/Makefile
 	   nls/armscii-8/Makefile
 	   nls/C/Makefile
 	   nls/el_GR.UTF-8/Makefile
@@ -445,6 +477,11 @@ AC_OUTPUT([Makefile
 	   x11.pc
 	   x11-xcb.pc])
 
+man_pages_suffix=$LIBMAN_SUFFIX
+if test -z "$man_pages_suffix"; then
+    man_pages_suffix=none
+fi
+
 echo ""
 echo "X11 will be built with the following settings:"
 echo " Loadable i18n module support:            "$XLIB_LOADABLE_I18N
@@ -458,6 +495,6 @@ echo " Internationalization support:            "$XLOCALE
 echo " XF86BigFont support:                     "$XF86BIGFONT
 echo " XKB support:                             "$XKB
 echo " XLOCALEDIR environment variable support: "$ENABLE_XLOCALEDIR
-echo " Manual pages installed:                  "$LIBMAN_SUFFIX
+echo " Manual pages suffix:                     "$man_pages_suffix
 echo " Compose table cache enabled:             "$COMPOSECACHE
 echo ""

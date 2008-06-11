@@ -216,8 +216,13 @@ _XimRespSyncReply(
     Xic		 ic,
     BITMASK16	 mode)
 {
-    if (mode & XimSYNCHRONUS) /* SYNC Request */
-	MARK_NEED_SYNC_REPLY(ic);
+    if (mode & XimSYNCHRONUS) /* SYNC Request */ {
+	if (IS_FOCUSED(ic))
+	    MARK_NEED_SYNC_REPLY(ic);
+	else
+	    _XimProcSyncReply(ic->core.im, ic);
+    }
+    
     return True;
 }
 
@@ -466,7 +471,7 @@ _XimGetWindowEventmask(
     Xim			im = (Xim )ic->core.im;
     XWindowAttributes	atr;
 
-    if (!_XGetWindowAttributes(im->core.display, ic->core.focus_window, &atr))
+    if (!XGetWindowAttributes(im->core.display, ic->core.focus_window, &atr))
 	return 0;
     return (EVENTMASK)atr.your_event_mask;
 }

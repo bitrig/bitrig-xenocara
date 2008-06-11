@@ -71,19 +71,19 @@ SOFTWARE.
  *	WM_CLIENT_MACHINE type: TEXT		format: varies?
  *	WM_NORMAL_HINTS	  type: WM_SIZE_HINTS 	format: 32
  *	WM_CLASS	  type: STRING/STRING	format: 8
+  *	WM_LOCALE_NAME	  type: STRING		format: 8
  */
 	
-void XSetWMProperties (dpy, w, windowName, iconName, argv, argc, sizeHints,
-		       wmHints, classHints)
-     Display *dpy;
-     Window w;			/* window to decorate */
-     XTextProperty *windowName;	/* name of application */
-     XTextProperty *iconName;	/* name string for icon */
-     char **argv;		/* command line */
-     int argc;			/* size of command line */
-     XSizeHints *sizeHints;	/* size hints for window in its normal state */
-     XWMHints *wmHints;		/* miscelaneous window manager hints */
-     XClassHint *classHints;	/* resource name and class */
+void XSetWMProperties (
+     Display *dpy,
+     Window w,			/* window to decorate */
+     XTextProperty *windowName,	/* name of application */
+     XTextProperty *iconName,	/* name string for icon */
+     char **argv,		/* command line */
+     int argc,			/* size of command line */
+     XSizeHints *sizeHints,	/* size hints for window in its normal state */
+     XWMHints *wmHints,		/* miscelaneous window manager hints */
+     XClassHint *classHints)	/* resource name and class */
 {
     XTextProperty textprop;
     char hostName[256];
