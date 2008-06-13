@@ -21,7 +21,7 @@
 
 bin_PROGRAMS = fonttosfnt
 
-fonttosfnt_CFLAGS = -DXVENDORNAME=\"X.org\ Foundation\" $(FONTTOSFNT_CFLAGS) -DXVENDORNAMESHORT=\"X.org\" -D_BSD_SOURCE
+AM_CFLAGS = -DXVENDORNAME=\"X.Org\ Foundation\" $(FONTTOSFNT_CFLAGS) -DXVENDORNAMESHORT=\"X.Org\" -D_BSD_SOURCE
 fonttosfnt_LDADD = $(FONTTOSFNT_LIBS) -lm
 
 fonttosfnt_SOURCES =	\
@@ -34,7 +34,7 @@ fonttosfnt_SOURCES =	\
 
 if NEED_SETENV
 fonttosfnt_SOURCES += env.c
-fonttosfnt_CFLAGS += -DNEED_SETENV
+AM_CFLAGS += -DNEED_SETENV
 endif
 
 appman_PRE = \
@@ -75,6 +75,6 @@ SUFFIXES = .$(APP_MAN_SUFFIX) .man
 .PHONY: ChangeLog
 
 ChangeLog:
-	git-log > ChangeLog
+	(GIT_DIR=$(top_srcdir)/.git git-log > .changelog.tmp && mv .changelog.tmp ChangeLog; rm -f .changelog.tmp) || (touch ChangeLog; echo 'git directory not found: installing possibly empty changelog.' >&2)
 
 dist-hook: ChangeLog
