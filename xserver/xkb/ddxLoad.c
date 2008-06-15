@@ -44,7 +44,7 @@ THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include "scrnintstr.h"
 #include "windowstr.h"
 #define	XKBSRV_NEED_FILE_FUNCS
-#include <X11/extensions/XKBsrv.h>
+#include <xkbsrv.h>
 #include <X11/extensions/XI.h>
 #include "xkb.h"
 
@@ -77,7 +77,7 @@ THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #define	POST_ERROR_MSG1 "\"Errors from xkbcomp are not fatal to the X server\""
 #define	POST_ERROR_MSG2 "\"End of messages from xkbcomp\""
 
-#if defined(__UNIXOS2__) || defined(WIN32)
+#if defined(WIN32)
 #define PATHSEPARATOR "\\"
 #else
 #define PATHSEPARATOR "/"
@@ -211,7 +211,7 @@ OutputDirectory(
     }
 }
 
-Bool
+static Bool
 XkbDDXCompileNamedKeymap(	XkbDescPtr		xkb,
 				XkbComponentNamesPtr	names,
 				char *			nameRtrn,
@@ -239,20 +239,8 @@ char 	*cmd = NULL,file[PATH_MAX],xkm_output_dir[PATH_MAX],*map,*outFile;
     OutputDirectory(xkm_output_dir, sizeof(xkm_output_dir));
 
     if (XkbBaseDirectory!=NULL) {
-#ifndef __UNIXOS2__
         char *xkbbasedir = XkbBaseDirectory;
         char *xkbbindir = XkbBinDirectory;
-#else
-        /* relocate the basedir and replace the slashes with backslashes */
-        char *xkbbasedir = (char*)__XOS2RedirRoot(XkbBaseDirectory);
-        char *xkbbindir = (char*)__XOS2RedirRoot(XkbBinDirectory);
-        int i;
-
-	for (i=0; i<strlen(xkbbasedir); i++) 
-            if (xkbbasedir[i]=='/') xkbbasedir[i]='\\';
-	for (i=0; i<strlen(xkbbindir); i++) 
-            if (xkbbindir[i]=='/') xkbbindir[i]='\\';
-#endif
 
 	cmd = Xprintf("\"%s" PATHSEPARATOR "xkbcomp\" -w %d \"-R%s\" -xkm %s%s -em1 %s -emp %s -eml %s keymap/%s \"%s%s.xkm\"",
 		xkbbindir,
@@ -298,7 +286,7 @@ char 	*cmd = NULL,file[PATH_MAX],xkm_output_dir[PATH_MAX],*map,*outFile;
     return False;
 }
 
-Bool    	
+static Bool    	
 XkbDDXCompileKeymapByNames(	XkbDescPtr		xkb,
 				XkbComponentNamesPtr	names,
 				unsigned		want,
@@ -338,18 +326,8 @@ char tmpname[PATH_MAX];
            for xkbcomp. xkbcomp does not read from stdin. */
         char *xkmfile = tmpname;
 #endif
-#ifndef __UNIXOS2__
         char *xkbbasedir = XkbBaseDirectory;
         char *xkbbindir = XkbBinDirectory;
-#else
-        int i;
-        char *xkbbasedir = (char*)__XOS2RedirRoot(XkbBaseDirectory);
-        char *xkbbindir = (char*)__XOS2RedirRoot(XkbBinDirectory);
-	for (i=0; i<strlen(xkbbasedir); i++) 
-            if (xkbbasedir[i]=='/') xkbbasedir[i]='\\';
-	for (i=0; i<strlen(xkbbindir); i++) 
-            if (xkbbindir[i]=='/') xkbbindir[i]='\\';
-#endif
         
 	buf = Xprintf(
 	   "\"%s" PATHSEPARATOR "xkbcomp\" -w %d \"-R%s\" -xkm \"%s\" -em1 %s -emp %s -eml %s \"%s%s.xkm\"",
@@ -403,52 +381,24 @@ char tmpname[PATH_MAX];
 		strncpy(nameRtrn,keymap,nameRtrnLen);
 		nameRtrn[nameRtrnLen-1]= '\0';
 	    }
-#if defined(Lynx) && defined(__i386__) && defined(NEED_POPEN_WORKAROUND)
-	/* somehow popen/pclose is broken on LynxOS AT 2.3.0/2.4.0!
-	 * the problem usually shows up with XF86Setup
-	 * this hack waits at max 5 seconds after pclose() returns
-	 * for the output of the xkbcomp output file.
-	 * I didn't manage to get a patch in time for the 3.2 release
-	 */
-            {
-		int i;
-		char name[PATH_MAX];
-                if (XkbBaseDirectory!=NULL)
-		    sprintf(name,"%s/%s%s.xkm", XkbBaseDirectory
-			,xkm_output_dir, keymap);
-		else
-                    sprintf(name,"%s%s.xkm", xkm_output_dir, keymap);
-		for (i = 0; i < 10; i++) {
-	            if (access(name, 0) == 0) break;
-		    usleep(500000);
-		}
-#ifdef DEBUG
-		if (i) ErrorF(">>>> Waited %d times for %s\n", i, name);
-#endif
-	    }
-#endif
             if (buf != NULL)
                 xfree (buf);
 	    return True;
 	}
-#ifdef DEBUG
 	else
-	    ErrorF("Error compiling keymap (%s)\n",keymap);
-#endif
+	    LogMessage(X_ERROR, "Error compiling keymap (%s)\n", keymap);
 #ifdef WIN32
         /* remove the temporary file */
         unlink(tmpname);
 #endif
     }
-#ifdef DEBUG
     else {
 #ifndef WIN32
-	ErrorF("Could not invoke keymap compiler\n");
+	LogMessage(X_ERROR, "XKB: Could not invoke xkbcomp\n");
 #else
-	ErrorF("Could not open file %s\n", tmpname);
+	LogMessage(X_ERROR, "Could not open file %s\n", tmpname);
 #endif
     }
-#endif
     if (nameRtrn)
 	nameRtrn[0]= '\0';
     if (buf != NULL)
@@ -456,7 +406,7 @@ char tmpname[PATH_MAX];
     return False;
 }
 
-FILE *
+static FILE *
 XkbDDXOpenConfigFile(char *mapName,char *fileNameRtrn,int fileNameRtrnLen)
 {
 char	buf[PATH_MAX],xkm_output_dir[PATH_MAX];
@@ -523,17 +473,14 @@ unsigned	missing;
 	    return 0;
 	}
 	else if (!XkbDDXCompileNamedKeymap(xkb,names,nameRtrn,nameRtrnLen)) {
-#ifdef NOISY
-	    ErrorF("Couldn't compile keymap file\n");
-#endif
+            LogMessage(X_ERROR, "Couldn't compile keymap file %s\n",
+                       names->keymap);
 	    return 0;
 	}
     }
     else if (!XkbDDXCompileKeymapByNames(xkb,names,want,need,
-						nameRtrn,nameRtrnLen)){
-#ifdef NOISY
-	ErrorF("Couldn't compile keymap file\n");
-#endif
+                                         nameRtrn,nameRtrnLen)){
+	LogMessage(X_ERROR, "XKB: Couldn't compile keymap\n");
 	return 0;
     }
     file= XkbDDXOpenConfigFile(nameRtrn,fileName,PATH_MAX);
@@ -548,11 +495,9 @@ unsigned	missing;
 	(void) unlink (fileName);
 	return 0;
     }
-#ifdef DEBUG
-    else if (xkbDebugFlags) {
-	ErrorF("Loaded %s, defined=0x%x\n",fileName,finfoRtrn->defined);
+    else {
+	DebugF("XKB: Loaded %s, defined=0x%x\n",fileName,finfoRtrn->defined);
     }
-#endif
     fclose(file);
     (void) unlink (fileName);
     return (need|want)&(~missing);
@@ -571,32 +516,40 @@ XkbRF_RulesPtr	rules;
 
     if (!rules_name)
 	return False;
-    if (XkbBaseDirectory==NULL) {
-	if (strlen(rules_name)+7 > PATH_MAX)
-	    return False;
-	sprintf(buf,"rules/%s",rules_name);
+
+    if (strlen(XkbBaseDirectory) + strlen(rules_name) + 8 > PATH_MAX) {
+        LogMessage(X_ERROR, "XKB: Rules name is too long\n");
+        return False;
     }
-    else {
-	if (strlen(XkbBaseDirectory)+strlen(rules_name)+8 > PATH_MAX)
-	    return False;
-        sprintf(buf,"%s/rules/%s",XkbBaseDirectory,rules_name);
-    }
-    if ((file= fopen(buf,"r"))==NULL)
+    sprintf(buf,"%s/rules/%s", XkbBaseDirectory, rules_name);
+
+    file = fopen(buf, "r");
+    if (!file) {
+        LogMessage(X_ERROR, "XKB: Couldn't open rules file %s\n", buf);
 	return False;
-    if ((rules= XkbRF_Create(0,0))==NULL) {
+    }
+
+    rules = XkbRF_Create(0, 0);
+    if (!rules) {
+        LogMessage(X_ERROR, "XKB: Couldn't create rules struct\n");
 	fclose(file);
 	return False;
     }
-    if (!XkbRF_LoadRules(file,rules)) {
+
+    if (!XkbRF_LoadRules(file, rules)) {
+        LogMessage(X_ERROR, "XKB: Couldn't parse rules file %s\n", rules_name);
 	fclose(file);
 	XkbRF_Free(rules,True);
 	return False;
     }
-    bzero((char *)names,sizeof(XkbComponentNamesRec));
-    complete= XkbRF_GetComponents(rules,defs,names);
+
+    memset(names, 0, sizeof(*names));
+    complete = XkbRF_GetComponents(rules,defs,names);
     fclose(file);
-    XkbRF_Free(rules,True);
+    XkbRF_Free(rules, True);
+
+    if (!complete)
+        LogMessage(X_ERROR, "XKB: Rules returned no components\n");
+
     return complete;
 }
-
-

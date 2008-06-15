@@ -76,7 +76,7 @@ teardown(void)
     struct config_dbus_core_hook *hook;
 
     if (bus_info.timer) {
-        TimerCancel(bus_info.timer);
+        TimerFree(bus_info.timer);
         bus_info.timer = NULL;
     }
 
@@ -87,7 +87,8 @@ teardown(void)
         dbus_connection_unref(bus_info.connection);
 
     RemoveBlockAndWakeupHandlers(block_handler, wakeup_handler, &bus_info);
-    RemoveGeneralSocket(bus_info.fd);
+    if (bus_info.fd != -1)
+        RemoveGeneralSocket(bus_info.fd);
     bus_info.fd = -1;
     bus_info.connection = NULL;
 
@@ -115,6 +116,8 @@ message_filter(DBusConnection *connection, DBusMessage *message, void *data)
         bus_info.connection = NULL;
         teardown();
 
+        if (bus_info.timer)
+            TimerFree(bus_info.timer);
         bus_info.timer = TimerSet(NULL, 0, 1, reconnect_timer, NULL);
 
         return DBUS_HANDLER_RESULT_HANDLED;
@@ -185,6 +188,7 @@ static CARD32
 reconnect_timer(OsTimerPtr timer, CARD32 time, pointer arg)
 {
     if (connect_to_bus()) {
+        TimerFree(bus_info.timer);
         bus_info.timer = NULL;
         return 0;
     }

@@ -89,6 +89,12 @@ InitOutput(
 
 }
 
+void
+DDXRingBell(int volume, int pitch, int duration)
+{
+   /* dummy func; link fails without */
+}
+
 static void
 BellProc(
     int volume,
@@ -156,9 +162,9 @@ PointerProc(
 	  {
 	      map[0] = 0;
 	      InitPointerDeviceStruct(pPtr, map, NUM_BUTTONS, 
-				      miPointerGetMotionEvents, 
+				      GetMotionHistory,
 				      (PtrCtrlProcPtr)_XpVoidNoop,
-				      miPointerGetMotionBufferSize());
+				      GetMotionHistorySize(), 2);
 	      break;
 	  }
         case DEVICE_ON:
@@ -189,7 +195,7 @@ InitInput(
 Bool
 LegalModifier(
      unsigned int key,
-     DevicePtr dev)
+     DeviceIntPtr dev)
 {
     return TRUE;
 }
@@ -302,6 +308,17 @@ ChangeDeviceControl (
     xDeviceCtl  *control)
 {
     return BadMatch;
+}
+
+int
+NewInputDeviceRequest(InputOption *options, DeviceIntPtr *pdev)
+{
+    return BadValue;
+}
+
+void
+DeleteInputDeviceRequest(DeviceIntPtr dev)
+{
 }
 
 void

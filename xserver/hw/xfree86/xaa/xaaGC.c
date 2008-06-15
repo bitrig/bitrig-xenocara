@@ -38,7 +38,7 @@ Bool
 XAACreateGC(GCPtr pGC)
 {
     ScreenPtr    pScreen = pGC->pScreen;
-    XAAGCPtr     pGCPriv = (XAAGCPtr)(pGC->devPrivates[XAAGCIndex].ptr);
+    XAAGCPtr     pGCPriv = (XAAGCPtr)(pGC->devPrivates[XAAGetGCIndex()].ptr);
     Bool         ret;
 
     XAA_SCREEN_PROLOGUE(pScreen,CreateGC);
@@ -80,10 +80,11 @@ XAAValidateGC(
     }
 
     if(pGC->depth != 32) {
-	if(pGC->bgPixel == -1) /* -1 is reserved for transparency */
-	    pGC->bgPixel = 0x7fffffff; 
-	if(pGC->fgPixel == -1) /* -1 is reserved for transparency */
-	    pGC->fgPixel = 0x7fffffff; 
+	/* 0xffffffff is reserved for transparency */
+	if(pGC->bgPixel == 0xffffffff)
+	    pGC->bgPixel = 0x7fffffff;
+	if(pGC->fgPixel == 0xffffffff)
+	    pGC->fgPixel = 0x7fffffff;
     }
 
     if((pDraw->type == DRAWABLE_PIXMAP) && !IS_OFFSCREEN_PIXMAP(pDraw)){
