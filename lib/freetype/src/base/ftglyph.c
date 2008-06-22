@@ -4,7 +4,7 @@
 /*                                                                         */
 /*    FreeType convenience functions to handle glyphs (body).              */
 /*                                                                         */
-/*  Copyright 1996-2001, 2002, 2003, 2004, 2005 by                         */
+/*  Copyright 1996-2001, 2002, 2003, 2004, 2005, 2007 by                   */
 /*  David Turner, Robert Wilhelm, and Werner Lemberg.                      */
 /*                                                                         */
 /*  This file is part of the FreeType project, and may only be used,       */
@@ -377,13 +377,19 @@
 
 
     /* check arguments */
-    if ( !target || !source || !source->clazz )
+    if ( !target )
     {
       error = FT_Err_Invalid_Argument;
       goto Exit;
     }
 
     *target = 0;
+
+    if ( !source || !source->clazz )
+    {
+      error = FT_Err_Invalid_Argument;
+      goto Exit;
+    }
 
     clazz = source->clazz;
     error = ft_new_glyph( source->library, clazz, &copy );

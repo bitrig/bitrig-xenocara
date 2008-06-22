@@ -4,7 +4,7 @@
 /*                                                                         */
 /*    Auto-fitter types (specification only).                              */
 /*                                                                         */
-/*  Copyright 2003, 2004, 2005, 2006 by                                    */
+/*  Copyright 2003, 2004, 2005, 2006, 2007, 2008 by                        */
 /*  David Turner, Robert Wilhelm, and Werner Lemberg.                      */
 /*                                                                         */
 /*  This file is part of the FreeType project, and may only be used,       */
@@ -22,7 +22,7 @@
    *  Its main feature is the ability to differentiate between different
    *  scripts in order to apply language-specific rules.
    *
-   *  The code has also been compartimentized into several entities that
+   *  The code has also been compartmentized into several entities that
    *  should make algorithmic experimentation easier than with the old
    *  code.
    *
@@ -59,14 +59,19 @@ FT_BEGIN_HEADER
 #ifdef AF_DEBUG
 
 #include <stdio.h>
+#define AF_LOG( x )  do { if ( _af_debug ) printf x; } while ( 0 )
 
-#define AF_LOG( x )  printf x
+extern int    _af_debug;
+extern int    _af_debug_disable_horz_hints;
+extern int    _af_debug_disable_vert_hints;
+extern int    _af_debug_disable_blue_hints;
+extern void*  _af_debug_hints;
 
-#else
+#else /* !AF_DEBUG */
 
 #define AF_LOG( x )  do ; while ( 0 )        /* nothing */
 
-#endif /* AF_DEBUG */
+#endif /* !AF_DEBUG */
 
 
   /*************************************************************************/
@@ -118,6 +123,7 @@ FT_BEGIN_HEADER
 #define AF_ANGLE_PI4  ( AF_ANGLE_PI / 4 )
 
 
+#if 0
   /*
    *  compute the angle of a given 2-D vector
    */
@@ -126,7 +132,6 @@ FT_BEGIN_HEADER
                  FT_Pos  dy );
 
 
-#if 0
   /*
    *  compute `angle2 - angle1'; the result is always within
    *  the range [-AF_ANGLE_PI .. AF_ANGLE_PI - 1]
@@ -197,7 +202,7 @@ FT_BEGIN_HEADER
    *  auto-hinted glyph image.
    */
 
-  typedef enum
+  typedef enum  AF_ScalerFlags_
   {
     AF_SCALER_FLAG_NO_HORIZONTAL = 1,  /* disable horizontal hinting */
     AF_SCALER_FLAG_NO_VERTICAL   = 2,  /* disable vertical hinting   */
@@ -255,11 +260,16 @@ FT_BEGIN_HEADER
    *  used by more than one script.
    */
 
-  typedef enum
+  typedef enum  AF_Script_
   {
     AF_SCRIPT_NONE  = 0,
     AF_SCRIPT_LATIN = 1,
     AF_SCRIPT_CJK   = 2,
+    AF_SCRIPT_INDIC = 3, 
+#ifdef FT_OPTION_AUTOFIT2
+    AF_SCRIPT_LATIN2,
+#endif
+
     /* add new scripts here.  Don't forget to update the list in */
     /* `afglobal.c'.                                             */
 

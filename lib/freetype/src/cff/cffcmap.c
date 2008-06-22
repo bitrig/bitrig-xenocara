@@ -4,7 +4,7 @@
 /*                                                                         */
 /*    CFF character mapping table (cmap) support (body).                   */
 /*                                                                         */
-/*  Copyright 2002, 2003, 2004, 2005, 2006 by                              */
+/*  Copyright 2002, 2003, 2004, 2005, 2006, 2007 by                        */
 /*  David Turner, Robert Wilhelm, and Werner Lemberg.                      */
 /*                                                                         */
 /*  This file is part of the FreeType project, and may only be used,       */
@@ -107,7 +107,9 @@
     (FT_CMap_InitFunc)     cff_cmap_encoding_init,
     (FT_CMap_DoneFunc)     cff_cmap_encoding_done,
     (FT_CMap_CharIndexFunc)cff_cmap_encoding_char_index,
-    (FT_CMap_CharNextFunc) cff_cmap_encoding_char_next
+    (FT_CMap_CharNextFunc) cff_cmap_encoding_char_next,
+
+    NULL, NULL, NULL, NULL, NULL
   };
 
 
@@ -120,15 +122,27 @@
   /*************************************************************************/
 
   FT_CALLBACK_DEF( const char* )
-  cff_sid_to_glyph_name( CFF_Font  cff,
+  cff_sid_to_glyph_name( TT_Face   face,
                          FT_UInt   idx )
   {
+    CFF_Font            cff     = (CFF_Font)face->extra.data;
     CFF_Charset         charset = &cff->charset;
     FT_Service_PsCMaps  psnames = (FT_Service_PsCMaps)cff->psnames;
     FT_UInt             sid     = charset->sids[idx];
 
 
     return cff_index_get_sid_string( &cff->string_index, sid, psnames );
+  }
+
+
+  FT_CALLBACK_DEF( void )
+  cff_sid_free_glyph_name( TT_Face      face,
+                           const char*  gname )
+  {
+    FT_Memory  memory = FT_FACE_MEMORY( face );
+
+
+    FT_FREE( gname );
   }
 
 
@@ -149,8 +163,9 @@
     return psnames->unicodes_init( memory,
                                    unicodes,
                                    cff->num_glyphs,
-                                   (PS_Glyph_NameFunc)&cff_sid_to_glyph_name,
-                                   (FT_Pointer)cff );
+                                   (PS_GetGlyphNameFunc)&cff_sid_to_glyph_name,
+                                   (PS_FreeGlyphNameFunc)&cff_sid_free_glyph_name,
+                                   (FT_Pointer)face );
   }
 
 
@@ -200,7 +215,9 @@
     (FT_CMap_InitFunc)     cff_cmap_unicode_init,
     (FT_CMap_DoneFunc)     cff_cmap_unicode_done,
     (FT_CMap_CharIndexFunc)cff_cmap_unicode_char_index,
-    (FT_CMap_CharNextFunc) cff_cmap_unicode_char_next
+    (FT_CMap_CharNextFunc) cff_cmap_unicode_char_next,
+
+    NULL, NULL, NULL, NULL, NULL
   };
 
 

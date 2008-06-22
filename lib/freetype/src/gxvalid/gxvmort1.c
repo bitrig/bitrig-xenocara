@@ -5,7 +5,7 @@
 /*    TrueTypeGX/AAT mort table validation                                 */
 /*    body for type1 (Contextual Substitution) subtable.                   */
 /*                                                                         */
-/*  Copyright 2005 by suzuki toshiya, Masatake YAMATO, Red Hat K.K.,       */
+/*  Copyright 2005, 2007 by suzuki toshiya, Masatake YAMATO, Red Hat K.K., */
 /*  David Turner, Robert Wilhelm, and Werner Lemberg.                      */
 /*                                                                         */
 /*  This file is part of the FreeType project, and may only be used,       */
@@ -188,7 +188,7 @@
     FT_UShort  i;
 
 
-    GXV_NAME_ENTER( "validating contents of substitionTable" );
+    GXV_NAME_ENTER( "validating contents of substitutionTable" );
     for ( i = 0; i < num_gids ; i ++ )
     {
       FT_UShort  dst_gid;
@@ -202,7 +202,7 @@
 
       if ( dst_gid > valid->face->num_glyphs )
       {
-        GXV_TRACE(( "substTable include toolarge gid[%d]=%d >"
+        GXV_TRACE(( "substTable include too large gid[%d]=%d >"
                     " max defined gid #%d\n",
                     i, dst_gid, valid->face->num_glyphs ));
         if ( valid->root->level >= FT_VALIDATE_PARANOID )
@@ -215,7 +215,7 @@
 
 
   /*
-   * subtable for Contextual glyph substition is a modified StateTable.
+   * subtable for Contextual glyph substitution is a modified StateTable.
    * In addition to classTable, stateArray, and entryTable, the field
    * `substitutionTable' is added.
    */

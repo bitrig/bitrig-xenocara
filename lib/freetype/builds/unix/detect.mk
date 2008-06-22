@@ -31,6 +31,7 @@ endif # test PLATFORM ansi
 ifeq ($(PLATFORM),unix)
   COPY   := cp
   DELETE := rm -f
+  CAT    := cat
 
   # If `devel' is the requested target, we use a special configuration
   # file named `unix-dev.mk'.  It disables optimization and libtool.
@@ -78,9 +79,9 @@ ifeq ($(PLATFORM),unix)
   ifdef must_configure
     ifneq ($(have_Makefile),)
       # we are building FT2 not in the src tree
-	      $(TOP_DIR)/builds/unix/configure $(CFG)
+	      $(TOP_DIR)/builds/unix/configure $(value CFG)
     else
-	      cd builds/unix; ./configure $(CFG)
+	      cd builds/unix; ./configure $(value CFG)
     endif
   endif
 

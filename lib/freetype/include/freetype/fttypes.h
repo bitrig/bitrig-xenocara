@@ -4,7 +4,7 @@
 /*                                                                         */
 /*    FreeType simple types definitions (specification only).              */
 /*                                                                         */
-/*  Copyright 1996-2001, 2002, 2004, 2006 by                               */
+/*  Copyright 1996-2001, 2002, 2004, 2006, 2007, 2008 by                   */
 /*  David Turner, Robert Wilhelm, and Werner Lemberg.                      */
 /*                                                                         */
 /*  This file is part of the FreeType project, and may only be used,       */
@@ -53,6 +53,10 @@ FT_BEGIN_HEADER
   /*    FT_Char                                                            */
   /*    FT_Int                                                             */
   /*    FT_UInt                                                            */
+  /*    FT_Int16                                                           */
+  /*    FT_UInt16                                                          */
+  /*    FT_Int32                                                           */
+  /*    FT_UInt32                                                          */
   /*    FT_Short                                                           */
   /*    FT_UShort                                                          */
   /*    FT_Long                                                            */
@@ -94,7 +98,8 @@ FT_BEGIN_HEADER
   /*    FT_Bool                                                            */
   /*                                                                       */
   /* <Description>                                                         */
-  /*    A typedef of unsigned char, used for simple booleans.              */
+  /*    A typedef of unsigned char, used for simple booleans.  As usual,   */
+  /*    values 1 and 0 represent true and false, respectively.             */
   /*                                                                       */
   typedef unsigned char  FT_Bool;
 
@@ -384,7 +389,7 @@ FT_BEGIN_HEADER
   /*************************************************************************/
   /*                                                                       */
   /* <Struct>                                                              */
-  /*    FT_Data	                                                           */
+  /*    FT_Data                                                            */
   /*                                                                       */
   /* <Description>                                                         */
   /*    Read-only binary data represented as a pointer and a length.       */

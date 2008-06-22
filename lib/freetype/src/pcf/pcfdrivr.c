@@ -2,7 +2,7 @@
 
     FreeType font driver for pcf files
 
-    Copyright (C) 2000, 2001, 2002, 2003, 2004, 2006 by
+    Copyright (C) 2000, 2001, 2002, 2003, 2004, 2006, 2007, 2008 by
     Francesco Zappa Nardelli
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -187,7 +187,9 @@ THE SOFTWARE.
     pcf_cmap_init,
     pcf_cmap_done,
     pcf_cmap_char_index,
-    pcf_cmap_char_next
+    pcf_cmap_char_next,
+
+    NULL, NULL, NULL, NULL, NULL
   };
 
 
@@ -203,19 +205,23 @@ THE SOFTWARE.
 
     /* free properties */
     {
-      PCF_Property  prop = face->properties;
+      PCF_Property  prop;
       FT_Int        i;
 
 
-      for ( i = 0; i < face->nprops; i++ )
+      if ( face->properties )
       {
-        prop = &face->properties[i];
+        for ( i = 0; i < face->nprops; i++ )
+        {
+          prop = &face->properties[i];
 
-        FT_FREE( prop->name );
-        if ( prop->isString )
-          FT_FREE( prop->value.atom );
+          if ( prop ) {
+            FT_FREE( prop->name );
+            if ( prop->isString )
+              FT_FREE( prop->value.atom );
+          }
+        }
       }
-
       FT_FREE( face->properties );
     }
 
@@ -258,6 +264,8 @@ THE SOFTWARE.
       FT_Error  error2;
 
 
+      PCF_Face_Done( pcfface );
+
       /* this didn't work, try gzip support! */
       error2 = FT_Stream_OpenGzip( &face->gzip_stream, stream );
       if ( FT_ERROR_BASE( error2 ) == FT_Err_Unimplemented_Feature )
@@ -265,6 +273,7 @@ THE SOFTWARE.
 
       error = error2;
       if ( error )
+#ifdef FT_CONFIG_OPTION_USE_LZW
       {
         FT_Error  error3;
 
@@ -287,6 +296,9 @@ THE SOFTWARE.
         if ( error )
           goto Fail;
       }
+#else
+        goto Fail;
+#endif
       else
       {
         face->gzip_source = stream;
@@ -357,6 +369,7 @@ THE SOFTWARE.
 
   Fail:
     FT_TRACE2(( "[not a valid PCF file]\n" ));
+    PCF_Face_Done( pcfface );
     error = PCF_Err_Unknown_File_Format;  /* error */
     goto Exit;
   }
@@ -435,7 +448,7 @@ THE SOFTWARE.
 
     FT_TRACE4(( "load_glyph %d ---", glyph_index ));
 
-    if ( !face )
+    if ( !face || glyph_index >= (FT_UInt)face->root.num_glyphs )
     {
       error = PCF_Err_Invalid_Argument;
       goto Exit;

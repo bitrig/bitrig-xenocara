@@ -4,7 +4,7 @@
 /*                                                                         */
 /*    SFNT object management (base).                                       */
 /*                                                                         */
-/*  Copyright 1996-2001, 2002, 2003, 2004, 2005, 2006 by                   */
+/*  Copyright 1996-2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 by       */
 /*  David Turner, Robert Wilhelm, and Werner Lemberg.                      */
 /*                                                                         */
 /*  This file is part of the FreeType project, and may only be used,       */
@@ -63,37 +63,6 @@
     for ( n = 0; n < len; n++ )
     {
       code = FT_NEXT_USHORT( read );
-      if ( code < 32 || code > 127 )
-        code = '?';
-
-      string[n] = (char)code;
-    }
-
-    string[len] = 0;
-
-    return string;
-  }
-
-
-  /* convert a UCS-4 name entry to ASCII */
-  static FT_String*
-  tt_name_entry_ascii_from_ucs4( TT_NameEntry  entry,
-                                 FT_Memory     memory )
-  {
-    FT_String*  string;
-    FT_UInt     len, code, n;
-    FT_Byte*    read = (FT_Byte*)entry->string;
-    FT_Error    error;
-
-
-    len = (FT_UInt)entry->stringLength / 4;
-
-    if ( FT_NEW_ARRAY( string, len + 1 ) )
-      return NULL;
-
-    for ( n = 0; n < len; n++ )
-    {
-      code = (FT_UInt)FT_NEXT_ULONG( read );
       if ( code < 32 || code > 127 )
         code = '?';
 
@@ -165,9 +134,11 @@
     FT_String*        result = NULL;
     FT_UShort         n;
     TT_NameEntryRec*  rec;
-    FT_Int            found_apple   = -1;
-    FT_Int            found_win     = -1;
-    FT_Int            found_unicode = -1;
+    FT_Int            found_apple         = -1;
+    FT_Int            found_apple_roman   = -1;
+    FT_Int            found_apple_english = -1;
+    FT_Int            found_win           = -1;
+    FT_Int            found_unicode       = -1;
 
     FT_Bool           is_english = 0;
 
@@ -200,9 +171,14 @@
           break;
 
         case TT_PLATFORM_MACINTOSH:
+          /* This is a bit special because some fonts will use either    */
+          /* an English language id, or a Roman encoding id, to indicate */
+          /* the English version of its font name.                       */
+          /*                                                             */
           if ( rec->languageID == TT_MAC_LANGID_ENGLISH )
-            found_apple = n;
-
+            found_apple_english = n;
+          else if ( rec->encodingID == TT_MAC_ID_ROMAN )
+            found_apple_roman = n;
           break;
 
         case TT_PLATFORM_MICROSOFT:
@@ -232,6 +208,10 @@
       }
     }
 
+    found_apple = found_apple_roman;
+    if ( found_apple_english >= 0 )
+      found_apple = found_apple_english;
+
     /* some fonts contain invalid Unicode or Macintosh formatted entries; */
     /* we will thus favor names encoded in Windows formats if available   */
     /* (provided it is an English name)                                   */
@@ -242,13 +222,19 @@
       rec = face->name_table.names + found_win;
       switch ( rec->encodingID )
       {
+        /* all Unicode strings are encoded using UTF-16BE */
       case TT_MS_ID_UNICODE_CS:
       case TT_MS_ID_SYMBOL_CS:
         convert = tt_name_entry_ascii_from_utf16;
         break;
 
       case TT_MS_ID_UCS_4:
-        convert = tt_name_entry_ascii_from_ucs4;
+        /* Apparently, if this value is found in a name table entry, it is */
+        /* documented as `full Unicode repertoire'.  Experience with the   */
+        /* MsGothic font shipped with Windows Vista shows that this really */
+        /* means UTF-16 encoded names (UCS-4 values are only used within   */
+        /* charmaps).                                                      */
+        convert = tt_name_entry_ascii_from_utf16;
         break;
 
       default:
@@ -299,7 +285,7 @@
   sfnt_find_encoding( int  platform_id,
                       int  encoding_id )
   {
-    typedef struct  TEncoding
+    typedef struct  TEncoding_
     {
       int          platform_id;
       int          encoding_id;
@@ -633,7 +619,22 @@
           error = SFNT_Err_Ok;
         }
         else
+        {
           error = SFNT_Err_Horiz_Header_Missing;
+
+#ifdef FT_CONFIG_OPTION_INCREMENTAL
+          /* If this is an incrementally loaded font and there are */
+          /* overriding metrics, tolerate a missing `hhea' table.  */
+          if ( face->root.internal->incremental_interface          &&
+               face->root.internal->incremental_interface->funcs->
+                 get_glyph_metrics                                 )
+          {
+            face->horizontal.number_Of_HMetrics = 0;
+            error = SFNT_Err_Ok;
+          }
+#endif
+
+        }
       }
 
       if ( error )
@@ -695,22 +696,60 @@
 
     face->root.num_glyphs = face->max_profile.numGlyphs;
 
-    face->root.family_name = tt_face_get_name( face,
-                                               TT_NAME_ID_PREFERRED_FAMILY );
-    if ( !face->root.family_name )
-      face->root.family_name = tt_face_get_name( face,
-                                                 TT_NAME_ID_FONT_FAMILY );
+#if 0
+    /* Bit 8 of the `fsSelection' field in the `OS/2' table denotes  */
+    /* a WWS-only font face.  `WWS' stands for `weight', width', and */
+    /* `slope', a term used by Microsoft's Windows Presentation      */
+    /* Foundation (WPF).  This flag will be introduced in version    */
+    /* 1.5 of the OpenType specification (but is already in use).    */
 
-    face->root.style_name = tt_face_get_name( face,
-                                              TT_NAME_ID_PREFERRED_SUBFAMILY );
-    if ( !face->root.style_name )
-      face->root.style_name  = tt_face_get_name( face,
-                                                 TT_NAME_ID_FONT_SUBFAMILY );
+    if ( face->os2.version != 0xFFFFU && face->os2.fsSelection & 256 )
+#endif
+    {
+      face->root.family_name =
+        tt_face_get_name( face, TT_NAME_ID_PREFERRED_FAMILY );
+      if ( !face->root.family_name )
+        face->root.family_name =
+          tt_face_get_name( face, TT_NAME_ID_FONT_FAMILY );
+
+      face->root.style_name =
+        tt_face_get_name( face, TT_NAME_ID_PREFERRED_SUBFAMILY );
+      if ( !face->root.style_name )
+        face->root.style_name =
+          tt_face_get_name( face, TT_NAME_ID_FONT_SUBFAMILY );
+    }
+#if 0
+    else
+    {
+      /* Support for `name' table ID 21 (WWS family) and 22 (WWS  */
+      /* subfamily) is still under consideration by Microsoft and */
+      /* not implemented in the current version of WPF.           */
+
+      face->root.family_name =
+        tt_face_get_name( face, TT_NAME_ID_WWS_FAMILY );
+      if ( !face->root.family_name )
+        face->root.family_name =
+          tt_face_get_name( face, TT_NAME_ID_PREFERRED_FAMILY );
+      if ( !face->root.family_name )
+        face->root.family_name =
+          tt_face_get_name( face, TT_NAME_ID_FONT_FAMILY );
+
+      face->root.style_name =
+        tt_face_get_name( face, TT_NAME_ID_WWS_SUBFAMILY );
+      if ( !face->root.style_name )
+        face->root.style_name =
+          tt_face_get_name( face, TT_NAME_ID_PREFERRED_SUBFAMILY );
+      if ( !face->root.style_name )
+        face->root.style_name =
+          tt_face_get_name( face, TT_NAME_ID_FONT_SUBFAMILY );
+    }
+#endif
+
 
     /* now set up root fields */
     {
-      FT_Face    root = &face->root;
-      FT_Int32   flags = root->face_flags;
+      FT_Face   root  = &face->root;
+      FT_Int32  flags = root->face_flags;
 
 
       /*********************************************************************/
@@ -726,7 +765,7 @@
                FT_FACE_FLAG_HORIZONTAL;   /* horizontal data   */
 
 #ifdef TT_CONFIG_OPTION_POSTSCRIPT_NAMES
-      if ( psnames_error == SFNT_Err_Ok &&
+      if ( psnames_error == SFNT_Err_Ok               &&
            face->postscript.FormatType != 0x00030000L )
         flags |= FT_FACE_FLAG_GLYPH_NAMES;
 #endif
@@ -758,14 +797,21 @@
       /*                                                                   */
       /* Compute style flags.                                              */
       /*                                                                   */
+
       flags = 0;
       if ( has_outline == TRUE && face->os2.version != 0xFFFFU )
       {
-        /* we have an OS/2 table; use the `fsSelection' field */
-        if ( face->os2.fsSelection & 1 )
+        /* We have an OS/2 table; use the `fsSelection' field.  Bit 9   */
+        /* indicates an oblique font face.  This flag will be           */
+        /* introduced in version 1.5 of the OpenType specification (but */
+        /* is already in use).                                          */
+
+        if ( face->os2.fsSelection & 512 )       /* bit 9 */
+          flags |= FT_STYLE_FLAG_ITALIC;
+        else if ( face->os2.fsSelection & 1 )    /* bit 0 */
           flags |= FT_STYLE_FLAG_ITALIC;
 
-        if ( face->os2.fsSelection & 32 )
+        if ( face->os2.fsSelection & 32 )        /* bit 5 */
           flags |= FT_STYLE_FLAG_BOLD;
       }
       else
@@ -842,7 +888,7 @@
         /*      - otherwise, the correct typographic values are in the    */
         /*        sTypoAscender, sTypoDescender & sTypoLineGap fields.    */
         /*                                                                */
-        /*        However, certains fonts have these fields set to 0.     */
+        /*        However, certain fonts have these fields set to 0.      */
         /*        Rather, they have usWinAscent & usWinDescent correctly  */
         /*        set (but with different values).                        */
         /*                                                                */
@@ -915,7 +961,7 @@
         FT_UInt  i, count;
 
 
-#if defined FT_OPTIMIZE_MEMORY && !defined FT_CONFIG_OPTION_OLD_INTERNALS
+#if !defined FT_CONFIG_OPTION_OLD_INTERNALS
         count = face->sbit_num_strikes;
 #else
         count = (FT_UInt)face->num_sbit_strikes;
@@ -1022,7 +1068,7 @@
     }
 
     /* freeing the horizontal metrics */
-#if defined FT_OPTIMIZE_MEMORY && !defined FT_CONFIG_OPTION_OLD_INTERNALS
+#if !defined FT_CONFIG_OPTION_OLD_INTERNALS
     {
       FT_Stream  stream = FT_FACE_STREAM( face );
 
@@ -1050,7 +1096,8 @@
     face->gasp.numRanges = 0;
 
     /* freeing the name table */
-    sfnt->free_name( face );
+    if ( sfnt )
+      sfnt->free_name( face );
 
     /* freeing family and style name */
     FT_FREE( face->root.family_name );

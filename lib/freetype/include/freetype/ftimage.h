@@ -5,7 +5,7 @@
 /*    FreeType glyph image formats and default raster interface            */
 /*    (specification).                                                     */
 /*                                                                         */
-/*  Copyright 1996-2001, 2002, 2003, 2004, 2005, 2006 by                   */
+/*  Copyright 1996-2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 by       */
 /*  David Turner, Robert Wilhelm, and Werner Lemberg.                      */
 /*                                                                         */
 /*  This file is part of the FreeType project, and may only be used,       */
@@ -28,7 +28,7 @@
 #define __FTIMAGE_H__
 
 
-/* _STANDALONE_ is from ftgrays.c */
+  /* _STANDALONE_ is from ftgrays.c */
 #ifndef _STANDALONE_
 #include <ft2build.h>
 #endif
@@ -206,7 +206,7 @@ FT_BEGIN_HEADER
   /*    An enumeration type to describe the format of a bitmap palette,    */
   /*    used with ft_pixel_mode_pal4 and ft_pixel_mode_pal8.               */
   /*                                                                       */
-  /* <Fields>                                                              */
+  /* <Values>                                                              */
   /*    ft_palette_mode_rgb  :: The palette is an array of 3-bytes RGB     */
   /*                            records.                                   */
   /*                                                                       */
@@ -222,7 +222,7 @@ FT_BEGIN_HEADER
     ft_palette_mode_rgb = 0,
     ft_palette_mode_rgba,
 
-    ft_palettte_mode_max   /* do not remove */
+    ft_palette_mode_max   /* do not remove */
 
   } FT_Palette_Mode;
 
@@ -381,8 +381,7 @@ FT_BEGIN_HEADER
   /*                                 the outline uses the opposite         */
   /*                                 direction (typically for Type 1       */
   /*                                 fonts).  This flag is ignored by the  */
-  /*                                 scan-converter.  However, it is very  */
-  /*                                 important for the auto-hinter.        */
+  /*                                 scan-converter.                       */
   /*                                                                       */
   /*   FT_OUTLINE_IGNORE_DROPOUTS :: By default, the scan converter will   */
   /*                                 try to detect drop-outs in an outline */
@@ -459,11 +458,12 @@ FT_BEGIN_HEADER
 #define FT_CURVE_TAG_TOUCH_BOTH  ( FT_CURVE_TAG_TOUCH_X | \
                                    FT_CURVE_TAG_TOUCH_Y )
 
-#define  FT_Curve_Tag_On       FT_CURVE_TAG_ON
-#define  FT_Curve_Tag_Conic    FT_CURVE_TAG_CONIC
-#define  FT_Curve_Tag_Cubic    FT_CURVE_TAG_CUBIC
-#define  FT_Curve_Tag_Touch_X  FT_CURVE_TAG_TOUCH_X
-#define  FT_Curve_Tag_Touch_Y  FT_CURVE_TAG_TOUCH_Y
+#define FT_Curve_Tag_On       FT_CURVE_TAG_ON
+#define FT_Curve_Tag_Conic    FT_CURVE_TAG_CONIC
+#define FT_Curve_Tag_Cubic    FT_CURVE_TAG_CUBIC
+#define FT_Curve_Tag_Touch_X  FT_CURVE_TAG_TOUCH_X
+#define FT_Curve_Tag_Touch_Y  FT_CURVE_TAG_TOUCH_Y
+
 
   /*************************************************************************/
   /*                                                                       */
@@ -491,6 +491,7 @@ FT_BEGIN_HEADER
 
 #define FT_Outline_MoveTo_Func  FT_Outline_MoveToFunc
 
+
   /*************************************************************************/
   /*                                                                       */
   /* <FuncType>                                                            */
@@ -515,7 +516,8 @@ FT_BEGIN_HEADER
   (*FT_Outline_LineToFunc)( const FT_Vector*  to,
                             void*             user );
 
-#define  FT_Outline_LineTo_Func  FT_Outline_LineToFunc
+#define FT_Outline_LineTo_Func  FT_Outline_LineToFunc
+
 
   /*************************************************************************/
   /*                                                                       */
@@ -546,7 +548,8 @@ FT_BEGIN_HEADER
                              const FT_Vector*  to,
                              void*             user );
 
-#define  FT_Outline_ConicTo_Func  FT_Outline_ConicToFunc
+#define FT_Outline_ConicTo_Func  FT_Outline_ConicToFunc
+
 
   /*************************************************************************/
   /*                                                                       */
@@ -578,7 +581,7 @@ FT_BEGIN_HEADER
                              const FT_Vector*  to,
                              void*             user );
 
-#define  FT_Outline_CubicTo_Func  FT_Outline_CubicToFunc
+#define FT_Outline_CubicTo_Func  FT_Outline_CubicToFunc
 
 
   /*************************************************************************/
@@ -724,7 +727,7 @@ FT_BEGIN_HEADER
   /*    ft_glyph_format_xxx                                                */
   /*                                                                       */
   /* <Description>                                                         */
-  /*    A list of decprecated constants.  Use the corresponding            */
+  /*    A list of deprecated constants.  Use the corresponding             */
   /*    @FT_Glyph_Format values instead.                                   */
   /*                                                                       */
   /* <Values>                                                              */
@@ -869,7 +872,7 @@ FT_BEGIN_HEADER
                   const FT_Span*  spans,
                   void*           user );
 
-#define FT_Raster_Span_Func   FT_SpanFunc
+#define FT_Raster_Span_Func  FT_SpanFunc
 
 
   /*************************************************************************/
@@ -1074,7 +1077,8 @@ FT_BEGIN_HEADER
   (*FT_Raster_NewFunc)( void*       memory,
                         FT_Raster*  raster );
 
-#define  FT_Raster_New_Func    FT_Raster_NewFunc
+#define FT_Raster_New_Func  FT_Raster_NewFunc
+
 
   /*************************************************************************/
   /*                                                                       */
@@ -1090,7 +1094,8 @@ FT_BEGIN_HEADER
   typedef void
   (*FT_Raster_DoneFunc)( FT_Raster  raster );
 
-#define  FT_Raster_Done_Func   FT_Raster_DoneFunc
+#define FT_Raster_Done_Func  FT_Raster_DoneFunc
+
 
   /*************************************************************************/
   /*                                                                       */
@@ -1124,7 +1129,8 @@ FT_BEGIN_HEADER
                           unsigned char*  pool_base,
                           unsigned long   pool_size );
 
-#define  FT_Raster_Reset_Func   FT_Raster_ResetFunc
+#define FT_Raster_Reset_Func  FT_Raster_ResetFunc
+
 
   /*************************************************************************/
   /*                                                                       */
@@ -1149,7 +1155,8 @@ FT_BEGIN_HEADER
                             unsigned long  mode,
                             void*          args );
 
-#define  FT_Raster_Set_Mode_Func  FT_Raster_SetModeFunc
+#define FT_Raster_Set_Mode_Func  FT_Raster_SetModeFunc
+
 
   /*************************************************************************/
   /*                                                                       */
@@ -1189,7 +1196,8 @@ FT_BEGIN_HEADER
   (*FT_Raster_RenderFunc)( FT_Raster                raster,
                            const FT_Raster_Params*  params );
 
-#define  FT_Raster_Render_Func    FT_Raster_RenderFunc
+#define FT_Raster_Render_Func  FT_Raster_RenderFunc
+
 
   /*************************************************************************/
   /*                                                                       */
@@ -1212,12 +1220,12 @@ FT_BEGIN_HEADER
   /*                                                                       */
   typedef struct  FT_Raster_Funcs_
   {
-    FT_Glyph_Format         glyph_format;
-    FT_Raster_NewFunc       raster_new;
-    FT_Raster_ResetFunc     raster_reset;
-    FT_Raster_SetModeFunc   raster_set_mode;
-    FT_Raster_RenderFunc    raster_render;
-    FT_Raster_DoneFunc      raster_done;
+    FT_Glyph_Format        glyph_format;
+    FT_Raster_NewFunc      raster_new;
+    FT_Raster_ResetFunc    raster_reset;
+    FT_Raster_SetModeFunc  raster_set_mode;
+    FT_Raster_RenderFunc   raster_render;
+    FT_Raster_DoneFunc     raster_done;
 
   } FT_Raster_Funcs;
 

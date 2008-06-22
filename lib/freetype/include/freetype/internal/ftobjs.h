@@ -4,7 +4,7 @@
 /*                                                                         */
 /*    The FreeType private base classes (specification).                   */
 /*                                                                         */
-/*  Copyright 1996-2001, 2002, 2003, 2004, 2005, 2006 by                   */
+/*  Copyright 1996-2001, 2002, 2003, 2004, 2005, 2006, 2008 by             */
 /*  David Turner, Robert Wilhelm, and Werner Lemberg.                      */
 /*                                                                         */
 /*  This file is part of the FreeType project, and may only be used,       */
@@ -29,6 +29,7 @@
 #include <ft2build.h>
 #include FT_RENDER_H
 #include FT_SIZES_H
+#include FT_LCD_FILTER_H
 #include FT_INTERNAL_MEMORY_H
 #include FT_INTERNAL_GLYPH_LOADER_H
 #include FT_INTERNAL_DRIVER_H
@@ -88,6 +89,25 @@ FT_BEGIN_HEADER
   ft_highpow2( FT_UInt32  value );
 
 
+  /*
+   *  character classification functions -- since these are used to parse
+   *  font files, we must not use those in <ctypes.h> which are
+   *  locale-dependent
+   */
+#define  ft_isdigit( x )   ( ( (unsigned)(x) - '0' ) < 10U )
+
+#define  ft_isxdigit( x )  ( ( (unsigned)(x) - '0' ) < 10U || \
+                             ( (unsigned)(x) - 'a' ) < 6U  || \
+                             ( (unsigned)(x) - 'A' ) < 6U  )
+
+  /* the next two macros assume ASCII representation */
+#define  ft_isupper( x )  ( ( (unsigned)(x) - 'A' ) < 26U )
+#define  ft_islower( x )  ( ( (unsigned)(x) - 'a' ) < 26U )
+
+#define  ft_isalpha( x )  ( ft_isupper( x ) || ft_islower( x ) )
+#define  ft_isalnum( x )  ( ft_isdigit( x ) || ft_isalpha( x ) )
+
+
   /*************************************************************************/
   /*************************************************************************/
   /*************************************************************************/
@@ -140,6 +160,31 @@ FT_BEGIN_HEADER
   (*FT_CMap_CharNextFunc)( FT_CMap     cmap,
                            FT_UInt32  *achar_code );
 
+  typedef FT_UInt
+  (*FT_CMap_CharVarIndexFunc)( FT_CMap    cmap,
+                               FT_CMap    unicode_cmap,
+                               FT_UInt32  char_code,
+                               FT_UInt32  variant_selector );
+
+  typedef FT_Bool
+  (*FT_CMap_CharVarIsDefaultFunc)( FT_CMap    cmap,
+                                   FT_UInt32  char_code,
+                                   FT_UInt32  variant_selector );
+
+  typedef FT_UInt32 *
+  (*FT_CMap_VariantListFunc)( FT_CMap    cmap,
+                              FT_Memory  mem );
+
+  typedef FT_UInt32 *
+  (*FT_CMap_CharVariantListFunc)( FT_CMap    cmap,
+                                  FT_Memory  mem,
+                                  FT_UInt32  char_code );
+
+  typedef FT_UInt32 *
+  (*FT_CMap_VariantCharListFunc)( FT_CMap    cmap,
+                                  FT_Memory  mem,
+                                  FT_UInt32  variant_selector );
+
 
   typedef struct  FT_CMap_ClassRec_
   {
@@ -148,6 +193,15 @@ FT_BEGIN_HEADER
     FT_CMap_DoneFunc       done;
     FT_CMap_CharIndexFunc  char_index;
     FT_CMap_CharNextFunc   char_next;
+
+    /* Subsequent entries are special ones for format 14 -- the variant */
+    /* selector subtable which behaves like no other                    */
+
+    FT_CMap_CharVarIndexFunc      char_var_index;
+    FT_CMap_CharVarIsDefaultFunc  char_var_default;
+    FT_CMap_VariantListFunc       variant_list;
+    FT_CMap_CharVariantListFunc   charvariant_list;
+    FT_CMap_VariantCharListFunc   variantchar_list;
 
   } FT_CMap_ClassRec;
 
@@ -211,6 +265,12 @@ FT_BEGIN_HEADER
   /*      this data when first opened.  This field exists only if          */
   /*      @FT_CONFIG_OPTION_INCREMENTAL is defined.                        */
   /*                                                                       */
+  /*    ignore_unpatented_hinter ::                                        */
+  /*      This boolean flag instructs the glyph loader to ignore the       */
+  /*      native font hinter, if one is found.  This is exclusively used   */
+  /*      in the case when the unpatented hinter is compiled within the    */
+  /*      library.                                                         */
+  /*                                                                       */
   typedef struct  FT_Face_InternalRec_
   {
 #ifdef FT_CONFIG_OPTION_OLD_INTERNALS
@@ -226,6 +286,8 @@ FT_BEGIN_HEADER
 #ifdef FT_CONFIG_OPTION_INCREMENTAL
     FT_Incremental_InterfaceRec*  incremental_interface;
 #endif
+
+    FT_Bool             ignore_unpatented_hinter;
 
   } FT_Face_InternalRec;
 
@@ -278,7 +340,28 @@ FT_BEGIN_HEADER
   } FT_GlyphSlot_InternalRec;
 
 
+#if 0
+
   /*************************************************************************/
+  /*                                                                       */
+  /* <Struct>                                                              */
+  /*    FT_Size_InternalRec                                                */
+  /*                                                                       */
+  /* <Description>                                                         */
+  /*    This structure contains the internal fields of each FT_Size        */
+  /*    object.  Currently, it's empty.                                    */
+  /*                                                                       */
+  /*************************************************************************/
+
+  typedef struct  FT_Size_InternalRec_
+  {
+    /* empty */
+
+  } FT_Size_InternalRec;
+
+#endif
+
+
   /*************************************************************************/
   /*************************************************************************/
   /****                                                                 ****/
@@ -621,10 +704,15 @@ FT_BEGIN_HEADER
 
 
   /* Set this debug hook to a non-null pointer to force unpatented hinting */
-  /* for all faces when both TT_CONFIG_OPTION_BYTECODE_INTERPRETER and     */
-  /* TT_CONFIG_OPTION_UNPATENTED_HINTING are defined. this is only used    */
+  /* for all faces when both TT_USE_BYTECODE_INTERPRETER and               */
+  /* TT_CONFIG_OPTION_UNPATENTED_HINTING are defined.  This is only used   */
   /* during debugging.                                                     */
 #define FT_DEBUG_HOOK_UNPATENTED_HINTING  1
+
+
+  typedef void  (*FT_Bitmap_LcdFilterFunc)( FT_Bitmap*      bitmap,
+                                            FT_Render_Mode  render_mode,
+                                            FT_Library      library );
 
 
   /*************************************************************************/
@@ -699,6 +787,13 @@ FT_BEGIN_HEADER
     FT_ULong           raster_pool_size; /* size of render pool in bytes */
 
     FT_DebugHook_Func  debug_hooks[4];
+
+#ifdef FT_CONFIG_OPTION_SUBPIXEL_RENDERING
+    FT_LcdFilter             lcd_filter;
+    FT_Int                   lcd_extra;        /* number of extra pixels */
+    FT_Byte                  lcd_weights[7];   /* filter weights, if any */
+    FT_Bitmap_LcdFilterFunc  lcd_filter_func;  /* filtering callback     */
+#endif
 
   } FT_LibraryRec;
 
