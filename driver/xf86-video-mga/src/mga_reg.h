@@ -221,6 +221,9 @@
 #define MGADWG_TRANSC		( 0x01 << 30 )
 #define MGAREG_MISC_WRITE	0x3c2
 #define MGAREG_MISC_READ	0x3cc
+#define MGAREG_MEM_MISC_WRITE       0x1fc2
+#define MGAREG_MEM_MISC_READ        0x1fcc
+
 #define MGAREG_MISC_IOADSEL	(0x1 << 0)
 #define MGAREG_MISC_RAMMAPEN	(0x1 << 1)
 #define MGAREG_MISC_CLK_SEL_VGA25	(0x0 << 2)
@@ -316,6 +319,7 @@
 
 #define MGA1064_INDEX		0x00
 #define MGA1064_WADR_PAL	0x00
+#define MGA1064_SPAREREG        0x00
 #define MGA1064_COL_PAL		0x01
 #define MGA1064_PIX_RD_MSK	0x02
 #define MGA1064_RADR_PAL	0x03
@@ -355,7 +359,6 @@
 #define MGA1064_MUL_CTL_G16V16bits		0x06
 #define MGA1064_MUL_CTL_32_24bits		0x07
 
-#define MGAGDAC_XVREFCTRL		0x18
 #define MGA1064_PIX_CLK_CTL		0x1a
 #define MGA1064_PIX_CLK_CTL_CLK_DIS   		( 0x01 << 2 )
 #define MGA1064_PIX_CLK_CTL_CLK_POW_DOWN   	( 0x01 << 3 )
@@ -365,8 +368,9 @@
 #define MGA1064_PIX_CLK_CTL_SEL_MSK   		( 0x03 << 0 )
 
 #define MGA1064_GEN_CTL		0x1d
+#define MGA1064_GEN_CTL_SYNC_ON_GREEN_DIS      (0x01 << 5)
 #define MGA1064_MISC_CTL	0x1e
-#define MGA1064_MISC_CTL_DAC_POW_DN   		( 0x01 << 0 )
+#define MGA1064_MISC_CTL_DAC_EN                ( 0x01 << 0 )
 #define MGA1064_MISC_CTL_VGA   		( 0x01 << 1 )
 #define MGA1064_MISC_CTL_DIS_CON   		( 0x03 << 1 )
 #define MGA1064_MISC_CTL_MAFC   		( 0x02 << 1 )
@@ -379,6 +383,16 @@
 #define MGA1064_SYS_PLL_N	0x2d
 #define MGA1064_SYS_PLL_P	0x2e
 #define MGA1064_SYS_PLL_STAT	0x2f
+
+#define MGA1064_REMHEADCTL     0x30
+#define MGA1064_REMHEADCTL_CLKDIS ( 0x01 << 0 )
+#define MGA1064_REMHEADCTL_CLKSL_OFF ( 0x00 << 1 )
+#define MGA1064_REMHEADCTL_CLKSL_PLL ( 0x01 << 1 )
+#define MGA1064_REMHEADCTL_CLKSL_PCI ( 0x02 << 1 )
+#define MGA1064_REMHEADCTL_CLKSL_MSK ( 0x03 << 1 )
+
+#define MGA1064_REMHEADCTL2     0x31
+
 #define MGA1064_ZOOM_CTL	0x38
 #define MGA1064_SENSE_TST	0x3a
 
@@ -402,18 +416,47 @@
 #define MGA1064_PIX_PLL_STAT	0x4f
 
 /*Added for G450 dual head*/
-/* Supported PLL*/
-#define __PIXEL_PLL                 1
-#define __SYSTEM_PLL                2
-#define __VIDEO_PLL                 3
 
+#define MGA1064_VID_PLL_STAT    0x8c
 #define MGA1064_VID_PLL_P       0x8D
 #define MGA1064_VID_PLL_M       0x8E
 #define MGA1064_VID_PLL_N       0x8F
 
+/* Modified PLL for G200 Winbond (G200WB) */
+#define MGA1064_WB_PIX_PLLC_M	0xb7
+#define MGA1064_WB_PIX_PLLC_N	0xb6
+#define MGA1064_WB_PIX_PLLC_P	0xb8
+
+/* Modified PLL for G200 Maxim (G200EV) */
+#define MGA1064_EV_PIX_PLLC_M	0xb6
+#define MGA1064_EV_PIX_PLLC_N	0xb7
+#define MGA1064_EV_PIX_PLLC_P	0xb8
+
+
 #define MGA1064_DISP_CTL        0x8a
+#define MGA1064_DISP_CTL_DAC1OUTSEL_MASK       0x01
+#define MGA1064_DISP_CTL_DAC1OUTSEL_DIS        0x00
+#define MGA1064_DISP_CTL_DAC1OUTSEL_EN         0x01
+#define MGA1064_DISP_CTL_DAC2OUTSEL_MASK       (0x03 << 2)
+#define MGA1064_DISP_CTL_DAC2OUTSEL_DIS        0x00
+#define MGA1064_DISP_CTL_DAC2OUTSEL_CRTC1      (0x01 << 2)
+#define MGA1064_DISP_CTL_DAC2OUTSEL_CRTC2      (0x02 << 2)
+#define MGA1064_DISP_CTL_DAC2OUTSEL_TVE        (0x03 << 2)
+#define MGA1064_DISP_CTL_PANOUTSEL_MASK        (0x03 << 5)
+#define MGA1064_DISP_CTL_PANOUTSEL_DIS         0x00
+#define MGA1064_DISP_CTL_PANOUTSEL_CRTC1       (0x01 << 5)
+#define MGA1064_DISP_CTL_PANOUTSEL_CRTC2RGB    (0x02 << 5)
+#define MGA1064_DISP_CTL_PANOUTSEL_CRTC2656    (0x03 << 5)
+
 #define MGA1064_SYNC_CTL        0x8b
+
 #define MGA1064_PWR_CTL         0xa0
+#define MGA1064_PWR_CTL_DAC2_EN                (0x01 << 0)
+#define MGA1064_PWR_CTL_VID_PLL_EN             (0x01 << 1)
+#define MGA1064_PWR_CTL_PANEL_EN               (0x01 << 2)
+#define MGA1064_PWR_CTL_RFIFO_EN               (0x01 << 3)
+#define MGA1064_PWR_CTL_CFIFO_EN               (0x01 << 4)
+
 #define MGA1064_PAN_CTL         0xa2
 
 /* Using crtc2 */
@@ -428,6 +471,29 @@
 #define MGAREG2_C2DATACTL        0x4c
 
 #define MGAREG_C2CTL            0x3c10
+#define MGAREG_C2CTL_C2_EN                     0x01
+
+#define MGAREG_C2_HIPRILVL_M                   (0x07 << 4)
+#define MGAREG_C2_MAXHIPRI_M                   (0x07 << 8)
+
+#define MGAREG_C2CTL_PIXCLKSEL_MASK            (0x03 << 1)
+#define MGAREG_C2CTL_PIXCLKSELH_MASK           (0x01 << 14)
+#define MGAREG_C2CTL_PIXCLKSEL_PCICLK          0x00
+#define MGAREG_C2CTL_PIXCLKSEL_VDOCLK          (0x01 << 1)
+#define MGAREG_C2CTL_PIXCLKSEL_PIXELPLL        (0x02 << 1)
+#define MGAREG_C2CTL_PIXCLKSEL_VIDEOPLL        (0x03 << 1)
+#define MGAREG_C2CTL_PIXCLKSEL_VDCLK           (0x01 << 14)
+
+#define MGAREG_C2CTL_PIXCLKSEL_CRISTAL         (0x01 << 1) | (0x01 << 14)
+#define MGAREG_C2CTL_PIXCLKSEL_SYSTEMPLL       (0x02 << 1) | (0x01 << 14)
+
+#define MGAREG_C2CTL_PIXCLKDIS_MASK            (0x01 << 3)
+#define MGAREG_C2CTL_PIXCLKDIS_DISABLE         (0x01 << 3)
+
+#define MGAREG_C2CTL_CRTCDACSEL_MASK           (0x01 << 20)
+#define MGAREG_C2CTL_CRTCDACSEL_CRTC1          0x00
+#define MGAREG_C2CTL_CRTCDACSEL_CRTC2          (0x01 << 20)
+
 #define MGAREG_C2HPARAM         0x3c14
 #define MGAREG_C2HSYNC          0x3c18
 #define MGAREG_C2VPARAM         0x3c1c
@@ -436,10 +502,6 @@
 
 #define MGAREG_C2OFFSET         0x3c40
 #define MGAREG_C2DATACTL        0x3c4c
-
-#define MGA1064_DISP_CTL        0x8a
-#define MGA1064_SYNC_CTL        0x8b
-#define MGA1064_PWR_CTL         0xa0
 
 /* video register */
 
