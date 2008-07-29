@@ -1,7 +1,13 @@
 #include <xaa.h>
+#include <exa.h>
 #include <xf86.h>
 #include <xf86int10.h>
 #include <xf86Cursor.h>
+#include <xf86DDC.h>
+#include <xf86Crtc.h>
+#include <xf86int10.h>
+
+#define G80_NUM_I2C_PORTS 6
 
 typedef enum Head {
     HEAD0 = 0,
@@ -21,7 +27,20 @@ typedef enum ORNum {
    SOR1 = 1
 } ORNum;
 
+typedef enum PanelType {
+    TMDS,
+    LVDS,
+} PanelType;
+
+typedef enum AccelMethod {
+    XAA,
+    EXA,
+} AccelMethod;
+
 typedef struct G80Rec {
+#if XSERVER_LIBPCIACCESS
+    struct pci_device  *pPci;
+#endif
     volatile CARD32 *   reg;
     unsigned char *     mem;
 
@@ -32,15 +51,15 @@ typedef struct G80Rec {
     const unsigned char*table1;
     int                 offscreenHeight;
     struct {
-        ORNum dac;
-        ORNum sor;
-    } i2cMap[4];
-
-    float               pclk; /* Current mode pclk in kHz */
-
-    Head                head;
-    ORType              orType;
-    ORNum               or;
+        ORNum           dac;
+        ORNum           sor;
+    } i2cMap[G80_NUM_I2C_PORTS];
+    struct {
+        Bool            present;
+        ORNum           or;
+        int             i2cPort;
+    } lvds;
+    unsigned            loadVal;
 
     xf86Int10InfoPtr    int10;
     int                 int10Mode; /* Console mode to restore */
@@ -49,16 +68,17 @@ typedef struct G80Rec {
     OptionInfoPtr       Options;
     Bool                HWCursor;
     Bool                NoAccel;
-    DisplayModePtr      BackendMode;
-
-    /* Cursor */
-    xf86CursorInfoPtr   CursorInfo;
-    Bool                cursorVisible;
-    CARD32              tmpCursor[256]; /* Temporary 1bpp cursor image */
+    AccelMethod         AccelMethod;
+    Bool                Dither;
+    Bool                AllowDualLink;
 
     /* XAA */
     XAAInfoRecPtr       xaa;
     CARD32              currentRop;
+
+    /* EXA */
+    ExaDriverPtr        exa;
+    ExaOffscreenArea   *exaScreenArea;
 
     /* DMA command buffer */
     CARD32              dmaPut;
@@ -68,8 +88,8 @@ typedef struct G80Rec {
     CARD32 *            dmaBase;
     void              (*DMAKickoffCallback)(ScrnInfoPtr);
 
-    CloseScreenProcPtr  CloseScreen;
-    ScreenBlockHandlerProcPtr BlockHandler;
+    CloseScreenProcPtr           CloseScreen;
+    ScreenBlockHandlerProcPtr    BlockHandler;
 } G80Rec, *G80Ptr;
 
 #define G80PTR(p) ((G80Ptr)((p)->driverPrivate))

@@ -1,3 +1,866 @@
+commit 6cd80057fadbb8d63d3e1a623515206800fefc8e
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Mon Jun 30 16:26:09 2008 -0700
+
+    Bump to 2.1.10.
+
+commit 3f43093cf0c0338a1a479ed4ba2fad3f5f04ad69
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Mon Jun 30 16:25:54 2008 -0700
+
+    More G8x chips.
+
+commit 69aa963d7ab8256d0e932e1a5a98599f168b8836
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Mon Jun 30 13:30:07 2008 -0700
+
+    Fix build by using CARD32 instead of uint32_t, like we do everywhere else.
+
+commit 91d8778176f1db54c8222a95315610a043198648
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Sun Jun 29 21:26:57 2008 -0700
+
+    G80: Handle extended I2C ports and LVDS panels with DDC-based EDIDs.
+
+commit db768cf105956fbea39383a2214227782bf827b0
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Sun Jun 22 13:01:21 2008 -0700
+
+    Add a note that MODE_PANEL really means "larger than BIOS-programmed panel size".
+    
+    Bug #16085.
+
+commit fb10793d2607d30077a9861b575c108b6c4101ca
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Sun Jun 22 12:55:10 2008 -0700
+
+    Add new chips to the man page and fix capitalization of "Quadro".
+
+commit 2fdcda8ea62eba1b7885f0a75249884715936247
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Sun Jun 22 12:45:31 2008 -0700
+
+    Replace copyright notices with stock MIT X11 boilerplate.
+
+commit 2df11aafe4eae33aab06d902ddeed6bd996b1575
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Mon Jun 16 10:07:07 2008 -0700
+
+    GeForce GTX 280 and 260 chip names.
+    
+    Note: These GPUs already worked with this driver, this change just adds their
+    names to the table.
+
+commit 745a1d2d318eef0a6195fe08e4a43471b6d0a662
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Thu Jun 5 20:41:43 2008 -0700
+
+    GeForce 9 mobile chips.
+
+commit cca0a00c89730c8338af44e62438babc93f078fb
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Fri May 9 18:45:46 2008 -0700
+
+    Bump to 2.1.9.
+
+commit 9c98d2ca942049322688b5796a2ed041fd48282d
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Fri May 9 18:44:57 2008 -0700
+
+    Yet more G80s.
+    
+    Sometimes I wish we made fewer products.
+
+commit cb83fbdfa22aa408e6692256cd44b78fef53e801
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Fri May 9 18:31:07 2008 -0700
+
+    Add an option to allow validation of dual-link DVI modes.
+    
+    These modes don't work at bootup (i.e. power saving) configuration on all GPUs,
+    so they're still disabled by default.  This option allows users to enable them
+    in case they actually work.
+
+commit 8db2d4e63508f59299098e092ae85e543cf61d03
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Sun Apr 27 16:23:40 2008 -0700
+
+    More G80s.
+
+commit 4aa43a2b66e473f9154f1582f5cf0e4b4596e485
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Sun Apr 27 16:23:28 2008 -0700
+
+    Fix a few startup bugs.
+
+commit 0ddee2347109e8c64bd2cb4693b97c3fa3aab94b
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Tue Mar 25 16:35:05 2008 -0700
+
+    Sort the IsSupported table.
+
+commit c0c7d610800161976fd7dce064beae05d2d4195b
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Mon Apr 28 14:43:12 2008 -0700
+
+    I win at C.
+
+commit b62a7cf70db356918aa04fb3f30bf1fd1142b9d5
+Author: Matthieu Herrb <matthieu.herrb@laas.fr>
+Date:   Sat Mar 8 23:43:58 2008 +0100
+
+    Makefile.am: nuke RCS Id
+
+commit f88ef390985babdb2b489cf52bfa587e1879db38
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Fri Mar 7 12:32:40 2008 -0800
+
+    Bug #14885: Add missing static keywords.
+
+commit 4965498f238fbe3d8a0d0b84bf8bceb9237e472a
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Thu Mar 6 13:53:54 2008 -0800
+
+    Bump to 2.1.8.
+
+commit 806331f411df991dcd1a48108f9ff4e9bb480969
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Thu Mar 6 14:31:16 2008 -0800
+
+    Add xf86gtf.c to the compat file list.
+
+commit 09d154246ab55846878e34bc133b08c11765c45b
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Thu Mar 6 12:40:23 2008 -0800
+
+    More new chip names.
+
+commit fa97c4c2c69f91ac5a034ef2f62287b7cd5b2bde
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Tue Feb 26 12:24:05 2008 -0800
+
+    GeForce 9600 GT.
+    
+    Note that the 9600 GT should already work in 2.1.7.  This change just adds its
+    name to the list.
+
+commit a87b93d5c5b4d1a65a60dad271b06a2d560b71b8
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Tue Feb 19 14:17:57 2008 -0800
+
+    G80: Fix connector mapping and TMDS initialization on certain GPUs.
+
+commit 3f2a1898fedbada151da31fc163ae54daac0e896
+Author: Søren Sandmann Pedersen <sandmann@redhat.com>
+Date:   Wed Feb 13 10:43:28 2008 -0800
+
+    [PATCH] Bug #14484: Fix G80SorSetProperty return value.
+    
+    Signed-off-by: Aaron Plattner <aplattner@nvidia.com>
+
+commit f8b24e5c729c9d3321282b065f4ef79b177f928d
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Fri Jan 25 18:23:48 2008 -0800
+
+    Bump to 2.1.7.
+
+commit d2367140ad1fe96bce5e780332d21999e5aa31bf
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Fri Jan 25 18:15:12 2008 -0800
+
+    Fix warning.
+
+commit e844f10c7b5e41330f2bcb884ab448641dd5bb06
+Author: Giuseppe Bilotta <giuseppe.bilotta@gmail.com>
+Date:   Thu Sep 27 00:22:04 2007 +0200
+
+    [PATCH] Enable backlight toggling for Dell Inspiron 8200 GeForce2 Go
+    
+    GeForce2 Go and similar cards are explicitly excluded from the
+    NVBacklightEnable() code (purposedly, as the code used for the other
+    chipsets on x86 has no effect.) This causes the backlight to remain
+    active on laptops equipped with such a card, even when DPMS modes were
+    active.
+    
+    Fix the issue for Dell Inspiron 8200 by introducing the proper
+    registry writes to toggle the backlight.
+    
+    Signed-off-by: Giuseppe Bilotta <giuseppe.bilotta@gmail.com>
+    Signed-off-by: Aaron Plattner <aplattner@nvidia.com>
+
+commit 02e431eb0969cabb67f3e4b1cb1a2d7fc5f697f0
+Author: Giuseppe Bilotta <giuseppe.bilotta@gmail.com>
+Date:   Thu Sep 27 00:08:28 2007 +0200
+
+    [PATCH] Add macros to retrieve the subsystem vendor/device
+    
+    Signed-off-by: Giuseppe Bilotta <giuseppe.bilotta@gmail.com>
+    Signed-off-by: Aaron Plattner <aplattner@nvidia.com>
+
+commit 3449da7a7baf7365c247caa9b4344316a961ec41
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Thu Jan 24 20:51:29 2008 -0800
+
+    Update know card list date and add G92 to the manpage.
+
+commit 62ff129257161db99dc4056cf16aa196ccfbc921
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Wed Jan 23 21:32:51 2008 -0800
+
+    Fix more load detection false positives.
+
+commit 28f34db87cefdc6b327a98db43da5b4fefe3bdd8
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Wed Jan 23 20:23:32 2008 -0800
+
+    New chips.
+
+commit 64721629c3908556fcf8c9941feea1e3b961bf00
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Sat Dec 1 16:02:37 2007 -0800
+
+    G80Create{Dac,Sor} return pointers, not Bools.
+
+commit 7f281be7e53ac274016a6af6b2b5dc6f8bddb810
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Fri Nov 30 17:37:20 2007 -0800
+
+    Bug #7309: Delay after disabling cursor to avoid wedging the cursor hardware on GeForce 6150.
+
+commit 100f5e24da2cbc79ed761083daa9a00b107008ab
+Author: Alan Coopersmith <alan.coopersmith@sun.com>
+Date:   Mon Nov 26 13:14:40 2007 -0800
+
+    xcalloc needs 2 args, Xcalloc takes one - yay for inconsistency!
+
+commit e9ada35b4d24abd44bc5d811b59c6f25af5984f4
+Author: Ian Romanick <idr@us.ibm.com>
+Date:   Wed Nov 21 15:35:06 2007 -0800
+
+    Build fix for recent removal of ALLOCATE_LOCAL and DEALLOCATE_LOCAL
+
+commit d483ecd851bb84014f1fa86f0ada4540b3ad801e
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Tue Nov 13 17:18:10 2007 -0800
+
+    G80: Reduce load detection false positives.
+
+commit 4da88cb3dd13a86c477389c5b2d42d7d40ce2023
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Fri Nov 2 16:56:35 2007 -0700
+
+    GeForce 8800 GT.
+
+commit 58dbd31953d0e2f30d06b3fc5118a016a17666fe
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Tue Oct 23 13:17:27 2007 -0700
+
+    Bump to 2.1.6.
+
+commit 0887084730af8428e902dabc6e00c505f383f57f
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Sun Oct 14 14:15:07 2007 -0700
+
+    G80 bug #12397: Fix LVDS detection on certain laptops.
+
+commit 1003bcbe4381201f1d7b34dc1af72f57b2943b67
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Sat Oct 13 14:36:49 2007 -0700
+
+    G80 bug #12637: Unwedge the hardware if the BIOS left it stuck.
+
+commit 1e12277650dff10b1083915cb73961525e21a471
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Sat Oct 13 13:50:04 2007 -0700
+
+    Remove unused headers.
+
+commit 7a124edd1fcc0be6bdad489b0e8d7db3efe44b14
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Fri Sep 21 18:55:21 2007 -0700
+
+    Bump to 2.1.5.
+
+commit fee39378ee291a715c607b8600c5380dfa80d97e
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Fri Sep 21 15:08:46 2007 -0700
+
+    Fix stupid, stupid typos reported by Alan Coopersmith.
+    
+    Thanks!
+
+commit 5ca45e600dcea17dba7cf078de49aef3821ea687
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Fri Sep 21 12:16:56 2007 -0700
+
+    Bump to 2.1.4.
+
+commit e58504defab08492cc60c36d5dae4f5c4c8c1caa
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Mon Sep 17 15:44:52 2007 -0700
+
+    Fix uninitialized variable warning.
+
+commit 5b56964a29b326d28bcf3a51e98443d426df58bd
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Mon Sep 17 15:41:26 2007 -0700
+
+    New products.
+
+commit deff2965ef35260b4b7c4bc23718833bec7143b3
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Mon Sep 17 01:12:02 2007 -0700
+
+    libpciaccess support.
+
+commit b2db7d414400d80a5567d71eed9a7e94f1043a20
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Tue Sep 11 22:51:20 2007 -0700
+
+    G80: Fix LVDS detection on some laptops.
+
+commit 07fb9f0b00fafe18bd33bddff23cbb4325eb50f8
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Mon Aug 27 12:12:44 2007 -0700
+
+    Add release.sh to .gitignore.
+
+commit 69f7a57cd9baabbbee7b7665c3c2c2b91c056a04
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Wed Aug 15 17:12:11 2007 -0700
+
+    Bump to 2.1.3.
+
+commit 3bb842cb55fd201a559bef19c06db4aee0485d26
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Tue Jul 24 21:21:06 2007 -0700
+
+    Nuke old RCS tags.
+    
+    Fix the ends of files.  Update the known cards date.
+
+commit 08b68473351081fe1ed96ba7e206ed0d301b8a91
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Tue Jul 24 20:36:04 2007 -0700
+
+    G80: Allow DVI scaling.
+    
+    Revamp how the scaling code works.  When a mode is set on a DVI output,
+    determine the current preferred mode and scale to that.  Add a new scaling
+    option, "off", which disables scaling and scans out the actual timings in the
+    mode to be set.
+
+commit f0ebb42ee94eac4b294d12d02f4406a444b347ff
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Fri Jul 13 13:17:52 2007 -0700
+
+    G80: Add an LVDS flat panel scaling property.
+    
+    This property controls how non-native resolutions are scaled to the native
+    resolution.  Valid values are:
+        * center: 1:1 pixel ratio with black borders to center the image.
+        * fill: Scale image to the native resolution.
+        * aspect: Scale image to fit the screen, adding black bars to preserve
+          square pixels.
+    Defaults to "aspect".  Change with "xrandr --output LVDS --set scale <foo>".
+
+commit ec78618d685759a39d386e9929661037b167fe68
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Tue Jul 10 11:54:33 2007 -0700
+
+    Bug #4686: Fix a minor GeForceFX + flatpanel + video overlay corruption issue.
+    
+    This change was originally in XFree86 CVS, nv_dac.c version 1.36 but got
+    reverted accidentally.
+
+commit 493822998184a1d79d6774686983cbd41930f253
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Tue Jul 10 09:58:46 2007 -0700
+
+    Bump to 2.1.2.
+
+commit d0d4e37accc697108e03c2ee7fdc0edf1f309620
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Tue Jul 10 09:48:19 2007 -0700
+
+    More GeForce 8 series mobile chips.
+
+commit e77a2d9b62bc65062e7e2167642be5ab75ac4864
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Tue Jul 10 00:41:21 2007 -0700
+
+    G80: Add a dithering property and corresponding config file option.
+
+commit c1503c864d495f8a3e5380fed5cb8ca5e21a3750
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Sun Jul 8 01:28:42 2007 -0700
+
+    GeForce 8600M GT.
+
+commit 42dffde988176a3f85b0586ecb8d672b74050760
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Sun Jul 8 00:53:00 2007 -0700
+
+    Work around more MacBook wackiness.
+    
+    Turn off more corrupt the framebuffer mode.  Don't mess with the pixel clock for
+    LVDS as long as we're trusting the VBIOS-programmed timings.
+
+commit bc439899f323410b0549068cd88348e7fb62866b
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Tue Jul 3 14:03:59 2007 -0700
+
+    Put the GPU into don't corrupt the framebuffer mode to work around MacBook wackiness.
+
+commit 0f93ad0e2af26b4e2381f337b58d3a5e50302664
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Mon Jul 2 09:01:12 2007 -0700
+
+    Bump to 2.1.1.
+
+commit 4ff01787a6640bf76cc34a51c99227845dc4678e
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Sat Jun 30 21:52:08 2007 -0700
+
+    GeForce 8400M G.
+
+commit 63eb1a4aa402ac3bf117634c3c9270261c6a4258
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Sat Jun 30 21:51:15 2007 -0700
+
+    Support configs with BAR1 < total RAM < 256 MB.
+
+commit 209c84e788faf3c4d0ce053e5f29ff5f5b798628
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Mon Jun 18 13:08:31 2007 -0700
+
+    Bump to 2.1.0.
+
+commit 24770ccf880f056bc0db9464249caca10692fb56
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Mon Jun 18 12:36:29 2007 -0700
+
+    Fix some random colormap corruption on DFPs with certain pre-G80 GPUs.
+
+commit 4e56465a79587c4df6bf1dfd7cc87a4f22707a8f
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Thu Jun 7 18:28:56 2007 -0700
+
+    G80: Mode validation.
+    
+    Disable LVDS modes larger than the native resolution.
+    Disable dual-link TMDS modes for now since they don't work reliably.
+
+commit 6b71721439802bffd715602af3036083ff442449
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Mon Jun 4 23:15:42 2007 -0700
+
+    G80: LVDS support.
+
+commit 70b304cd0df0af515ce8414559f28a7ca7825517
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Mon Jun 4 22:38:14 2007 -0700
+
+    G80: Rearrange HW video timing computations.
+    
+    Compute the HW parameters in G80CrtcModeFixup and stash them in adjusted_mode.
+    Move some register writes into G80CreateSor.
+
+commit 402b1d1526f0dacd2e3a2564cc89958c32d3100e
+Merge: 1f4790a... 9b8470e...
+Author: Benjamin Herrenschmidt <benh@kernel.crashing.org>
+Date:   Sun Jun 3 11:18:50 2007 +1000
+
+    Merge branch 'master' of git://anongit.freedesktop.org/git/xorg/driver/xf86-video-nv
+
+commit 1f4790adcafd402c84a4a761c870a26a5178a4ff
+Author: Benjamin Herrenschmidt <benh@kernel.crashing.org>
+Date:   Sun Jun 3 11:16:55 2007 +1000
+
+    Fix build. Including xf86DDC.h before we include xf86.h doesn't fly
+    and it's not necessary anyway as it's pulled in by g80_type.h
+    
+    Signed-off-by: Benjamin Herrenschmidt <benh@kernel.crashing.org>
+
+commit 9b8470e9c81e6ce2c8cd69942fb2ffd2d4c06102
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Wed May 16 14:45:36 2007 -0700
+
+    Bump to 2.0.96.
+
+commit 51c6425bea6e4ef02f7b76e58e759f99b0e993e8
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Thu May 10 17:09:36 2007 -0700
+
+    Add rudimentary VBE-based dual head support for pre-G80.
+
+commit 0415ecaead518123ac6774300241867883a6dd57
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Thu May 3 11:54:28 2007 -0700
+
+    Bump to 2.0.95.
+
+commit c511debc07e96e66335cfa82f1db8207ff5bb690
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Wed May 2 15:23:14 2007 -0700
+
+    Fix some harmless warnings.
+
+commit 100d7c7393eda92e5b26ac4f4cc33a8dce86c364
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Wed May 2 09:33:33 2007 -0700
+
+    GeForce 8800 Ultra
+
+commit ed9f98853a781344c10cb801214917e13bddf27c
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Tue Apr 24 20:57:43 2007 -0700
+
+    Remove some old stuff from README.G80.
+
+commit 88d44d5e4fd0025c30e9d67b55c603c59bd1c0c1
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Tue Apr 24 20:45:52 2007 -0700
+
+    Get EXA resizing working and document it.
+
+commit 29433b76969b73a2a22081bf965bb0cdbaad75af
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Sat Apr 21 21:43:06 2007 -0700
+
+    EXA: Add solid, copy, and UTS hooks.
+
+commit 339e30cb49a48344ec7b0dfd701b958b07ed32e5
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Mon Apr 16 02:23:26 2007 -0700
+
+    G80: EXA infrastructure.
+    
+    No acceleration yet.
+
+commit c6e4105ce40ef053e026cc0ffe4925ab568ea700
+Merge: 5d9b75b... 4ff648c...
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Tue Apr 24 15:43:48 2007 -0700
+
+    Merge branch 'randr-1.2'
+    
+    Conflicts:
+    
+    	configure.ac
+    	man/Makefile.am
+    	man/nv.man
+    	src/g80_display.h
+    	src/g80_output.c
+    	src/nv_driver.c
+
+commit 4ff648c85f8aa90b343b7e2df176c0511b3cdaa5
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Fri Apr 20 16:24:15 2007 -0700
+
+    Depend on server 1.2 or higher.
+    
+    Remove support for building with the libc wrapper or without the Drawable XV
+    argument.
+
+commit 48f9a6f94550acea4fce81d2539a6508049c1551
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Fri Apr 20 15:37:09 2007 -0700
+
+    G80: Remove AdjustFrame printout.
+
+commit 5d9b75b432dbc525e10c1c00436a1820456f6fb4
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Fri Apr 20 15:23:26 2007 -0700
+
+    GeForce 8300 GS and GeForce 8400 GS.
+
+commit 7a07a765c2a3816e8cd0487e8f66bc767024142d
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Fri Apr 20 14:30:45 2007 -0700
+
+    Steal RandR1.2 compat code from the Intel driver.
+    
+    Spruce it up a bit so that --with-xserver-source works even if there's a local
+    compat copy.
+
+commit 2971fd0a18e947c5d39d6af78b0b77d6e4fe00d8
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Fri Apr 20 13:40:33 2007 -0700
+
+    Remove unused g80_ddc.h.
+
+commit 1261f12714746dcb2b58bc04c373594ace4f053b
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Fri Apr 20 09:01:02 2007 -0700
+
+    Add new chips to the manpage.
+
+commit ae582bdd2107d7e0106d1d5a9a9d6b9e39f1c901
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Fri Apr 20 00:13:31 2007 -0700
+
+    Always support G80.
+
+commit b4e26dfcc01b2816b6f8445fa8e9388b5e254df9
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Tue Apr 17 15:00:24 2007 -0700
+
+    Bump to 2.0.2.
+
+commit b23eeec2bebbbe1939366a8296565ae0120ea6da
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Tue Apr 17 14:59:41 2007 -0700
+
+    G80: Add a basic README.
+
+commit b68f3ada7bd857095c7652c175a0ba18bf45801f
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Tue Apr 17 12:47:11 2007 -0700
+
+    Add GeForce 8600 and 8500 PCI IDs.
+
+commit f7c62016f8bf9ced7d56f74ce26e13b6df040379
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Fri Apr 13 23:02:35 2007 -0700
+
+    G80: Get rid of debug printouts.
+
+commit f1cda5eaba9cbbfeb913d249d014586a6e8fd7a6
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Fri Apr 13 22:29:57 2007 -0700
+
+    G80: Get DPMS working with RandR 1.2.
+    
+    Work around xf86DisableUnusedFunctions lameness by forcing DPMSModeOn at modeset
+    time.
+
+commit 550af781bd9f7cb7256b298281c2c27febfc4722
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Mon Apr 2 09:42:11 2007 -0700
+
+    G80: Use the right mode struct when setting up an SOR.
+
+commit 5c03bd8acfcc814890fb13c891be4f135ea800d4
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Mon Apr 2 01:37:38 2007 -0700
+
+    G80: Get HW cursor working with RandR 1.2.
+
+commit 0126c809544cb3a0242fc3bce7ad82d4962aaf1c
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Sun Apr 1 01:17:31 2007 -0700
+
+    Remove extraneous DisplayModeRec allocation.
+    
+    Thanks to Luc Verhaegen for pointing this out.
+
+commit d569934c3de326483347db00d34268b02101599c
+Author: Henry Zhao <henryz@localhost.localdomain>
+Date:   Sat Mar 31 18:47:30 2007 -0800
+
+    10360: Need to inject a mode corresponding panel width/height for validation
+
+commit 8f7769aadf175e8298f27387428214d6de49e6a5
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Wed Mar 28 14:10:41 2007 -0700
+
+    G80: Use xf86CrtcScreenInit and xf86SetDesiredModes.
+
+commit 2d8d5bd597d760968b683d41ced6a0a76518ec26
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Tue Mar 27 17:12:21 2007 -0700
+
+    G80: Improve output detection.
+    
+    Detect output status for paired outputs together and cache status until the
+    BlockHandler to avoid redundantly probing for EDIDs or performing load
+    detection.
+
+commit 4d929d383abe064b5334847eb466321a6bf30999
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Tue Mar 27 15:56:52 2007 -0700
+
+    REALLY bump to 2.0.1.
+    
+    I need more caffeine, or something.
+
+commit 0953f081d1592b123dc27fb82d1cfecca079d5de
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Tue Mar 27 15:46:38 2007 -0700
+
+    Fix warnings and bump to 2.0.1.
+
+commit 4b8ed8497a9ab6ef1316bfcce9f31d96dd4b3540
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Tue Mar 27 13:33:11 2007 -0700
+
+    G80: Create output partners.
+    
+    Each pair of outputs shares an I2C rec.  This will be used in a future change
+    for the detect and get_modes routines.
+
+commit ad4abba20b8a6db7b52898bc7159809539cbed43
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Tue Mar 27 14:49:30 2007 -0700
+
+    Fix warnings.
+
+commit 7c2a31dec3d04111eaee5292c156753c316d52a9
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Tue Mar 27 14:45:17 2007 -0700
+
+    Fix broken prototype.
+
+commit 16f51977d49e52079754b62f4a13754e56da1c9c
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Mon Mar 19 12:00:36 2007 -0700
+
+    NVSync hangs in EnterVT, so don't call it there.
+
+commit ac84f228de689c6cb85eae827ec2443fabe67786
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Sun Mar 18 20:53:46 2007 -0700
+
+    Bump to 2.0.0.
+
+commit 4d15dd2c490cce739f2eb1474019c723da8ce32b
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Fri Mar 16 16:14:00 2007 -0700
+
+    Avoid hanging when switching modes on some nv4x cards.
+    
+    SUSE bug #235171.
+
+commit 90c53c5322e50bce06996e3c857e6bf7531235d4
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Thu Mar 15 17:07:25 2007 -0700
+
+    Fix GXxor corruption on nv4x.
+    
+    SUSE bug #246421.
+
+commit 9763b9dcef144f649ccbcfd302601769bc940ffb
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Thu Mar 15 14:39:07 2007 -0700
+
+    Hide the cursor in CloseScreen.
+    
+    Otherwise, if we're restoring a graphical framebuffer mode the cursor will still
+    be visible.
+
+commit 9d65abab153cdf3ab2b7e3e2843d573b22ea6769
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Wed Mar 14 21:16:04 2007 -0700
+
+    Fix VGA output with vesafb on nv4x and G7x GPUs.
+    
+    SuSE bug #160812.
+
+commit 26a9f1fa5a92eba7d4b6ddfa47c0517e604be130
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Mon Mar 12 14:56:10 2007 -0700
+
+    Get rid of non-portable := assignments.
+
+commit 7e0e5c1fb38922add99db33f282baf2ee1531685
+Author: root <root@treble.(none)>
+Date:   Sun Mar 11 00:38:11 2007 -0800
+
+    Initial RandR 1.2 support for G80.
+    
+    Mostly just rearranging code.
+
+commit 636adcd57f1c5b33edf2d8fbf9e7fa9aac1ccb1a
+Author: root <root@treble.(none)>
+Date:   Sat Mar 10 22:12:39 2007 -0800
+
+    Get rid of BackendMode and disable hw cursor for now.
+
+commit 8b2c7bc457d34b7ed59cd08719bec8754ebf6fb8
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Fri Mar 9 12:43:12 2007 -0800
+
+    Use DAC load detection to decide which OR to use instead of trusting the EDID.
+
+commit 06b168ced3cc4aa47cdad21a2351cca674fa26e0
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Thu Mar 8 18:12:43 2007 -0800
+
+    Enable G80 support by default.
+
+commit 23383c2c2e1aa590f69197b1860053d5cb710cf7
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Fri Feb 16 16:11:13 2007 -0800
+
+    Initial G80 support.  Bump to 1.99.1.
+
+commit dd305c3f64f9267d54324d734f1028bfc00e474f
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Wed Jan 17 21:41:06 2007 -0800
+
+    Remove the riva128 submodule.  Link Riva support into nv_drv.so directly.
+
+commit 96bd57b0597dbbda0ca5c46c2135e5813c80d79f
+Author: Daniel Stone <daniel@fooishbar.org>
+Date:   Sun Dec 24 06:34:31 2006 +0200
+
+    configure.ac: bump to 1.2.2.1 (respin)
+    No code changes, just built with an updated util-macros.
+
+commit 10c7c54888d1dd4198c79e852c57420e8d52ccc5
+Author: Daniel Stone <daniel@fooishbar.org>
+Date:   Sat Dec 16 01:47:42 2006 +0200
+
+    bump to 1.2.2
+
+commit 6d02bdb71bb34205955e76a99939a7be34c676c7
+Author: Daniel Stone <daniel@fooishbar.org>
+Date:   Wed Dec 6 18:48:37 2006 +0200
+
+    Makefile.am: make ChangeLog hook safer
+    Make ChangeLog hook as safe as possible.
+
+commit 33e10132a87409bdfa77d5eef9f7044cb9ce1ac9
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Mon Dec 4 12:52:55 2006 -0800
+
+    Remove redundant XORG_RELEASE_VERSION.
+
+commit 2d4b4bb06029e60e5c7b96d94b31c8aadac91843
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Thu Nov 30 17:41:41 2006 -0800
+
+    Bump to 1.2.1.
+
+commit 558ef7e26e361529a05360610abc3cbcdb04fd67
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Thu Nov 30 17:36:29 2006 -0800
+
+    Save and restore DAC0 register 608 when probing for connected CRTs.
+    
+    Adapted from a patch by Egbert Eich for Novell bug #220197.
+
+commit 08bb966abbca11c4581d666af3249e4922156e03
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Thu Nov 30 17:14:38 2006 -0800
+
+    Use XORG_RELEASE_VERSION.
+
+commit 162391f8fb640184db3917f3842fbff0bc9ce606
+Author: Aaron Plattner <aplattner@nvidia.com>
+Date:   Thu Oct 26 19:08:29 2006 -0700
+
+    Handle more than 1 digit in the version numbers.
+    
+    Based on a change by George Sapountzis <gsap7@yahoo.gr>.
+
+commit 98372d0f94a9d658a7257d2199ef37a2449b9961
+Author: Adam Jackson <ajax@benzedrine.nwnk.net>
+Date:   Fri Aug 11 16:02:28 2006 -0400
+
+    Replace panel message + MODE_BAD with MODE_PANEL.
+
 commit 43ec66396f805aba87017d193d97a03372c29909
 Author: Aaron Plattner <aplattner@nvidia.com>
 Date:   Fri Jun 30 12:54:44 2006 -0700
@@ -560,4 +1423,3 @@ Author: Kaleb Keithley <kaleb@freedesktop.org>
 Date:   Fri Nov 14 15:54:48 2003 +0000
 
     R6.6 is the Xorg base-line
-

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007 NVIDIA, Corporation
+ * Copyright (c) 2007-2008 NVIDIA, Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
@@ -41,7 +41,7 @@ G80SorSetPClk(xf86OutputPtr output, int pclk)
     const int orOff = 0x800 * pPriv->or;
     const int limit = 165000;
 
-    pNv->reg[(0x00614300+orOff)/4] = (pclk > limit) ? 0x101 : 0;
+    pNv->reg[(0x00614300+orOff)/4] = 0x70000 | (pclk > limit ? 0x101 : 0);
 }
 
 static void
@@ -69,9 +69,10 @@ G80SorDPMSSet(xf86OutputPtr output, int mode)
 static int
 G80TMDSModeValid(xf86OutputPtr output, DisplayModePtr mode)
 {
-    // Disable dual-link modes until I can find a way to make them work
-    // reliably.
-    if (mode->Clock > 165000)
+    G80Ptr pNv = G80PTR(output->scrn);
+
+    // Disable dual-link modes unless enabled in the config file.
+    if (mode->Clock > 165000 && !pNv->AllowDualLink)
         return MODE_CLOCK_HIGH;
 
     return G80OutputModeValid(output, mode);
@@ -142,7 +143,15 @@ G80SorDetect(xf86OutputPtr output)
 static xf86OutputStatus
 G80SorLVDSDetect(xf86OutputPtr output)
 {
-    /* Assume LVDS is always connected */
+    G80OutputPrivPtr pPriv = output->driver_private;
+
+    if(pPriv->i2c) {
+        /* If LVDS has an I2C port, use the normal probe routine to get the
+         * EDID, if possible. */
+        G80SorDetect(output);
+    }
+
+    /* Ignore G80SorDetect and assume LVDS is always connected */
     return XF86OutputStatusConnected;
 }
 
@@ -241,6 +250,13 @@ static DisplayModePtr
 G80SorGetLVDSModes(xf86OutputPtr output)
 {
     G80OutputPrivPtr pPriv = output->driver_private;
+
+    /* If an EDID was read during detection, use the modes from that. */
+    DisplayModePtr modes = G80OutputGetDDCModes(output);
+    if(modes)
+        return modes;
+
+    /* Otherwise, feed in the mode we read during initialization. */
     return xf86DuplicateMode(pPriv->nativeMode);
 }
 
@@ -324,7 +340,6 @@ G80SorSetProperty(xf86OutputPtr output, Atom prop, RRPropertyValuePtr val)
             return FALSE;
 
         G80CrtcSetDither(output->crtc, i, TRUE);
-        return TRUE;
     } else if(prop == properties.scale.atom) {
         const char *s;
         enum G80ScaleMode oldScale, scale;
@@ -383,10 +398,9 @@ G80SorSetProperty(xf86OutputPtr output, Atom prop, RRPropertyValuePtr val)
                 return FALSE;
             }
         }
-        return TRUE;
     }
 
-    return FALSE;
+    return TRUE;
 }
 #endif // RANDR_12_INTERFACE
 
@@ -427,20 +441,20 @@ static const xf86OutputFuncsRec G80SorLVDSOutputFuncs = {
 };
 
 static DisplayModePtr
-GetLVDSNativeMode(G80Ptr pNv)
+ReadLVDSNativeMode(G80Ptr pNv, const int off)
 {
     DisplayModePtr mode = xnfcalloc(1, sizeof(DisplayModeRec));
-    const CARD32 size = pNv->reg[0x00610B4C/4];
+    const CARD32 size = pNv->reg[(0x00610B4C+off)/4];
     const int width = size & 0x3fff;
     const int height = (size >> 16) & 0x3fff;
 
     mode->HDisplay = mode->CrtcHDisplay = width;
     mode->VDisplay = mode->CrtcVDisplay = height;
-    mode->Clock           = pNv->reg[0x610AD4/4] & 0x3fffff;
-    mode->CrtcHBlankStart = pNv->reg[0x610AFC/4];
-    mode->CrtcHSyncEnd    = pNv->reg[0x610B04/4];
-    mode->CrtcHBlankEnd   = pNv->reg[0x610AE8/4];
-    mode->CrtcHTotal      = pNv->reg[0x610AF4/4];
+    mode->Clock           = pNv->reg[(0x610AD4+off)/4] & 0x3fffff;
+    mode->CrtcHBlankStart = pNv->reg[(0x610AFC+off)/4];
+    mode->CrtcHSyncEnd    = pNv->reg[(0x610B04+off)/4];
+    mode->CrtcHBlankEnd   = pNv->reg[(0x610AE8+off)/4];
+    mode->CrtcHTotal      = pNv->reg[(0x610AF4+off)/4];
 
     mode->next = mode->prev = NULL;
     mode->status = MODE_OK;
@@ -449,6 +463,19 @@ GetLVDSNativeMode(G80Ptr pNv)
     xf86SetModeDefaultName(mode);
 
     return mode;
+}
+
+static DisplayModePtr
+GetLVDSNativeMode(G80Ptr pNv)
+{
+    CARD32 val = pNv->reg[0x00610050/4];
+
+    if((val & 3) == 2)
+        return ReadLVDSNativeMode(pNv, 0);
+    else if((val & 0x300) == 0x200)
+        return ReadLVDSNativeMode(pNv, 0x540);
+
+    return NULL;
 }
 
 xf86OutputPtr
@@ -462,11 +489,24 @@ G80CreateSor(ScrnInfoPtr pScrn, ORNum or, PanelType panelType)
     const xf86OutputFuncsRec *funcs;
 
     if(!pPriv)
-        return FALSE;
+        return NULL;
 
     if(panelType == LVDS) {
         strcpy(orName, "LVDS");
         funcs = &G80SorLVDSOutputFuncs;
+
+        pPriv->nativeMode = GetLVDSNativeMode(pNv);
+
+        if(!pPriv->nativeMode) {
+            xf86DrvMsg(pScrn->scrnIndex, X_WARNING,
+                       "Failed to find LVDS native mode\n");
+            xfree(pPriv);
+            return NULL;
+        }
+
+        xf86DrvMsg(pScrn->scrnIndex, X_INFO, "%s native size %dx%d\n",
+                   orName, pPriv->nativeMode->HDisplay,
+                   pPriv->nativeMode->VDisplay);
     } else {
         snprintf(orName, 5, "DVI%d", or);
         pNv->reg[(0x61C00C+off)/4] = 0x03010700;
@@ -487,14 +527,6 @@ G80CreateSor(ScrnInfoPtr pScrn, ORNum or, PanelType panelType)
     output->driver_private = pPriv;
     output->interlaceAllowed = TRUE;
     output->doubleScanAllowed = TRUE;
-
-    if(panelType == LVDS) {
-        pPriv->nativeMode = GetLVDSNativeMode(pNv);
-
-        xf86DrvMsg(pScrn->scrnIndex, X_INFO, "%s native size %dx%d\n",
-                   orName, pPriv->nativeMode->HDisplay,
-                   pPriv->nativeMode->VDisplay);
-    }
 
     return output;
 }

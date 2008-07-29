@@ -23,8 +23,6 @@
 /* Rewritten with reference from mga driver and 3.3.4 NVIDIA driver by
    Jarno Paananen <jpaana@s2.org> */
 
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/nv/riva_cursor.c $ */
-
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -74,13 +72,13 @@ RivaTransformCursor (RivaPtr pRiva)
     int i, dwords;
 
     dwords = (32 * 32) >> 1;
-    if(!(tmp = ALLOCATE_LOCAL(dwords * 4))) return;
+    if(!(tmp = Xcalloc(dwords * 4))) return;
     RivaConvertCursor1555(pRiva, pRiva->curImage, (CARD16*)tmp);
 
     for(i = 0; i < dwords; i++)
         pRiva->riva.CURSOR[i] = tmp[i];
 
-    DEALLOCATE_LOCAL(tmp);
+    xfree(tmp);
 }
 
 static void
