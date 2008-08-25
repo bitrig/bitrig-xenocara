@@ -1,12 +1,9 @@
 .\"#! troff -ms $1		-*- Nroff -*-
 .\" "Xterm Control Sequences" document
-.\" $XTermId: ctlseqs.ms,v 1.172 2006/08/02 21:46:34 tom Exp $
+.\" $XTermId: ctlseqs.ms,v 1.190 2008/05/26 22:24:56 tom Exp $
 .\"
 .\"
-.\" $XFree86: xc/doc/specs/xterm/ctlseqs.ms,v 3.60 2006/03/13 01:27:53 dickey Exp $
-.\"
-.\"
-.\" Copyright 1996-2005,2006 by Thomas E. Dickey
+.\" Copyright 1996-2007,2008 by Thomas E. Dickey
 .\"
 .\"                         All Rights Reserved
 .\"
@@ -75,7 +72,7 @@
 .de St
 .sp
 .nr PD 0
-.nr PI 1.5i
+.nr PI 1.0i
 .nr VS 16
 ..
 .de Ed
@@ -291,6 +288,7 @@ X Consortium (1994)
 Thomas Dickey
 .AI
 XFree86 Project (1996-2006)
+invisible-island.net (2006-2008)
 .AU
 .
 .am BT                  \" add page numbers after first page
@@ -470,7 +468,7 @@ Designate G2 Character Set (ISO 2022)
 .IP \\*(Es\\*+\\*(Cc
 Designate G3 Character Set (ISO 2022)
 .br
-Final character \*(Cc for designating character sets
+Final character \*(Cc for designating 94-character sets
 (\*0, \*A and \*(cB apply to VT100 and up, the remainder to VT220 and up):
   \*(Cc = \*0 \(-> DEC Special Character and Line Drawing Set
   \*(Cc = \*A \(-> United Kingdom (UK)
@@ -485,6 +483,24 @@ Final character \*(Cc for designating character sets
   \*(Cc = \*Z \(-> Spanish
   \*(Cc = \*H or \*7 \(-> Swedish
   \*(Cc = \*= \(-> Swiss
+.\" VT3xx and VT5xx (see vttest) add more selections, not implemented here.
+.
+.IP \\*(Es\\*-\\*(Cc
+Designate G1 Character Set (VT300)
+.
+.IP \\*(Es\\*.\\*(Cc
+Designate G2 Character Set (VT300)
+.
+.IP \\*(Es\\*/\\*(Cc
+Designate G3 Character Set (VT300)
+.br
+These work for 96-character sets only.
+  \*(Cc = \*A \(-> ISO Latin-1 Supplemental
+.\" VT5xx would implement these:
+.\"  \*(Cc = \*F \(-> ISO Greek Supplemental
+.\"  \*(Cc = \*H \(-> ISO Hebrew Supplemental
+.\"  \*(Cc = \*M \(-> ISO Latin-5 Supplemental
+.\"  \*(Cc = \*L \(-> ISO Latin-Cyrillic
 .
 .IP \\*(Es\\*7
 Save Cursor (DECSC)
@@ -709,8 +725,8 @@ where \*(Pp denotes the terminal type
   \(-> \*0 (``VT100'')
   \(-> \*1 (``VT220'')
 .br
-and \*(Pv is the firmware version (for \fIxterm\fP, this is the XFree86
-patch number, starting with 95).
+and \*(Pv is the firmware version (for \fIxterm\fP, this was originally
+the XFree86 patch number, starting with 95).
 In a DEC terminal, \*(Pc indicates the ROM cartridge
 registration number and is always zero.
 .
@@ -769,14 +785,26 @@ See the section \fBMouse Tracking\fP.
   \*(Ps = \*1\*0\*0\*1 \(-> Use Hilite Mouse Tracking.
   \*(Ps = \*1\*0\*0\*2 \(-> Use Cell Motion Mouse Tracking.
   \*(Ps = \*1\*0\*0\*3 \(-> Use All Motion Mouse Tracking.
+  \*(Ps = \*1\*0\*0\*4 \(-> Send FocusIn/FocusOut events.
   \*(Ps = \*1\*0\*1\*0 \(-> Scroll to bottom on tty output (rxvt).
   \*(Ps = \*1\*0\*1\*1 \(-> Scroll to bottom on key press (rxvt).
   \*(Ps = \*1\*0\*3\*4 \(-> Interpret "meta" key, sets eighth bit.
 (enables the \fBeightBitInput\fP resource).
-  \*(Ps = \*1\*0\*3\*5 \(-> Enable special modifiers for Alt and NumLock keys.
+  \*(Ps = \*1\*0\*3\*5 \(-> Enable special modifiers for Alt and NumLock keys
+(enables the \fBnumLock\fP resource).
   \*(Ps = \*1\*0\*3\*6 \(-> Send ESC when Meta modifies a key
 (enables the \fBmetaSendsEscape\fP resource).
   \*(Ps = \*1\*0\*3\*7 \(-> Send DEL from the editing-keypad Delete key
+  \*(Ps = \*1\*0\*3\*9 \(-> Send ESC when Alt modifies a key
+(enables the \fBaltSendsEscape\fP resource).
+  \*(Ps = \*1\*0\*4\*0 \(-> Keep selection even if not highlighted
+(enables the \fBkeepSelection\fP resource).
+  \*(Ps = \*1\*0\*4\*1 \(-> Use the CLIPBOARD selection
+(enables the \fBselectToClipboard\fP resource).
+  \*(Ps = \*1\*0\*4\*2 \(-> Enable Urgency window manager hint when Control-G is received
+(enables the \fBbellIsUrgent\fP resource).
+  \*(Ps = \*1\*0\*4\*3 \(-> Enable raising of the window when Control-G is received
+(enables the \fBpopOnBell\fP resource).
   \*(Ps = \*1\*0\*4\*7 \(-> Use Alternate Screen Buffer (unless
 disabled by the \fBtiteInhibit\fP resource)
   \*(Ps = \*1\*0\*4\*8 \(-> Save cursor as in DECSC (unless
@@ -786,6 +814,7 @@ and use Alternate Screen Buffer, clearing it first (unless
 disabled by the \fBtiteInhibit\fP resource).
 This combines the effects of the \*1\*0\*4\*7 and \*1\*0\*4\*8 modes.
 Use this with terminfo-based applications rather than the \*4\*7 mode.
+  \*(Ps = \*1\*0\*5\*0 \(-> Set terminfo/termcap function-key mode.
   \*(Ps = \*1\*0\*5\*1 \(-> Set Sun function-key mode.
   \*(Ps = \*1\*0\*5\*2 \(-> Set HP function-key mode.
   \*(Ps = \*1\*0\*5\*3 \(-> Set SCO function-key mode.
@@ -824,7 +853,7 @@ DEC Private Mode Reset (DECRST)
   \*(Ps = \*6 \(-> Normal Cursor Mode (DECOM)
   \*(Ps = \*7 \(-> No Wraparound Mode (DECAWM)
   \*(Ps = \*8 \(-> No Auto-repeat Keys (DECARM)
-  \*(Ps = \*9 \(-> Don't Send Mouse X & Y on button press
+  \*(Ps = \*9 \(-> Don't send Mouse X & Y on button press
   \*(Ps = \*1\*0 \(-> Hide toolbar (rxvt)
   \*(Ps = \*1\*2 \(-> Stop Blinking Cursor (att610)
   \*(Ps = \*1\*8 \(-> Don't print form feed (DECPFF)
@@ -842,20 +871,32 @@ DEC Private Mode Reset (DECRST)
   \*(Ps = \*4\*7 \(-> Use Normal Screen Buffer
   \*(Ps = \*6\*6 \(-> Numeric keypad (DECNKM)
   \*(Ps = \*6\*7 \(-> Backarrow key sends delete (DECBKM)
-  \*(Ps = \*1\*0\*0\*0 \(-> Don't Send Mouse X & Y on button press and
+  \*(Ps = \*1\*0\*0\*0 \(-> Don't send Mouse X & Y on button press and
 release.
 See the section \fBMouse Tracking\fP.
-  \*(Ps = \*1\*0\*0\*1 \(-> Don't Use Hilite Mouse Tracking
-  \*(Ps = \*1\*0\*0\*2 \(-> Don't Use Cell Motion Mouse Tracking
-  \*(Ps = \*1\*0\*0\*3 \(-> Don't Use All Motion Mouse Tracking
+  \*(Ps = \*1\*0\*0\*1 \(-> Don't use Hilite Mouse Tracking.
+  \*(Ps = \*1\*0\*0\*2 \(-> Don't use Cell Motion Mouse Tracking.
+  \*(Ps = \*1\*0\*0\*3 \(-> Don't use All Motion Mouse Tracking.
+  \*(Ps = \*1\*0\*0\*4 \(-> Don't send FocusIn/FocusOut events.
   \*(Ps = \*1\*0\*1\*0 \(-> Don't scroll to bottom on tty output (rxvt).
   \*(Ps = \*1\*0\*1\*1 \(-> Don't scroll to bottom on key press (rxvt).
   \*(Ps = \*1\*0\*3\*4 \(-> Don't interpret "meta" key
 (disables the \fBeightBitInput\fP resource).
-  \*(Ps = \*1\*0\*3\*5 \(-> Disable special modifiers for Alt and NumLock keys.
+  \*(Ps = \*1\*0\*3\*5 \(-> Disable special modifiers for Alt and NumLock keys
+(disables the \fBnumLock\fP resource).
   \*(Ps = \*1\*0\*3\*6 \(-> Don't send ESC when Meta modifies a key
 (disables the \fBmetaSendsEscape\fP resource).
   \*(Ps = \*1\*0\*3\*7 \(-> Send VT220 Remove from the editing-keypad Delete key
+  \*(Ps = \*1\*0\*3\*9 \(-> Don't send ESC when Alt modifies a key
+(disables the \fBaltSendsEscape\fP resource).
+  \*(Ps = \*1\*0\*4\*0 \(-> Do not keep selection when not highlighted
+(disables the \fBkeepSelection\fP resource).
+  \*(Ps = \*1\*0\*4\*1 \(-> Use the PRIMARY selection.
+(disables the \fBselectToClipboard\fP resource).
+  \*(Ps = \*1\*0\*4\*2 \(-> Disable Urgency window manager hint when Control-G is received
+(disables the \fBbellIsUrgent\fP resource).
+  \*(Ps = \*1\*0\*4\*3 \(-> Disable raising of the window when Control-G is received
+(disables the \fBpopOnBell\fP resource).
   \*(Ps = \*1\*0\*4\*7 \(-> Use Normal Screen Buffer, clearing screen
 first if in the Alternate Screen (unless
 disabled by the \fBtiteInhibit\fP resource)
@@ -866,6 +907,7 @@ as in DECRC (unless
 disabled by the \fBtiteInhibit\fP resource).
 This combines the effects of the \*1\*0\*4\*7 and \*1\*0\*4\*8 modes.
 Use this with terminfo-based applications rather than the \*4\*7 mode.
+  \*(Ps = \*1\*0\*5\*0 \(-> Reset terminfo/termcap function-key mode.
   \*(Ps = \*1\*0\*5\*1 \(-> Reset Sun function-key mode.
   \*(Ps = \*1\*0\*5\*2 \(-> Reset HP function-key mode.
   \*(Ps = \*1\*0\*5\*3 \(-> Reset SCO function-key mode.
@@ -955,10 +997,20 @@ Device Status Report (DSR)
 .br
 \*(Cs\*(Ir\*s\*;\*(Ic\*s\*R
 .
-.IP \\*(Cs\\*>\\*n
-Set resource-value \fBmodifyFunctionKeys\fP used by \fIxterm\fP to
-allow user to construct extended-numbering function keys using
-shift- and control-modifiers.
+.IP \\*(Cs\\*>\\*(Ps\\*s\\*n
+Disable modifiers which may be enabled via the
+\*(Cs\*>\*(Ps\*;\*(Ps\*s\*m
+sequence.
+This corresponds to a resource value of "-1", which cannot be set with
+the other sequence.
+The parameter identifies the resource to be disabled:
+  \(-> \*1 modifyCursorKeys
+  \(-> \*2 modifyFunctionKeys
+  \(-> \*4 modifyOtherKeys
+If the parameter is omitted, \fBmodifyFunctionKeys\fP is disabled.
+When \fBmodifyFunctionKeys\fP is disabled, \fIxterm\fP uses the
+modifier keys to make an extended sequence of functions rather
+than adding a parameter to each function key to denote the modifiers.
 .
 .IP \\*(Cs\\*?\\*(Ps\\*s\\*n
 Device Status Report (DSR, DEC-specific)
@@ -983,6 +1035,17 @@ The last two parameters apply to VT400 & up, and denote keyboard ready and LK01 
 \*(Cs\*?\*5\*3\*s\*n Locator available, if compiled-in, or
 .br
 \*(Cs\*?\*5\*0\*s\*n No Locator, if not.
+.
+.IP \\*(Cs\\*>\\*(Ps\\*s\\*p
+Set resource value \fIpointerMode\fP,
+used by \fIxterm\fP to decide whether to
+hide the pointer cursor as the user types.
+Valid values for the parameter:
+  \*(Ps = \*0 \(-> never hide the pointer
+  \*(Ps = \*1 \(-> hide if the mouse tracking mode is not enabled
+  \*(Ps = \*2 \(-> always hide the pointer
+If no parameter is given, \fIxterm\fP uses the default,
+which is \*1.
 .
 .IP \\*(Cs\\*!\\*p
 Soft terminal reset (DECSTR)
@@ -1290,6 +1353,65 @@ Privacy Message
 \*(Pt need not be printable characters.
 .Ed
 .
+.SH
+Alt and Meta Keys
+.LP
+Many keyboards have keys labeled "Alt".
+Few have keys labeled "Meta".
+However, \fIxterm\fP's default translations use the \fIMeta\fP modifier.
+Common keyboard configurations assign the \fIMeta\fP modifier to an "Alt" key.
+By using \fIxmodmap\fP one may have the modifier assigned to a different key,
+and have "real" alt and meta keys.
+Here is an example:
+.DS B
+! put meta on mod3 to distinguish it from alt
+keycode 64 = Alt_L
+clear mod1
+add mod1 = Alt_L
+keycode 115 = Meta_L
+clear mod3
+add mod3 = Meta_L
+.DE
+.LP
+The \fBmetaSendsEscape\fP resource
+(and \fBaltSendsEscape\fP if \fBaltIsNotMeta\fP is set)
+can be used to control the way the \fIMeta\fP modifier applies to ordinary
+keys unless the \fBmodifyOtherKeys\fP resource is set:
+.IP
+-
+prefix a key with the \*(Es character.
+.IP
+-
+shift the key from codes 0-127 to 128-255 by adding 128.
+.LP
+The table shows the result for a given character "x" with modifiers
+according to the default translations with the resources set on or off.
+This assumes \fBaltIsNotMeta\fP is set:
+.TS
+center;
+lf3	lf3	lf3	lf3
+lf3w(2c)	lf3w(2c)	lf3w(2c)	lf3w(2c) .
+_
+key	altSendsEscape	metaSendsEscape	result
+_
+x	off	off	x
+Meta-x	off	off	shift
+Alt-x	off	off	shift
+Alt+Meta-x	off	off	shift
+x	ON	off	x
+Meta-x	ON	off	shift
+Alt-x	ON	off	\*(Es x
+Alt+Meta-x	ON	off	\*(Es shift
+x	off	ON	x
+Meta-x	off	ON	\*(Es x
+Alt-x	off	ON	shift
+Alt+Meta-x	off	ON	\*(Es shift
+x	ON	ON	x
+Meta-x	ON	ON	\*(Es x
+Alt-x	ON	ON	\*(Es x
+Alt+Meta-x	ON	ON	\*(Es x
+_
+.TE
 .SH
 PC-Style Function Keys
 .ds RH Function Keys
@@ -1653,6 +1775,8 @@ are defined in \fBxcharmouse.h\fP as follows:
 #define SET_VT200_HIGHLIGHT_MOUSE   1001
 #define SET_BTN_EVENT_MOUSE         1002
 #define SET_ANY_EVENT_MOUSE         1003
+
+#define SET_FOCUS_EVENT_MOUSE       1004
 .DE
 .LP
 The motion reporting modes are strictly \fIxterm\fP extensions, and are not
@@ -1748,6 +1872,12 @@ down is reported as \*(Cs\*M\*(cB\*(Cx\*(Cy.
 Any-event mode is the same as button-event mode, except that all motion
 events are reported, even if no mouse button is down.
 It is enabled by specifying 1003 to DECSET.
+
+FocusIn/FocusOut can be combined with any of the mouse events since
+it uses a different protocol.
+When set, it causes \fIxterm\fP to send
+\*(Cs\*I when the terminal gains focus, and
+\*(Cs\*O when it loses focus.
 .
 .br
 .ds RH Tektronix 4014 Mode

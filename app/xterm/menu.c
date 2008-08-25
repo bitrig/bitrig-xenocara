@@ -1,8 +1,8 @@
-/* $XTermId: menu.c,v 1.217 2006/07/23 20:13:22 tom Exp $ */
+/* $XTermId: menu.c,v 1.241 2008/06/03 20:05:49 tom Exp $ */
 
 /*
 
-Copyright 1999-2005,2006 by Thomas E. Dickey
+Copyright 1999-2007,2008 by Thomas E. Dickey
 
                         All Rights Reserved
 
@@ -46,12 +46,14 @@ used in advertising or otherwise to promote the sale, use or other dealings
 in this Software without prior written authorization from The Open Group.
 
 */
-/* $XFree86: xc/programs/xterm/menu.c,v 3.68 2006/04/10 00:34:36 dickey Exp $ */
 
 #include <xterm.h>
 #include <data.h>
 #include <menu.h>
 #include <fontutils.h>
+#include <xstrings.h>
+
+#include <locale.h>
 
 #include <X11/Xmu/CharSet.h>
 
@@ -121,6 +123,7 @@ static void do_appkeypad       PROTO_XT_CALLBACK_ARGS;
 static void do_autolinefeed    PROTO_XT_CALLBACK_ARGS;
 static void do_autowrap        PROTO_XT_CALLBACK_ARGS;
 static void do_backarrow       PROTO_XT_CALLBACK_ARGS;
+static void do_bellIsUrgent    PROTO_XT_CALLBACK_ARGS;
 static void do_clearsavedlines PROTO_XT_CALLBACK_ARGS;
 static void do_continue        PROTO_XT_CALLBACK_ARGS;
 static void do_delete_del      PROTO_XT_CALLBACK_ARGS;
@@ -128,8 +131,8 @@ static void do_hardreset       PROTO_XT_CALLBACK_ARGS;
 static void do_interrupt       PROTO_XT_CALLBACK_ARGS;
 static void do_jumpscroll      PROTO_XT_CALLBACK_ARGS;
 static void do_kill            PROTO_XT_CALLBACK_ARGS;
-static void do_marginbell      PROTO_XT_CALLBACK_ARGS;
 static void do_old_fkeys       PROTO_XT_CALLBACK_ARGS;
+static void do_poponbell       PROTO_XT_CALLBACK_ARGS;
 static void do_print           PROTO_XT_CALLBACK_ARGS;
 static void do_print_redir     PROTO_XT_CALLBACK_ARGS;
 static void do_quit            PROTO_XT_CALLBACK_ARGS;
@@ -140,13 +143,13 @@ static void do_scrollbar       PROTO_XT_CALLBACK_ARGS;
 static void do_scrollkey       PROTO_XT_CALLBACK_ARGS;
 static void do_scrollttyoutput PROTO_XT_CALLBACK_ARGS;
 static void do_securekbd       PROTO_XT_CALLBACK_ARGS;
+static void do_keepSelection   PROTO_XT_CALLBACK_ARGS;
 static void do_selectClipboard PROTO_XT_CALLBACK_ARGS;
 static void do_softreset       PROTO_XT_CALLBACK_ARGS;
 static void do_suspend         PROTO_XT_CALLBACK_ARGS;
 static void do_terminate       PROTO_XT_CALLBACK_ARGS;
 static void do_titeInhibit     PROTO_XT_CALLBACK_ARGS;
 static void do_visualbell      PROTO_XT_CALLBACK_ARGS;
-static void do_poponbell       PROTO_XT_CALLBACK_ARGS;
 static void do_vtfont          PROTO_XT_CALLBACK_ARGS;
 
 #ifdef ALLOWLOGGING
@@ -199,6 +202,10 @@ static void do_sun_fkeys       PROTO_XT_CALLBACK_ARGS;
 static void do_sun_kbd         PROTO_XT_CALLBACK_ARGS;
 #endif
 
+#if OPT_TCAP_FKEYS
+static void do_tcap_fkeys      PROTO_XT_CALLBACK_ARGS;
+#endif
+
 #if OPT_TEK4014
 static void do_tekcopy         PROTO_XT_CALLBACK_ARGS;
 static void do_tekhide         PROTO_XT_CALLBACK_ARGS;
@@ -243,7 +250,7 @@ MenuEntry mainMenuEntries[] = {
     { "logging",	do_logging,	NULL },
 #endif
     { "print",		do_print,	NULL },
-    { "print-redirect",	do_print_redir,	NULL },
+    { "print-redir",	do_print_redir,	NULL },
     { "line2",		NULL,		NULL },
     { "8-bit control",	do_8bit_control,NULL },
     { "backarrow key",	do_backarrow,	NULL },
@@ -254,6 +261,9 @@ MenuEntry mainMenuEntries[] = {
 #endif
     { "delete-is-del",	do_delete_del,	NULL },
     { "oldFunctionKeys",do_old_fkeys,	NULL },
+#if OPT_TCAP_FKEYS
+    { "tcapFunctionKeys",do_tcap_fkeys,	NULL },
+#endif
 #if OPT_HP_FUNC_KEYS
     { "hpFunctionKeys",	do_hp_fkeys,	NULL },
 #endif
@@ -288,10 +298,11 @@ MenuEntry vtMenuEntries[] = {
     { "scrollkey",	do_scrollkey,	NULL },
     { "scrollttyoutput",do_scrollttyoutput, NULL },
     { "allow132",	do_allow132,	NULL },
+    { "keepSelection",	do_keepSelection, NULL },
     { "selectToClipboard",do_selectClipboard, NULL },
     { "visualbell",	do_visualbell,	NULL },
+    { "bellIsUrgent",	do_bellIsUrgent, NULL },
     { "poponbell",	do_poponbell,	NULL },
-    { "marginbell",	do_marginbell,	NULL },
 #if OPT_BLINK_CURS
     { "cursorblink",	do_cursorblink,	NULL },
 #endif
@@ -401,6 +412,20 @@ static MenuList vt_shell[NUM_POPUP_MENUS];
 static MenuList tek_shell[NUM_POPUP_MENUS];
 #endif
 
+static String
+setMenuLocale(Bool before, String substitute)
+{
+    String result;
+
+    result = setlocale(LC_CTYPE, substitute);
+    if (before) {
+	result = x_strdup(result);
+    } else {
+	result = 0;
+    }
+    return result;
+}
+
 /*
  * Returns a pointer to the MenuList entry that matches the popup menu.
  */
@@ -450,12 +475,14 @@ create_menu(Widget w, XtermWidget xtw, MenuIndex num)
     static Arg arg =
     {XtNcallback, (XtArgVal) cb};
 
-    Widget m;
     TScreen *screen = &xtw->screen;
     MenuHeader *data = &menu_names[num];
     MenuList *list = select_menu(w, num);
     struct _MenuEntry *entries = data->entry_list;
     int nentries = data->entry_len;
+#if !OPT_TOOLBAR
+    String saveLocale;
+#endif
 
     if (screen->menu_item_bitmap == None) {
 	/*
@@ -474,32 +501,33 @@ create_menu(Widget w, XtermWidget xtw, MenuIndex num)
 				  RootWindowOfScreen(XtScreen(xtw)),
 				  (char *) check_bits, check_width, check_height);
     }
-#if OPT_TOOLBAR
-    m = list->w;
-    if (m == 0) {
-	return m;
-    }
-#else
-    m = XtCreatePopupShell(data->internal_name,
-			   simpleMenuWidgetClass,
-			   toplevel,
-			   NULL, 0);
-    list->w = m;
+#if !OPT_TOOLBAR
+    saveLocale = setMenuLocale(True, resource.menuLocale);
+    list->w = XtCreatePopupShell(data->internal_name,
+				 simpleMenuWidgetClass,
+				 toplevel,
+				 NULL, 0);
 #endif
-    list->entries = nentries;
+    if (list->w != 0) {
+	list->entries = nentries;
 
-    for (; nentries > 0; nentries--, entries++) {
-	cb[0].callback = (XtCallbackProc) entries->function;
-	cb[0].closure = (caddr_t) entries->name;
-	entries->widget = XtCreateManagedWidget(entries->name,
-						(entries->function ?
-						 smeBSBObjectClass :
-						 smeLineObjectClass), m,
-						&arg, (Cardinal) 1);
+	for (; nentries > 0; nentries--, entries++) {
+	    cb[0].callback = (XtCallbackProc) entries->function;
+	    cb[0].closure = (caddr_t) entries->name;
+	    entries->widget = XtCreateManagedWidget(entries->name,
+						    (entries->function
+						     ? smeBSBObjectClass
+						     : smeLineObjectClass),
+						    list->w,
+						    &arg, (Cardinal) 1);
+	}
     }
+#if !OPT_TOOLBAR
+    (void) setMenuLocale(False, saveLocale);
+#endif
 
     /* do not realize at this point */
-    return m;
+    return list->w;
 }
 
 static MenuIndex
@@ -527,18 +555,14 @@ indexOfMenu(String menuName)
     return (me);
 }
 
-/*
- * public interfaces
- */
-
 /* ARGSUSED */
 static Bool
-domenu(Widget w GCC_UNUSED,
+domenu(Widget w,
        XEvent * event GCC_UNUSED,
        String * params,		/* mainMenu, vtMenu, or tekMenu */
        Cardinal *param_count)	/* 0 or 1 */
 {
-    TScreen *screen = &term->screen;
+    TScreen *screen = TScreenOf(term);
     MenuIndex me;
     Bool created = False;
     Widget mw;
@@ -577,6 +601,12 @@ domenu(Widget w GCC_UNUSED,
 	    update_meta_esc();
 	    update_delete_del();
 	    update_keyboard_type();
+#if OPT_NUM_LOCK
+	    if (!screen->alt_is_not_meta) {
+		SetItemSensitivity(mainMenuEntries[mainMenu_alt_esc].widget,
+				   False);
+	    }
+#endif
 	    if (!xtermHasPrinter()) {
 		SetItemSensitivity(mainMenuEntries[mainMenu_print].widget,
 				   False);
@@ -625,15 +655,16 @@ domenu(Widget w GCC_UNUSED,
 	    update_scrollttyoutput();
 	    update_allow132();
 	    update_cursesemul();
+	    update_keepSelection();
 	    update_selectToClipboard();
 	    update_visualbell();
 	    update_poponbell();
-	    update_marginbell();
+	    update_bellIsUrgent();
 	    update_cursorblink();
 	    update_altscreen();
 	    update_titeInhibit();
 #ifndef NO_ACTIVE_ICON
-	    if (!screen->fnt_icon || !screen->iconVwin.window) {
+	    if (!screen->fnt_icon.fs || !screen->iconVwin.window) {
 		SetItemSensitivity(
 				      vtMenuEntries[vtMenu_activeicon].widget,
 				      False);
@@ -656,7 +687,7 @@ domenu(Widget w GCC_UNUSED,
 	    set_menu_font(True);
 	    SetItemSensitivity(
 				  fontMenuEntries[fontMenu_fontescape].widget,
-				  (screen->menu_font_names[fontMenu_fontescape]
+				  (screen->menu_font_names[fontMenu_fontescape][fNorm]
 				   ? True : False));
 #if OPT_BOX_CHARS
 	    update_font_boxchars();
@@ -699,18 +730,23 @@ domenu(Widget w GCC_UNUSED,
 
 #if OPT_TEK4014
     case tekMenu:
-	if (created) {
-	    set_tekfont_menu_item(screen->cur.fontsize, True);
+	if (created && tekWidget) {
+	    set_tekfont_menu_item(tekWidget->screen.cur.fontsize, True);
 	    update_vtshow();
 	}
 	break;
 #endif
+    case noMenu:
     default:
 	break;
     }
 
     return True;
 }
+
+/*
+ * public interfaces
+ */
 
 void
 HandleCreateMenu(Widget w,
@@ -747,7 +783,7 @@ static void
 handle_send_signal(Widget gw GCC_UNUSED, int sig)
 {
 #ifndef VMS
-    TScreen *screen = &term->screen;
+    TScreen *screen = TScreenOf(term);
 
     if (hold_screen > 1)
 	hold_screen = 0;
@@ -765,7 +801,7 @@ do_securekbd(Widget gw GCC_UNUSED,
 	     XtPointer closure GCC_UNUSED,
 	     XtPointer data GCC_UNUSED)
 {
-    TScreen *screen = &term->screen;
+    TScreen *screen = TScreenOf(term);
     Time now = CurrentTime;	/* XXX - wrong */
 
     if (screen->grabbedKbd) {
@@ -773,7 +809,7 @@ do_securekbd(Widget gw GCC_UNUSED,
 	ReverseVideo(term);
 	screen->grabbedKbd = False;
     } else {
-	if (XGrabKeyboard(screen->display, XtWindow(CURRENT_EMU(screen)),
+	if (XGrabKeyboard(screen->display, XtWindow(CURRENT_EMU()),
 			  True, GrabModeAsync, GrabModeAsync, now)
 	    != GrabSuccess) {
 	    Bell(XkbBI_MinorError, 100);
@@ -810,7 +846,7 @@ do_allowsends(Widget gw GCC_UNUSED,
 	      XtPointer closure GCC_UNUSED,
 	      XtPointer data GCC_UNUSED)
 {
-    TScreen *screen = &term->screen;
+    TScreen *screen = TScreenOf(term);
 
     screen->allowSendEvents = !screen->allowSendEvents;
     update_allowsends();
@@ -821,10 +857,21 @@ do_visualbell(Widget gw GCC_UNUSED,
 	      XtPointer closure GCC_UNUSED,
 	      XtPointer data GCC_UNUSED)
 {
-    TScreen *screen = &term->screen;
+    TScreen *screen = TScreenOf(term);
 
     screen->visualbell = !screen->visualbell;
     update_visualbell();
+}
+
+static void
+do_bellIsUrgent(Widget gw GCC_UNUSED,
+		XtPointer closure GCC_UNUSED,
+		XtPointer data GCC_UNUSED)
+{
+    TScreen *screen = TScreenOf(term);
+
+    screen->bellIsUrgent = !screen->bellIsUrgent;
+    update_bellIsUrgent();
 }
 
 static void
@@ -832,7 +879,7 @@ do_poponbell(Widget gw GCC_UNUSED,
 	     XtPointer closure GCC_UNUSED,
 	     XtPointer data GCC_UNUSED)
 {
-    TScreen *screen = &term->screen;
+    TScreen *screen = TScreenOf(term);
 
     screen->poponbell = !screen->poponbell;
     update_poponbell();
@@ -844,7 +891,7 @@ do_logging(Widget gw GCC_UNUSED,
 	   XtPointer closure GCC_UNUSED,
 	   XtPointer data GCC_UNUSED)
 {
-    TScreen *screen = &term->screen;
+    TScreen *screen = TScreenOf(term);
 
     if (screen->logging) {
 	CloseLog(screen);
@@ -920,7 +967,7 @@ do_alt_esc(Widget gw GCC_UNUSED,
 	   XtPointer closure GCC_UNUSED,
 	   XtPointer data GCC_UNUSED)
 {
-    term->screen.input_eight_bits = !term->screen.input_eight_bits;
+    term->screen.alt_sends_esc = !term->screen.alt_sends_esc;
     update_alt_esc();
 }
 
@@ -997,6 +1044,16 @@ do_sun_kbd(Widget gw GCC_UNUSED,
 }
 #endif
 
+#if OPT_TCAP_FKEYS
+static void
+do_tcap_fkeys(Widget gw GCC_UNUSED,
+	      XtPointer closure GCC_UNUSED,
+	      XtPointer data GCC_UNUSED)
+{
+    toggle_keyboard_type(term, keyboardIsTermcap);
+}
+#endif
+
 /*
  * The following cases use the pid instead of the process group so that we
  * don't get hosed by programs that change their process group
@@ -1065,7 +1122,7 @@ do_quit(Widget gw GCC_UNUSED,
 	XtPointer closure GCC_UNUSED,
 	XtPointer data GCC_UNUSED)
 {
-    Cleanup(0);
+    Cleanup(SIGHUP);
 }
 
 /*
@@ -1085,7 +1142,7 @@ do_jumpscroll(Widget gw GCC_UNUSED,
 	      XtPointer closure GCC_UNUSED,
 	      XtPointer data GCC_UNUSED)
 {
-    TScreen *screen = &term->screen;
+    TScreen *screen = TScreenOf(term);
 
     term->flags ^= SMOOTHSCROLL;
     if (term->flags & SMOOTHSCROLL) {
@@ -1156,7 +1213,7 @@ do_scrollkey(Widget gw GCC_UNUSED,
 	     XtPointer closure GCC_UNUSED,
 	     XtPointer data GCC_UNUSED)
 {
-    TScreen *screen = &term->screen;
+    TScreen *screen = TScreenOf(term);
 
     screen->scrollkey = !screen->scrollkey;
     update_scrollkey();
@@ -1167,10 +1224,21 @@ do_scrollttyoutput(Widget gw GCC_UNUSED,
 		   XtPointer closure GCC_UNUSED,
 		   XtPointer data GCC_UNUSED)
 {
-    TScreen *screen = &term->screen;
+    TScreen *screen = TScreenOf(term);
 
     screen->scrollttyoutput = !screen->scrollttyoutput;
     update_scrollttyoutput();
+}
+
+static void
+do_keepSelection(Widget gw GCC_UNUSED,
+		 XtPointer closure GCC_UNUSED,
+		 XtPointer data GCC_UNUSED)
+{
+    TScreen *screen = TScreenOf(term);
+
+    screen->keepSelection = !screen->keepSelection;
+    update_keepSelection();
 }
 
 static void
@@ -1178,7 +1246,7 @@ do_selectClipboard(Widget gw GCC_UNUSED,
 		   XtPointer closure GCC_UNUSED,
 		   XtPointer data GCC_UNUSED)
 {
-    TScreen *screen = &term->screen;
+    TScreen *screen = TScreenOf(term);
 
     screen->selectToClipboard = !screen->selectToClipboard;
     update_selectToClipboard();
@@ -1189,7 +1257,7 @@ do_allow132(Widget gw GCC_UNUSED,
 	    XtPointer closure GCC_UNUSED,
 	    XtPointer data GCC_UNUSED)
 {
-    TScreen *screen = &term->screen;
+    TScreen *screen = TScreenOf(term);
 
     screen->c132 = !screen->c132;
     update_allow132();
@@ -1200,7 +1268,7 @@ do_cursesemul(Widget gw GCC_UNUSED,
 	      XtPointer closure GCC_UNUSED,
 	      XtPointer data GCC_UNUSED)
 {
-    TScreen *screen = &term->screen;
+    TScreen *screen = TScreenOf(term);
 
     screen->curses = !screen->curses;
     update_cursesemul();
@@ -1211,7 +1279,7 @@ do_marginbell(Widget gw GCC_UNUSED,
 	      XtPointer closure GCC_UNUSED,
 	      XtPointer data GCC_UNUSED)
 {
-    TScreen *screen = &term->screen;
+    TScreen *screen = TScreenOf(term);
 
     if (!(screen->marginbell = !screen->marginbell))
 	screen->bellarmed = -1;
@@ -1222,10 +1290,10 @@ do_marginbell(Widget gw GCC_UNUSED,
 static void
 handle_tekshow(Widget gw GCC_UNUSED, Bool allowswitch)
 {
-    TScreen *screen = &term->screen;
+    TScreen *screen = TScreenOf(term);
 
     TRACE(("Show tek-window\n"));
-    if (!screen->Tshow) {	/* not showing, turn on */
+    if (!TEK4014_SHOWN(term)) {	/* not showing, turn on */
 	set_tek_visibility(True);
     } else if (screen->Vshow || allowswitch) {	/* is showing, turn off */
 	set_tek_visibility(False);
@@ -1260,7 +1328,7 @@ do_cursorblink(Widget gw GCC_UNUSED,
 	       XtPointer closure GCC_UNUSED,
 	       XtPointer data GCC_UNUSED)
 {
-    TScreen *screen = &term->screen;
+    TScreen *screen = TScreenOf(term);
     ToggleCursorBlink(screen);
 }
 #endif
@@ -1291,7 +1359,7 @@ do_activeicon(Widget gw GCC_UNUSED,
 	      XtPointer closure GCC_UNUSED,
 	      XtPointer data GCC_UNUSED)
 {
-    TScreen *screen = &term->screen;
+    TScreen *screen = TScreenOf(term);
 
     if (screen->iconVwin.window) {
 	Widget shell = XtParent(term);
@@ -1334,9 +1402,7 @@ do_tekmode(Widget gw GCC_UNUSED,
 	   XtPointer closure GCC_UNUSED,
 	   XtPointer data GCC_UNUSED)
 {
-    TScreen *screen = &term->screen;
-
-    switch_modes(screen->TekEmu);	/* switch to tek mode */
+    switch_modes(TEK4014_ACTIVE(term));		/* switch to tek mode */
 }
 
 /* ARGSUSED */
@@ -1412,7 +1478,7 @@ do_font_renderfont(Widget gw GCC_UNUSED,
 		   XtPointer closure GCC_UNUSED,
 		   XtPointer data GCC_UNUSED)
 {
-    TScreen *screen = &term->screen;
+    TScreen *screen = TScreenOf(term);
     int fontnum = screen->menu_font_number;
     String name = term->screen.MenuFontName(fontnum);
 
@@ -1431,7 +1497,7 @@ do_font_utf8_mode(Widget gw GCC_UNUSED,
 		  XtPointer closure GCC_UNUSED,
 		  XtPointer data GCC_UNUSED)
 {
-    TScreen *screen = &term->screen;
+    TScreen *screen = TScreenOf(term);
 
     /*
      * If xterm was started with -wc option, it might not have the wide fonts.
@@ -1440,7 +1506,7 @@ do_font_utf8_mode(Widget gw GCC_UNUSED,
     if (!screen->utf8_mode) {
 	if (screen->wide_chars) {
 	    if (xtermLoadWideFonts(term, True)) {
-		SetVTFont(term, screen->menu_font_number, TRUE, NULL);
+		SetVTFont(term, screen->menu_font_number, True, NULL);
 	    }
 	} else {
 	    ChangeToWide(term);
@@ -1459,7 +1525,7 @@ do_font_utf8_title(Widget gw GCC_UNUSED,
 		   XtPointer closure GCC_UNUSED,
 		   XtPointer data GCC_UNUSED)
 {
-    TScreen *screen = &term->screen;
+    TScreen *screen = TScreenOf(term);
 
     screen->utf8_title = !screen->utf8_title;
     update_font_utf8_title();
@@ -1476,7 +1542,7 @@ do_tektextlarge(Widget gw GCC_UNUSED,
 		XtPointer closure GCC_UNUSED,
 		XtPointer data GCC_UNUSED)
 {
-    TekSetFontSize(tekMenu_tektextlarge);
+    TekSetFontSize(tekWidget, tekMenu_tektextlarge);
 }
 
 static void
@@ -1484,7 +1550,7 @@ do_tektext2(Widget gw GCC_UNUSED,
 	    XtPointer closure GCC_UNUSED,
 	    XtPointer data GCC_UNUSED)
 {
-    TekSetFontSize(tekMenu_tektext2);
+    TekSetFontSize(tekWidget, tekMenu_tektext2);
 }
 
 static void
@@ -1492,7 +1558,7 @@ do_tektext3(Widget gw GCC_UNUSED,
 	    XtPointer closure GCC_UNUSED,
 	    XtPointer data GCC_UNUSED)
 {
-    TekSetFontSize(tekMenu_tektext3);
+    TekSetFontSize(tekWidget, tekMenu_tektext3);
 }
 
 static void
@@ -1500,8 +1566,7 @@ do_tektextsmall(Widget gw GCC_UNUSED,
 		XtPointer closure GCC_UNUSED,
 		XtPointer data GCC_UNUSED)
 {
-
-    TekSetFontSize(tekMenu_tektextsmall);
+    TekSetFontSize(tekWidget, tekMenu_tektextsmall);
 }
 
 static void
@@ -1509,7 +1574,7 @@ do_tekpage(Widget gw GCC_UNUSED,
 	   XtPointer closure GCC_UNUSED,
 	   XtPointer data GCC_UNUSED)
 {
-    TekSimulatePageButton(False);
+    TekSimulatePageButton(tekWidget, False);
 }
 
 static void
@@ -1517,7 +1582,7 @@ do_tekreset(Widget gw GCC_UNUSED,
 	    XtPointer closure GCC_UNUSED,
 	    XtPointer data GCC_UNUSED)
 {
-    TekSimulatePageButton(True);
+    TekSimulatePageButton(tekWidget, True);
 }
 
 static void
@@ -1525,21 +1590,21 @@ do_tekcopy(Widget gw GCC_UNUSED,
 	   XtPointer closure GCC_UNUSED,
 	   XtPointer data GCC_UNUSED)
 {
-    TekCopy();
+    TekCopy(tekWidget);
 }
 
 static void
 handle_vtshow(Widget gw GCC_UNUSED, Bool allowswitch)
 {
-    TScreen *screen = &term->screen;
+    TScreen *screen = TScreenOf(term);
 
     TRACE(("Show vt-window\n"));
     if (!screen->Vshow) {	/* not showing, turn on */
 	set_vt_visibility(True);
-    } else if (screen->Tshow || allowswitch) {	/* is showing, turn off */
+    } else if (TEK4014_SHOWN(term) || allowswitch) {	/* is showing, turn off */
 	set_vt_visibility(False);
-	if (!screen->TekEmu && TekRefresh)
-	    dorefresh();
+	if (!TEK4014_ACTIVE(term) && tekRefreshList)
+	    TekRefresh(tekWidget);
 	end_vt_mode();		/* WARNING: this does a longjmp... */
     } else
 	Bell(XkbBI_MinorError, 0);
@@ -1566,9 +1631,7 @@ do_vtmode(Widget gw GCC_UNUSED,
 	  XtPointer closure GCC_UNUSED,
 	  XtPointer data GCC_UNUSED)
 {
-    TScreen *screen = &term->screen;
-
-    switch_modes(screen->TekEmu);	/* switch to vt, or from */
+    switch_modes(TEK4014_ACTIVE(term));		/* switch to vt, or from */
 }
 
 /* ARGSUSED */
@@ -1914,6 +1977,16 @@ HandleJumpscroll(Widget w,
 }
 
 void
+HandleKeepSelection(Widget w,
+		    XEvent * event GCC_UNUSED,
+		    String * params,
+		    Cardinal *param_count)
+{
+    handle_vt_toggle(do_keepSelection, term->screen.keepSelection,
+		     params, *param_count, w);
+}
+
+void
 HandleSetSelect(Widget w,
 		XEvent * event GCC_UNUSED,
 		String * params,
@@ -2020,6 +2093,16 @@ HandleCursesEmul(Widget w,
 		 Cardinal *param_count)
 {
     handle_vt_toggle(do_cursesemul, term->screen.curses,
+		     params, *param_count, w);
+}
+
+void
+HandleBellIsUrgent(Widget w,
+		   XEvent * event GCC_UNUSED,
+		   String * params,
+		   Cardinal *param_count)
+{
+    handle_vt_toggle(do_bellIsUrgent, term->screen.bellIsUrgent,
 		     params, *param_count, w);
 }
 
@@ -2179,12 +2262,12 @@ HandleSetTerminalType(Widget w,
 	switch (params[0][0]) {
 	case 'v':
 	case 'V':
-	    if (term->screen.TekEmu)
+	    if (TEK4014_ACTIVE(term))
 		do_vtmode(w, (XtPointer) 0, (XtPointer) 0);
 	    break;
 	case 't':
 	case 'T':
-	    if (!term->screen.TekEmu)
+	    if (!TEK4014_ACTIVE(term))
 		do_tekmode(w, (XtPointer) 0, (XtPointer) 0);
 	    break;
 	default:
@@ -2210,7 +2293,7 @@ HandleVisibility(Widget w,
 	    break;
 	case 't':
 	case 'T':
-	    handle_tek_toggle(do_tekonoff, (int) term->screen.Tshow,
+	    handle_tek_toggle(do_tekonoff, (int) TEK4014_SHOWN(term),
 			      params + 1, (*param_count) - 1, w);
 	    break;
 	default:
@@ -2235,19 +2318,17 @@ HandleSetTekText(Widget w,
 	proc = do_tektextlarge;
 	break;
     case 1:
-	switch (params[0][0]) {
-	case 'l':
-	case 'L':
+	switch (TekGetFontSize(params[0])) {
+	case TEK_FONT_LARGE:
 	    proc = do_tektextlarge;
 	    break;
-	case '2':
+	case TEK_FONT_2:
 	    proc = do_tektext2;
 	    break;
-	case '3':
+	case TEK_FONT_3:
 	    proc = do_tektext3;
 	    break;
-	case 's':
-	case 'S':
+	case TEK_FONT_SMALL:
 	    proc = do_tektextsmall;
 	    break;
 	}
@@ -2291,10 +2372,17 @@ HandleTekCopy(Widget w,
 #endif /* OPT_TEK4014 */
 
 static void
-UpdateMenuItem(Widget mi, XtArgVal val)
+UpdateMenuItem(
+#if OPT_TRACE
+		  const char *func,
+#endif
+		  MenuEntry * menu,
+		  int which,
+		  XtArgVal val)
 {
     static Arg menuArgs =
     {XtNleftBitmap, (XtArgVal) 0};
+    Widget mi = menu[which].widget;
 
     if (mi) {
 	menuArgs.value = (XtArgVal) ((val)
@@ -2302,7 +2390,14 @@ UpdateMenuItem(Widget mi, XtArgVal val)
 				     : None);
 	XtSetValues(mi, &menuArgs, (Cardinal) 1);
     }
+    TRACE(("%s(%d): %s\n", func, which, BtoS(val)));
 }
+
+#if OPT_TRACE
+#define UpdateCheckbox(func, mn, mi, val) UpdateMenuItem(func, mn, mi, val)
+#else
+#define UpdateCheckbox(func, mn, mi, val) UpdateMenuItem(mn, mi, val)
+#endif
 
 void
 SetItemSensitivity(Widget mi, XtArgVal val)
@@ -2348,6 +2443,7 @@ SetupShell(Widget *menus, MenuList * shell, int n, int m)
     char *external_name = 0;
     Dimension button_height;
     Dimension button_border;
+    String saveLocale = setMenuLocale(True, resource.menuLocale);
 
     shell[n].w = XtVaCreatePopupShell(menu_names[n].internal_name,
 				      simpleMenuWidgetClass,
@@ -2380,6 +2476,7 @@ SetupShell(Widget *menus, MenuList * shell, int n, int m)
 		  XtNborderWidth, &button_border,
 		  (XtPointer) 0);
 
+    (void) setMenuLocale(True, saveLocale);
     return button_height + (button_border * 2);
 }
 #endif /* OPT_TOOLBAR */
@@ -2388,9 +2485,8 @@ void
 SetupMenus(Widget shell, Widget *forms, Widget *menus, Dimension * menu_high)
 {
 #if OPT_TOOLBAR
-    Dimension button_height;
+    Dimension button_height = 0;
     Dimension toolbar_hSpace;
-    Dimension toolbar_border;
     Arg args[10];
 #endif
 
@@ -2436,7 +2532,6 @@ SetupMenus(Widget shell, Widget *forms, Widget *menus, Dimension * menu_high)
      */
     XtVaGetValues(*menus,
 		  XtNhSpace, &toolbar_hSpace,
-		  XtNborderWidth, &toolbar_border,
 		  (XtPointer) 0);
 
     if (shell == toplevel) {	/* vt100 */
@@ -2456,11 +2551,11 @@ SetupMenus(Widget shell, Widget *forms, Widget *menus, Dimension * menu_high)
      * Tell the main program how high the toolbar is, to help with the initial
      * layout.
      */
-    *menu_high = (button_height + 2 * (toolbar_hSpace + toolbar_border));
-    TRACE(("...menuHeight:%d = (%d + 2 * (%d + %d))\n",
-	   *menu_high, button_height, toolbar_hSpace, toolbar_border));
+    *menu_high = (button_height + 2 * (toolbar_hSpace));
+    TRACE(("...menuHeight:%d = (%d + 2 * %d)\n",
+	   *menu_high, button_height, toolbar_hSpace));
 
-#else
+#else /* !OPT_TOOLBAR */
     *forms = shell;
     *menus = shell;
 #endif
@@ -2473,10 +2568,10 @@ SetupMenus(Widget shell, Widget *forms, Widget *menus, Dimension * menu_high)
 void
 repairSizeHints(void)
 {
-    TScreen *screen = &term->screen;
+    TScreen *screen = TScreenOf(term);
 
     if (XtIsRealized((Widget) term)) {
-	bzero(&term->hints, sizeof(term->hints));
+	getXtermSizeHints(term);
 	xtermSizeHints(term, ScrollbarWidth(screen));
 
 	XSetWMNormalHints(screen->display, XtWindow(SHELL_OF(term)), &term->hints);
@@ -2526,6 +2621,8 @@ toolbar_info(Widget w)
 #if OPT_TEK4014
     if (w != (Widget) term)
 	return &(tekWidget->tek.tb_info);
+#else
+    (void) w;
 #endif
     return &(WhichVWin(&(term->screen))->tb_info);
 }
@@ -2643,7 +2740,9 @@ do_toolbar(Widget gw GCC_UNUSED,
 void
 update_toolbar(void)
 {
-    UpdateMenuItem(mainMenuEntries[mainMenu_toolbar].widget,
+    UpdateCheckbox("update_toolbar",
+		   mainMenuEntries,
+		   mainMenu_toolbar,
 		   resource.toolBar);
 }
 #endif /* OPT_TOOLBAR */
@@ -2651,14 +2750,18 @@ update_toolbar(void)
 void
 update_securekbd(void)
 {
-    UpdateMenuItem(mainMenuEntries[mainMenu_securekbd].widget,
+    UpdateCheckbox("update_securekbd",
+		   mainMenuEntries,
+		   mainMenu_securekbd,
 		   term->screen.grabbedKbd);
 }
 
 void
 update_allowsends(void)
 {
-    UpdateMenuItem(mainMenuEntries[mainMenu_allowsends].widget,
+    UpdateCheckbox("update_allowsends",
+		   mainMenuEntries,
+		   mainMenu_allowsends,
 		   term->screen.allowSendEvents);
 }
 
@@ -2666,7 +2769,9 @@ update_allowsends(void)
 void
 update_logging(void)
 {
-    UpdateMenuItem(mainMenuEntries[mainMenu_logging].widget,
+    UpdateCheckbox("update_logging",
+		   mainMenuEntries,
+		   mainMenu_logging,
 		   term->screen.logging);
 }
 #endif
@@ -2674,21 +2779,27 @@ update_logging(void)
 void
 update_print_redir(void)
 {
-    UpdateMenuItem(mainMenuEntries[mainMenu_print_redir].widget,
+    UpdateCheckbox("update_print_redir",
+		   mainMenuEntries,
+		   mainMenu_print_redir,
 		   term->screen.printer_controlmode);
 }
 
 void
 update_8bit_control(void)
 {
-    UpdateMenuItem(mainMenuEntries[mainMenu_8bit_ctrl].widget,
+    UpdateCheckbox("update_8bit_control",
+		   mainMenuEntries,
+		   mainMenu_8bit_ctrl,
 		   term->screen.control_eight_bits);
 }
 
 void
 update_decbkm(void)
 {
-    UpdateMenuItem(mainMenuEntries[mainMenu_backarrow].widget,
+    UpdateCheckbox("update_decbkm",
+		   mainMenuEntries,
+		   mainMenu_backarrow,
 		   (term->keyboard.flags & MODE_DECBKM) != 0);
 }
 
@@ -2696,21 +2807,27 @@ update_decbkm(void)
 void
 update_num_lock(void)
 {
-    UpdateMenuItem(mainMenuEntries[mainMenu_num_lock].widget,
+    UpdateCheckbox("update_num_lock",
+		   mainMenuEntries,
+		   mainMenu_num_lock,
 		   term->misc.real_NumLock);
 }
 
 void
 update_alt_esc(void)
 {
-    UpdateMenuItem(mainMenuEntries[mainMenu_alt_esc].widget,
-		   !term->screen.input_eight_bits);
+    UpdateCheckbox("update_alt_esc",
+		   mainMenuEntries,
+		   mainMenu_alt_esc,
+		   term->screen.alt_sends_esc);
 }
 
 void
 update_meta_esc(void)
 {
-    UpdateMenuItem(mainMenuEntries[mainMenu_meta_esc].widget,
+    UpdateCheckbox("update_meta_esc",
+		   mainMenuEntries,
+		   mainMenu_meta_esc,
 		   term->screen.meta_sends_esc);
 }
 #endif
@@ -2719,22 +2836,39 @@ update_meta_esc(void)
 void
 update_sun_fkeys(void)
 {
-    UpdateMenuItem(mainMenuEntries[mainMenu_sun_fkeys].widget,
+    UpdateCheckbox("update_sun_fkeys",
+		   mainMenuEntries,
+		   mainMenu_sun_fkeys,
 		   term->keyboard.type == keyboardIsSun);
+}
+#endif
+
+#if OPT_TCAP_FKEYS
+void
+update_tcap_fkeys(void)
+{
+    UpdateCheckbox("update_tcap_fkeys",
+		   mainMenuEntries,
+		   mainMenu_tcap_fkeys,
+		   term->keyboard.type == keyboardIsTermcap);
 }
 #endif
 
 void
 update_old_fkeys(void)
 {
-    UpdateMenuItem(mainMenuEntries[mainMenu_old_fkeys].widget,
+    UpdateCheckbox("update_old_fkeys",
+		   mainMenuEntries,
+		   mainMenu_old_fkeys,
 		   term->keyboard.type == keyboardIsLegacy);
 }
 
 void
 update_delete_del(void)
 {
-    UpdateMenuItem(mainMenuEntries[mainMenu_delete_del].widget,
+    UpdateCheckbox("update_delete_del",
+		   mainMenuEntries,
+		   mainMenu_delete_del,
 		   xtermDeleteIsDEL(term));
 }
 
@@ -2742,7 +2876,9 @@ update_delete_del(void)
 void
 update_sun_kbd(void)
 {
-    UpdateMenuItem(mainMenuEntries[mainMenu_sun_kbd].widget,
+    UpdateCheckbox("update_sun_kbd",
+		   mainMenuEntries,
+		   mainMenu_sun_kbd,
 		   term->keyboard.type == keyboardIsVT220);
 }
 #endif
@@ -2751,7 +2887,9 @@ update_sun_kbd(void)
 void
 update_hp_fkeys(void)
 {
-    UpdateMenuItem(mainMenuEntries[mainMenu_hp_fkeys].widget,
+    UpdateCheckbox("update_hp_fkeys",
+		   mainMenuEntries,
+		   mainMenu_hp_fkeys,
 		   term->keyboard.type == keyboardIsHP);
 }
 #endif
@@ -2760,7 +2898,9 @@ update_hp_fkeys(void)
 void
 update_sco_fkeys(void)
 {
-    UpdateMenuItem(mainMenuEntries[mainMenu_sco_fkeys].widget,
+    UpdateCheckbox("update_sco_fkeys",
+		   mainMenuEntries,
+		   mainMenu_sco_fkeys,
 		   term->keyboard.type == keyboardIsSCO);
 }
 #endif
@@ -2768,84 +2908,117 @@ update_sco_fkeys(void)
 void
 update_scrollbar(void)
 {
-    UpdateMenuItem(vtMenuEntries[vtMenu_scrollbar].widget,
-		   ScrollbarWidth(&term->screen));
+    UpdateCheckbox("update_scrollbar",
+		   vtMenuEntries,
+		   vtMenu_scrollbar,
+		   ScrollbarWidth(TScreenOf(term)));
 }
 
 void
 update_jumpscroll(void)
 {
-    UpdateMenuItem(vtMenuEntries[vtMenu_jumpscroll].widget,
+    UpdateCheckbox("update_jumpscroll",
+		   vtMenuEntries,
+		   vtMenu_jumpscroll,
 		   term->screen.jumpscroll);
 }
 
 void
 update_reversevideo(void)
 {
-    UpdateMenuItem(vtMenuEntries[vtMenu_reversevideo].widget,
+    UpdateCheckbox("update_reversevideo",
+		   vtMenuEntries,
+		   vtMenu_reversevideo,
 		   (term->misc.re_verse));
 }
 
 void
 update_autowrap(void)
 {
-    UpdateMenuItem(vtMenuEntries[vtMenu_autowrap].widget,
+    UpdateCheckbox("update_autowrap",
+		   vtMenuEntries,
+		   vtMenu_autowrap,
 		   (term->flags & WRAPAROUND) != 0);
 }
 
 void
 update_reversewrap(void)
 {
-    UpdateMenuItem(vtMenuEntries[vtMenu_reversewrap].widget,
+    UpdateCheckbox("update_reversewrap",
+		   vtMenuEntries,
+		   vtMenu_reversewrap,
 		   (term->flags & REVERSEWRAP) != 0);
 }
 
 void
 update_autolinefeed(void)
 {
-    UpdateMenuItem(vtMenuEntries[vtMenu_autolinefeed].widget,
+    UpdateCheckbox("update_autolinefeed",
+		   vtMenuEntries,
+		   vtMenu_autolinefeed,
 		   (term->flags & LINEFEED) != 0);
 }
 
 void
 update_appcursor(void)
 {
-    UpdateMenuItem(vtMenuEntries[vtMenu_appcursor].widget,
+    UpdateCheckbox("update_appcursor",
+		   vtMenuEntries,
+		   vtMenu_appcursor,
 		   (term->keyboard.flags & MODE_DECCKM) != 0);
 }
 
 void
 update_appkeypad(void)
 {
-    UpdateMenuItem(vtMenuEntries[vtMenu_appkeypad].widget,
+    UpdateCheckbox("update_appkeypad",
+		   vtMenuEntries,
+		   vtMenu_appkeypad,
 		   (term->keyboard.flags & MODE_DECKPAM) != 0);
 }
 
 void
 update_scrollkey(void)
 {
-    UpdateMenuItem(vtMenuEntries[vtMenu_scrollkey].widget,
+    UpdateCheckbox("update_scrollkey",
+		   vtMenuEntries,
+		   vtMenu_scrollkey,
 		   term->screen.scrollkey);
 }
 
 void
 update_scrollttyoutput(void)
 {
-    UpdateMenuItem(vtMenuEntries[vtMenu_scrollttyoutput].widget,
+    UpdateCheckbox("update_scrollttyoutput",
+		   vtMenuEntries,
+		   vtMenu_scrollttyoutput,
 		   term->screen.scrollttyoutput);
+}
+
+void
+update_keepSelection(void)
+{
+    UpdateCheckbox("update_keepSelection",
+		   vtMenuEntries,
+		   vtMenu_keepSelection,
+		   term->screen.keepSelection);
 }
 
 void
 update_selectToClipboard(void)
 {
-    UpdateMenuItem(vtMenuEntries[vtMenu_selectToClipboard].widget,
+    UpdateCheckbox("update_selectToClipboard",
+		   vtMenuEntries,
+		   vtMenu_selectToClipboard,
 		   term->screen.selectToClipboard);
 }
 
 void
 update_allow132(void)
 {
-    UpdateMenuItem(vtMenuEntries[vtMenu_allow132].widget,
+    UpdateCheckbox("update_allow132",
+		   vtMenuEntries,
+		   vtMenu_allow132,
 		   term->screen.c132);
 }
 
@@ -2853,7 +3026,7 @@ void
 update_cursesemul(void)
 {
 #if 0				/* 2006-2-12: no longer menu entry */
-    UpdateMenuItem(vtMenuEntries[vtMenu_cursesemul].widget,
+    UpdateMenuItem("update_cursesemul", vtMenuEntries, vtMenu_cursesemul,
 		   term->screen.curses);
 #endif
 }
@@ -2861,29 +3034,48 @@ update_cursesemul(void)
 void
 update_visualbell(void)
 {
-    UpdateMenuItem(vtMenuEntries[vtMenu_visualbell].widget,
+    UpdateCheckbox("update_visualbell",
+		   vtMenuEntries,
+		   vtMenu_visualbell,
 		   term->screen.visualbell);
+}
+
+void
+update_bellIsUrgent(void)
+{
+    UpdateCheckbox("update_bellIsUrgent",
+		   vtMenuEntries,
+		   vtMenu_bellIsUrgent,
+		   term->screen.bellIsUrgent);
 }
 
 void
 update_poponbell(void)
 {
-    UpdateMenuItem(vtMenuEntries[vtMenu_poponbell].widget,
+    UpdateCheckbox("update_poponbell",
+		   vtMenuEntries,
+		   vtMenu_poponbell,
 		   term->screen.poponbell);
 }
 
+#ifndef update_marginbell	/* 2007-3-7: no longer menu entry */
 void
 update_marginbell(void)
 {
-    UpdateMenuItem(vtMenuEntries[vtMenu_marginbell].widget,
+    UpdateCheckbox("update_marginbell",
+		   vtMenuEntries,
+		   vtMenu_marginbell,
 		   term->screen.marginbell);
 }
+#endif
 
 #if OPT_BLINK_CURS
 void
 update_cursorblink(void)
 {
-    UpdateMenuItem(vtMenuEntries[vtMenu_cursorblink].widget,
+    UpdateCheckbox("update_cursorblink",
+		   vtMenuEntries,
+		   vtMenu_cursorblink,
 		   term->screen.cursor_blink);
 }
 #endif
@@ -2891,14 +3083,18 @@ update_cursorblink(void)
 void
 update_altscreen(void)
 {
-    UpdateMenuItem(vtMenuEntries[vtMenu_altscreen].widget,
+    UpdateCheckbox("update_altscreen",
+		   vtMenuEntries,
+		   vtMenu_altscreen,
 		   term->screen.alternate);
 }
 
 void
 update_titeInhibit(void)
 {
-    UpdateMenuItem(vtMenuEntries[vtMenu_titeInhibit].widget,
+    UpdateCheckbox("update_titeInhibit",
+		   vtMenuEntries,
+		   vtMenu_titeInhibit,
 		   !(term->misc.titeInhibit));
 }
 
@@ -2906,7 +3102,9 @@ update_titeInhibit(void)
 void
 update_activeicon(void)
 {
-    UpdateMenuItem(vtMenuEntries[vtMenu_activeicon].widget,
+    UpdateCheckbox("update_activeicon",
+		   vtMenuEntries,
+		   vtMenu_activeicon,
 		   term->misc.active_icon);
 }
 #endif /* NO_ACTIVE_ICON */
@@ -2915,7 +3113,9 @@ update_activeicon(void)
 void
 update_font_doublesize(void)
 {
-    UpdateMenuItem(fontMenuEntries[fontMenu_font_doublesize].widget,
+    UpdateCheckbox("update_font_doublesize",
+		   fontMenuEntries,
+		   fontMenu_font_doublesize,
 		   term->screen.font_doublesize);
 }
 #endif
@@ -2924,7 +3124,9 @@ update_font_doublesize(void)
 void
 update_font_boxchars(void)
 {
-    UpdateMenuItem(fontMenuEntries[fontMenu_font_boxchars].widget,
+    UpdateCheckbox("update_font_boxchars",
+		   fontMenuEntries,
+		   fontMenu_font_boxchars,
 		   term->screen.force_box_chars);
 }
 #endif
@@ -2933,7 +3135,9 @@ update_font_boxchars(void)
 void
 update_font_loadable(void)
 {
-    UpdateMenuItem(fontMenuEntries[fontMenu_font_loadable].widget,
+    UpdateCheckbox("update_font_loadable",
+		   fontMenuEntries,
+		   fontMenu_font_loadable,
 		   term->misc.font_loadable);
 }
 #endif
@@ -2942,7 +3146,9 @@ update_font_loadable(void)
 void
 update_font_renderfont(void)
 {
-    UpdateMenuItem(fontMenuEntries[fontMenu_render_font].widget,
+    UpdateCheckbox("update_font_renderfont",
+		   fontMenuEntries,
+		   fontMenu_render_font,
 		   term->misc.render_font);
 }
 #endif
@@ -2951,25 +3157,29 @@ update_font_renderfont(void)
 void
 update_font_utf8_mode(void)
 {
-    Widget iw = fontMenuEntries[fontMenu_wide_chars].widget;
     Bool active = (term->screen.utf8_mode != uAlways);
     Bool enable = (term->screen.utf8_mode != uFalse);
 
     TRACE(("update_font_utf8_mode active %d, enable %d\n", active, enable));
-    SetItemSensitivity(iw, active);
-    UpdateMenuItem(iw, enable);
+    SetItemSensitivity(fontMenuEntries[fontMenu_wide_chars].widget, active);
+    UpdateCheckbox("update_font_utf8_mode",
+		   fontMenuEntries,
+		   fontMenu_wide_chars,
+		   enable);
 }
 
 void
 update_font_utf8_title(void)
 {
-    Widget iw = fontMenuEntries[fontMenu_wide_title].widget;
     Bool active = (term->screen.utf8_mode != uFalse);
     Bool enable = (term->screen.utf8_title);
 
     TRACE(("update_font_utf8_title active %d, enable %d\n", active, enable));
-    SetItemSensitivity(iw, active);
-    UpdateMenuItem(iw, enable);
+    SetItemSensitivity(fontMenuEntries[fontMenu_wide_title].widget, active);
+    UpdateCheckbox("update_font_utf8_title",
+		   fontMenuEntries,
+		   fontMenu_wide_title,
+		   enable);
 }
 #endif
 
@@ -2978,8 +3188,10 @@ void
 update_tekshow(void)
 {
     if (!(term->screen.inhibit & I_TEK)) {
-	UpdateMenuItem(vtMenuEntries[vtMenu_tekshow].widget,
-		       term->screen.Tshow);
+	UpdateCheckbox("update_tekshow",
+		       vtMenuEntries,
+		       vtMenu_tekshow,
+		       TEK4014_SHOWN(term));
     }
 }
 
@@ -2987,10 +3199,14 @@ void
 update_vttekmode(void)
 {
     if (!(term->screen.inhibit & I_TEK)) {
-	UpdateMenuItem(vtMenuEntries[vtMenu_tekmode].widget,
-		       term->screen.TekEmu);
-	UpdateMenuItem(tekMenuEntries[tekMenu_vtmode].widget,
-		       !term->screen.TekEmu);
+	UpdateCheckbox("update_vtmode",
+		       vtMenuEntries,
+		       vtMenu_tekmode,
+		       TEK4014_ACTIVE(term));
+	UpdateCheckbox("update_tekmode",
+		       tekMenuEntries,
+		       tekMenu_vtmode,
+		       !TEK4014_ACTIVE(term));
     }
 }
 
@@ -2998,7 +3214,9 @@ void
 update_vtshow(void)
 {
     if (!(term->screen.inhibit & I_TEK)) {
-	UpdateMenuItem(tekMenuEntries[tekMenu_vtshow].widget,
+	UpdateCheckbox("update_vtshow",
+		       tekMenuEntries,
+		       tekMenu_vtshow,
 		       term->screen.Vshow);
     }
 }
@@ -3009,7 +3227,7 @@ set_vthide_sensitivity(void)
     if (!(term->screen.inhibit & I_TEK)) {
 	SetItemSensitivity(
 			      vtMenuEntries[vtMenu_vthide].widget,
-			      term->screen.Tshow);
+			      TEK4014_SHOWN(term));
     }
 }
 
@@ -3027,7 +3245,7 @@ void
 set_tekfont_menu_item(int n, int val)
 {
     if (!(term->screen.inhibit & I_TEK)) {
-	UpdateMenuItem(tekMenuEntries[FS2MI(n)].widget,
+	UpdateCheckbox("set_tekfont_menu_item", tekMenuEntries, FS2MI(n),
 		       (val));
     }
 }
@@ -3036,6 +3254,8 @@ set_tekfont_menu_item(int n, int val)
 void
 set_menu_font(int val)
 {
-    UpdateMenuItem(fontMenuEntries[term->screen.menu_font_number].widget,
+    UpdateCheckbox("set_menu_font",
+		   fontMenuEntries,
+		   term->screen.menu_font_number,
 		   (val));
 }

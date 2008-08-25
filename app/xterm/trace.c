@@ -1,12 +1,8 @@
-/* $XTermId: trace.c,v 1.67 2006/07/15 12:00:58 tom Exp $ */
-
-/*
- * $XFree86: xc/programs/xterm/trace.c,v 3.23 2005/09/18 23:48:13 dickey Exp $
- */
+/* $XTermId: trace.c,v 1.85 2008/06/03 20:52:34 tom Exp $ */
 
 /************************************************************
 
-Copyright 1997-2005,2006 by Thomas E. Dickey
+Copyright 1997-2007,2008 by Thomas E. Dickey
 
                         All Rights Reserved
 
@@ -43,6 +39,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <sys/types.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <assert.h>
 
 #ifdef HAVE_X11_TRANSLATEI_H
 #include <X11/TranslateI.h>
@@ -62,7 +59,7 @@ extern "C" {
 char *trace_who = "parent";
 
 void
-Trace(char *fmt,...)
+Trace(const char *fmt,...)
 {
     static FILE *fp;
     static char *trace_out;
@@ -116,7 +113,7 @@ Trace(char *fmt,...)
 void
 TraceIds(const char *fname, int lnum)
 {
-    Trace("process %d ", getpid());
+    Trace("process %d ", (int) getpid());
 #ifdef HAVE_UNISTD_H
     Trace("real (%u/%u) effective (%u/%u)",
 	  (unsigned) getuid(), (unsigned) getgid(),
@@ -129,6 +126,58 @@ TraceIds(const char *fname, int lnum)
 	Trace("-- %s", ctime(&now));
     }
 }
+
+static void
+formatAscii(char *dst, unsigned value)
+{
+    switch (value) {
+    case '\\':
+	sprintf(dst, "\\\\");
+	break;
+    case '\b':
+	sprintf(dst, "\\b");
+	break;
+    case '\n':
+	sprintf(dst, "\\n");
+	break;
+    case '\r':
+	sprintf(dst, "\\r");
+	break;
+    case '\t':
+	sprintf(dst, "\\t");
+	break;
+    default:
+	if (E2A(value) < 32 || (E2A(value) >= 127 && E2A(value) < 160))
+	    sprintf(dst, "\\%03o", value);
+	else
+	    sprintf(dst, "%c", CharOf(value));
+	break;
+    }
+}
+
+#if OPT_DEC_CHRSET
+
+const char *
+visibleChrsetName(int chrset)
+{
+    const char *result = "?";
+    switch (chrset) {
+    case CSET_SWL:
+	result = "CSET_SWL";
+	break;
+    case CSET_DHL_TOP:
+	result = "CSET_DHL_TOP";
+	break;
+    case CSET_DHL_BOT:
+	result = "CSET_DHL_BOT";
+	break;
+    case CSET_DWL:
+	result = "CSET_DWL";
+	break;
+    }
+    return result;
+}
+#endif
 
 char *
 visibleChars(PAIRED_CHARS(Char * buf, Char * buf2), unsigned len)
@@ -155,10 +204,7 @@ visibleChars(PAIRED_CHARS(Char * buf, Char * buf2), unsigned len)
 	    sprintf(dst, "\\u+%04X", value);
 	else
 #endif
-	if (E2A(value) < 32 || (E2A(value) >= 127 && E2A(value) < 160))
-	    sprintf(dst, "\\%03o", value);
-	else
-	    sprintf(dst, "%c", CharOf(value));
+	    formatAscii(dst, value);
 	dst += strlen(dst);
     }
     return result;
@@ -184,10 +230,7 @@ visibleIChar(IChar * buf, unsigned len)
 	    sprintf(dst, "\\u+%04X", value);
 	else
 #endif
-	if (E2A(value) < 32 || (E2A(value) >= 127 && E2A(value) < 160))
-	    sprintf(dst, "\\%03o", value);
-	else
-	    sprintf(dst, "%c", CharOf(value));
+	    formatAscii(dst, value);
 	dst += strlen(dst);
     }
     return result;
@@ -205,10 +248,177 @@ visibleKeyboardType(xtermKeyboardType type)
 	CASETYPE(keyboardIsHP);
 	CASETYPE(keyboardIsSCO);
 	CASETYPE(keyboardIsSun);
+	CASETYPE(keyboardIsTermcap);
 	CASETYPE(keyboardIsVT220);
     }
     return result;
 }
+
+const char *
+visibleEventType(int type)
+{
+    const char *result = "?";
+    switch (type) {
+	CASETYPE(KeyPress);
+	CASETYPE(KeyRelease);
+	CASETYPE(ButtonPress);
+	CASETYPE(ButtonRelease);
+	CASETYPE(MotionNotify);
+	CASETYPE(EnterNotify);
+	CASETYPE(LeaveNotify);
+	CASETYPE(FocusIn);
+	CASETYPE(FocusOut);
+	CASETYPE(KeymapNotify);
+	CASETYPE(Expose);
+	CASETYPE(GraphicsExpose);
+	CASETYPE(NoExpose);
+	CASETYPE(VisibilityNotify);
+	CASETYPE(CreateNotify);
+	CASETYPE(DestroyNotify);
+	CASETYPE(UnmapNotify);
+	CASETYPE(MapNotify);
+	CASETYPE(MapRequest);
+	CASETYPE(ReparentNotify);
+	CASETYPE(ConfigureNotify);
+	CASETYPE(ConfigureRequest);
+	CASETYPE(GravityNotify);
+	CASETYPE(ResizeRequest);
+	CASETYPE(CirculateNotify);
+	CASETYPE(CirculateRequest);
+	CASETYPE(PropertyNotify);
+	CASETYPE(SelectionClear);
+	CASETYPE(SelectionRequest);
+	CASETYPE(SelectionNotify);
+	CASETYPE(ColormapNotify);
+	CASETYPE(ClientMessage);
+	CASETYPE(MappingNotify);
+    }
+    return result;
+}
+
+const char *
+visibleXError(int code)
+{
+    static char temp[80];
+    const char *result = "?";
+    switch (code) {
+	CASETYPE(Success);
+	CASETYPE(BadRequest);
+	CASETYPE(BadValue);
+	CASETYPE(BadWindow);
+	CASETYPE(BadPixmap);
+	CASETYPE(BadAtom);
+	CASETYPE(BadCursor);
+	CASETYPE(BadFont);
+	CASETYPE(BadMatch);
+	CASETYPE(BadDrawable);
+	CASETYPE(BadAccess);
+	CASETYPE(BadAlloc);
+	CASETYPE(BadColor);
+	CASETYPE(BadGC);
+	CASETYPE(BadIDChoice);
+	CASETYPE(BadName);
+	CASETYPE(BadLength);
+	CASETYPE(BadImplementation);
+    default:
+	sprintf(temp, "%d", code);
+	result = temp;
+	break;
+    }
+    return result;
+}
+
+#if OPT_TRACE_FLAGS
+#define isScrnFlag(flag) ((flag) == LINEWRAPPED)
+
+static char *
+ScrnText(TScreen * screen, int row)
+{
+    Char *chars = SCRN_BUF_CHARS(screen, row);
+#if OPT_WIDE_CHARS
+    Char *widec = 0;
+#endif
+
+    if_OPT_WIDE_CHARS(screen, {
+	widec = SCRN_BUF_WIDEC(screen, row);
+    });
+    return visibleChars(PAIRED_CHARS(chars, widec), screen->max_col + 1);
+}
+
+#if OPT_TRACE_FLAGS > 1
+#define DETAILED_FLAGS(name) \
+    Trace("TEST " #name " %d [%d..%d] top %d chars %p (%d)\n", \
+    	  row, \
+	  -screen->savedlines, \
+	  screen->max_row, \
+	  screen->topline, \
+	  SCRN_BUF_CHARS(screen, row), \
+	  (&(SCRN_BUF_FLAGS(screen, row)) - screen->visbuf) / MAX_PTRS)
+#else
+#define DETAILED_FLAGS(name)	/* nothing */
+#endif
+
+#define SHOW_BAD_ROW(name, screen, row) \
+	Trace("OOPS " #name " bad row %d [%d..%d]\n", \
+	      row, -(screen->savedlines), screen->max_row)
+
+#define SHOW_SCRN_FLAG(name,code) \
+	Trace(#name " {%d, top=%d, saved=%d}%05d%s:%s\n", \
+	      row, screen->topline, screen->savedlines, \
+	      ROW2ABS(screen, row), \
+	      code ? "*" : "", \
+	      ScrnText(screen, row))
+
+void
+ScrnClrFlag(TScreen * screen, int row, int flag)
+{
+    DETAILED_FLAGS(ScrnClrFlag);
+    if (!okScrnRow(screen, row)) {
+	SHOW_BAD_ROW(ScrnClrFlag, screen, row);
+	assert(0);
+    } else if (isScrnFlag(flag)) {
+	SHOW_SCRN_FLAG(ScrnClrFlag, 0);
+    }
+
+    SCRN_BUF_FLAGS(screen, row) =
+	(Char *) ((long) SCRN_BUF_FLAGS(screen, row) & ~(flag));
+}
+
+void
+ScrnSetFlag(TScreen * screen, int row, int flag)
+{
+    DETAILED_FLAGS(ScrnSetFlag);
+    if (!okScrnRow(screen, row)) {
+	SHOW_BAD_ROW(ScrnSetFlag, screen, row);
+	assert(0);
+    } else if (isScrnFlag(flag)) {
+	SHOW_SCRN_FLAG(ScrnSetFlag, 1);
+    }
+
+    SCRN_BUF_FLAGS(screen, row) =
+	(Char *) (((long) SCRN_BUF_FLAGS(screen, row) | (flag)));
+}
+
+int
+ScrnTstFlag(TScreen * screen, int row, int flag)
+{
+    int code = 0;
+    if (!okScrnRow(screen, row)) {
+	SHOW_BAD_ROW(ScrnTstFlag, screen, row);
+    } else {
+	code = ((long) SCRN_BUF_FLAGS(screen, row) & (flag)) != 0;
+
+	DETAILED_FLAGS(ScrnTstFlag);
+	if (!okScrnRow(screen, row)) {
+	    SHOW_BAD_ROW(ScrnSetFlag, screen, row);
+	    assert(0);
+	} else if (isScrnFlag(flag)) {
+	    SHOW_SCRN_FLAG(ScrnTstFlag, code);
+	}
+    }
+    return code;
+}
+#endif /* OPT_TRACE_FLAGS */
 
 void
 TraceSizeHints(XSizeHints * hints)
@@ -228,6 +438,8 @@ TraceSizeHints(XSizeHints * hints)
 	TRACE(("   max        %d,%d\n", hints->max_height, hints->max_width));
     if (hints->flags & PResizeInc)
 	TRACE(("   inc        %d,%d\n", hints->height_inc, hints->width_inc));
+    else
+	TRACE(("   inc        NONE!\n"));
     if (hints->flags & PAspect)
 	TRACE(("   min aspect %d/%d\n", hints->min_aspect.y, hints->min_aspect.y));
     if (hints->flags & PAspect)
@@ -241,14 +453,11 @@ TraceSizeHints(XSizeHints * hints)
 void
 TraceWMSizeHints(XtermWidget xw)
 {
-    XSizeHints sizehints;
-    long supp = 0;
+    XSizeHints sizehints = xw->hints;
 
-    bzero(&sizehints, sizeof(sizehints));
-    if (!XGetWMNormalHints(xw->screen.display, XtWindow(SHELL_OF(xw)),
-			   &sizehints, &supp))
-	bzero(&sizehints, sizeof(sizehints));
-    TraceSizeHints(&sizehints);
+    getXtermSizeHints(xw);
+    TraceSizeHints(&xw->hints);
+    xw->hints = sizehints;
 }
 
 /*
@@ -287,6 +496,24 @@ TraceTranslations(const char *name, Widget w)
     XSetErrorHandler(save);
 }
 
+int
+TraceResizeRequest(const char *fn, int ln, Widget w,
+		   Dimension reqwide,
+		   Dimension reqhigh,
+		   Dimension * gotwide,
+		   Dimension * gothigh)
+{
+    int rc;
+
+    TRACE(("%s@%d ResizeRequest %dx%d\n", fn, ln, reqhigh, reqwide));
+    rc = XtMakeResizeRequest((Widget) w, reqwide, reqhigh, gotwide, gothigh);
+    TRACE(("... ResizeRequest -> "));
+    if (gothigh && gotwide)
+	TRACE(("%dx%d ", *gothigh, *gotwide));
+    TRACE(("(%d)\n", rc));
+    return rc;
+}
+
 #define XRES_S(name) Trace(#name " = %s\n", NonNull(resp->name))
 #define XRES_B(name) Trace(#name " = %s\n", BtoS(resp->name))
 #define XRES_I(name) Trace(#name " = %d\n", resp->name)
@@ -323,13 +550,14 @@ TraceXtermResources(void)
     XRES_B(ptyInitialErase);
     XRES_B(backarrow_is_erase);
 #endif
-    XRES_B(wait_for_map);
     XRES_B(useInsertMode);
 #if OPT_ZICONBEEP
     XRES_I(zIconBeep);
 #endif
 #if OPT_PTY_HANDSHAKE
+    XRES_B(wait_for_map);
     XRES_B(ptyHandshake);
+    XRES_B(ptySttySize);
 #endif
 #if OPT_SAME_NAME
     XRES_B(sameName);
@@ -492,6 +720,11 @@ TraceOptions(OptionHelp * options, XrmOptionDescRec * resources, Cardinal res_co
 	case XrmoptionSkipLine:
 	    TRACE(("  %-28s {remainder of line}\n", res_array[j].option));
 	    break;
+	case XrmoptionIsArg:
+	case XrmoptionNoArg:
+	case XrmoptionResArg:
+	case XrmoptionSepArg:
+	case XrmoptionStickyArg:
 	default:
 	    break;
 	}

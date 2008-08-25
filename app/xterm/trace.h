@@ -1,12 +1,8 @@
-/* $XTermId: trace.h,v 1.38 2006/08/02 23:48:54 tom Exp $ */
-
-/*
- * $XFree86: xc/programs/xterm/trace.h,v 3.17 2005/09/18 23:48:13 dickey Exp $
- */
+/* $XTermId: trace.h,v 1.44 2008/07/27 15:21:20 tom Exp $ */
 
 /************************************************************
 
-Copyright 1997-2005,2006 by Thomas E. Dickey
+Copyright 1997-2007,2008 by Thomas E. Dickey
 
                         All Rights Reserved
 
@@ -39,7 +35,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 #if OPT_TRACE
 
-extern	void	Trace ( char *, ... )
+extern	void	Trace ( const char *, ... )
 #ifdef GCC_PRINTF
 	__attribute__ ((format(printf,1,2)))
 #endif
@@ -50,10 +46,13 @@ extern	void	Trace ( char *, ... )
 #define TRACE2(p) Trace p
 #endif
 
-extern	char *	visibleChars (PAIRED_CHARS(Char *buf, Char *buf2), unsigned len);
+extern  const char * visibleChrsetName(int /* chrset */);
+extern	char *	visibleChars (PAIRED_CHARS(Char * /* buf */, Char * /* buf2 */), unsigned /* len */);
 extern	char *	visibleIChar (IChar *, unsigned);
+extern	const char * visibleEventType (int);
+extern	const char * visibleXError (int /* code */);
 
-extern	void	TraceArgv(const char *tag, char **argv);
+extern	void	TraceArgv(const char * /* tag */, char ** /* argv */);
 #define	TRACE_ARGV(tag,argv) TraceArgv(tag,argv)
 
 extern	char	*trace_who;
@@ -62,10 +61,10 @@ extern	char	*trace_who;
 extern	void	TraceSizeHints(XSizeHints *);
 #define	TRACE_HINTS(hints) TraceSizeHints(hints)
 
-extern	void	TraceIds(const char *fname, int lnum);
+extern	void	TraceIds(const char * /* fname */, int  /* lnum */);
 #define	TRACE_IDS TraceIds(__FILE__, __LINE__)
 
-extern	void	TraceOptions(OptionHelp *options, XrmOptionDescRec *resources, Cardinal count);
+extern	void	TraceOptions(OptionHelp * /* options */, XrmOptionDescRec * /* resources */, Cardinal  /* count */);
 #define	TRACE_OPTS(opts,ress,lens) TraceOptions(opts,ress,lens)
 
 extern	void	TraceTranslations(const char *, Widget);
@@ -76,6 +75,17 @@ extern	void	TraceWMSizeHints(XtermWidget);
 
 extern	void	TraceXtermResources(void);
 #define	TRACE_XRES() TraceXtermResources()
+
+extern	int	TraceResizeRequest(const char * /* fn */, int  /* ln */, Widget  /* w */, Dimension  /* reqwide */, Dimension  /* reqhigh */, Dimension * /* gotwide */, Dimension * /* gothigh */);
+#define REQ_RESIZE(w, reqwide, reqhigh, gotwide, gothigh) \
+	TraceResizeRequest(__FILE__, __LINE__, w, reqwide, reqhigh, gotwide, gothigh)
+
+#else
+
+#define REQ_RESIZE(w, reqwide, reqhigh, gotwide, gothigh) \
+	XtMakeResizeRequest((Widget) (w), \
+			    (Dimension) (reqwide), (Dimension) (reqhigh), \
+			    (gotwide), (gothigh))
 
 #endif
 
