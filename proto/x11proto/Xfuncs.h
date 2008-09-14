@@ -1,5 +1,5 @@
 /*
- * $XdotOrg: proto/X11/Xfuncs.h,v 1.4 2005/11/08 06:33:25 jkj Exp $
+ * $XdotOrg: xc/include/Xfuncs.h,v 1.2 2004/04/23 18:43:05 eich Exp $
  * $Xorg: Xfuncs.h,v 1.4 2001/02/09 02:03:22 xorgcvs Exp $
  * 
  * 
@@ -87,6 +87,10 @@ void bcopy();
 
 #if defined(X_NOT_STDC_ENV) || (defined(sun) && !defined(SVR4))
 #define atexit(f) on_exit(f, 0)
+#endif
+
+#if defined WIN32 && defined __MINGW32__
+#define bcopy(b1,b2,len) memmove(b2, b1, (size_t)(len))
 #endif
 
 #endif /* !(defined(XFree86LOADER) && defined(IN_MODULE)) */

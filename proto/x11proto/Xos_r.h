@@ -1,5 +1,5 @@
 /* $Xorg: Xos_r.h,v 1.4 2001/02/09 02:03:22 xorgcvs Exp $ */
-/* $XdotOrg: proto/X11/Xos_r.h,v 1.6 2006/04/20 01:24:25 alanc Exp $ */
+/* $XdotOrg: proto/X11/Xos_r.h,v 1.5 2005/07/13 07:23:56 keithp Exp $ */
 /*
 Copyright 1996, 1998  The Open Group
 
@@ -237,7 +237,7 @@ extern void XtProcessUnlock(
 
 #elif !defined(XTHREADS) && !defined(X_FORCE_USE_MTSAFE_API)
 /* Use regular, unsafe API. */
-# if defined(X_NOT_POSIX) && !defined(i386) && !defined(SYSV)
+# if defined(X_NOT_POSIX) && !defined(__i386__) && !defined(SYSV)
 extern struct passwd *getpwuid(), *getpwnam();
 # endif
 typedef int _Xgetpwparams;	/* dummy */

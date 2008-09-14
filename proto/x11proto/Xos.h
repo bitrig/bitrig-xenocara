@@ -1,5 +1,5 @@
 /*
- * $XdotOrg: proto/X11/Xos.h,v 1.9 2006/04/20 01:24:25 alanc Exp $
+ * $XdotOrg: proto/X11/Xos.h,v 1.8 2005/11/08 06:33:25 jkj Exp $
  * $Xorg: Xos.h,v 1.6 2001/02/09 02:03:22 xorgcvs Exp $
  * 
  * 
@@ -149,7 +149,7 @@ extern int sys_nerr;
  */
 #if defined(X_NOT_POSIX)
 #include <fcntl.h>
-#if defined(USL) || defined(CRAY) || defined(MOTOROLA) || (defined(i386) && (defined(SYSV) || defined(SVR4))) || defined(__sxg__)
+#if defined(USL) || defined(CRAY) || defined(MOTOROLA) || (defined(__i386__) && (defined(SYSV) || defined(SVR4))) || defined(__sxg__)
 #include <unistd.h>
 #endif
 #ifdef WIN32
