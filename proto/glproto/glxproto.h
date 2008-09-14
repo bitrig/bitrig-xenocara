@@ -57,7 +57,7 @@
 #define GLXBadCurrentDrawable	11
 #define GLXBadWindow		12
 
-#define __GLX_NUMBER_ERRORS 12
+#define __GLX_NUMBER_ERRORS 13
 
 /*
 ** Events.
@@ -1026,6 +1026,82 @@ typedef struct GLXCreateGLXPixmapWithConfigSGIX {
     GLXPixmap	glxpixmap B32;
 } xGLXCreateGLXPixmapWithConfigSGIXReq;
 #define sz_xGLXCreateGLXPixmapWithConfigSGIXReq 28
+
+/*
+** glXCreateGLXPbufferSGIX request
+*/
+typedef struct GLXCreateGLXPbufferSGIX {
+    CARD8	reqType;
+    CARD8	glxCode;
+    CARD16	length B16;
+    CARD32	vendorCode B32;		/* vendor-specific opcode */
+    CARD32	pad1 B32;   /* unused; corresponds to contextTag in header */
+    CARD32	screen B32;
+    GLXFBConfigID fbconfig B32;
+    GLXPbuffer	pbuffer B32;
+    CARD32	width B32;
+    CARD32	height B32;
+    /* followed by attribute list */
+} xGLXCreateGLXPbufferSGIXReq;
+#define sz_xGLXCreateGLXPbufferSGIXReq 32
+
+/*
+** glXDestroyGLXPbufferSGIX request
+*/
+typedef struct GLXDestroyGLXPbuffer {
+    CARD8	reqType;
+    CARD8	glxCode;
+    CARD16	length B16;
+    CARD32	vendorCode B32;		/* vendor-specific opcode */
+    CARD32	pad1 B32;   /* unused; corresponds to contextTag in header */
+    GLXPbuffer	pbuffer B32;
+} xGLXDestroyGLXPbufferSGIXReq;
+#define sz_xGLXDestroyGLXPbufferSGIXReq 16
+
+/*
+** glXChangeDrawableAttributesSGIX request
+*/
+typedef struct GLXChangeDrawableAttributesSGIX {
+    CARD8	reqType;
+    CARD8	glxCode;
+    CARD16	length B16;
+    CARD32	vendorCode B32;		/* vendor-specific opcode */
+    CARD32	pad1 B32;   /* unused; corresponds to contextTag in header */
+    GLXDrawable drawable B32;
+    CARD32	numAttribs B32;
+    /* followed by attribute list */
+} xGLXChangeDrawableAttributesSGIXReq;
+#define sz_xGLXChangeDrawableAttributesSGIXReq 20
+
+/*
+** glXGetDrawableAttributesSGIX request
+*/
+typedef struct GLXGetDrawableAttributesSGIX {
+    CARD8	reqType;
+    CARD8	glxCode;
+    CARD16	length B16;
+    CARD32	vendorCode B32;		/* vendor-specific opcode */
+    CARD32	pad1 B32;   /* unused; corresponds to contextTag in header */
+    GLXDrawable drawable B32;
+} xGLXGetDrawableAttributesSGIXReq;
+#define sz_xGLXGetDrawableAttributesSGIXReq 16
+
+/*
+** glXGetDrawableAttributesSGIX reply
+*/
+typedef struct {
+    BYTE	type;			/* X_Reply */
+    CARD8	unused;			/* not used */
+    CARD16	sequenceNumber B16;
+    CARD32	length B32;
+    CARD32	numAttribs B32;
+    CARD32	pad2 B32;
+    CARD32	pad3 B32;
+    CARD32	pad4 B32;
+    CARD32	pad5 B32;
+    CARD32	pad6 B32;
+} xGLXGetDrawableAttributesSGIXReply;
+#define sz_xGLXGetDrawableAttributesSGIXReply 32
 
 /*
 ** glXJoinSwapGroupSGIX request
@@ -2369,6 +2445,8 @@ typedef struct {
 /* Opcodes for GLX vendor private commands */
 
 #define X_GLXvop_QueryContextInfoEXT            1024
+#define X_GLXvop_BindTexImageEXT                1330
+#define X_GLXvop_ReleaseTexImageEXT             1331
 #define X_GLXvop_SwapIntervalSGI                65536
 #define X_GLXvop_MakeCurrentReadSGI             65537
 #define X_GLXvop_CreateGLXVideoSourceSGIX       65538
@@ -2387,8 +2465,6 @@ typedef struct {
 #define X_GLXvop_QueryHyperpipeConfigSGIX       65551
 #define X_GLXvop_HyperpipeConfigSGIX            65552
 #define X_GLXvop_DestroyHyperpipeConfigSGIX     65553
-#define X_GLXvop_BindTexImageEXT                5152
-#define X_GLXvop_ReleaseTexImageEXT             5153
 
 /* ARB extension opcodes */
 
