@@ -1,10 +1,8 @@
-/* $XTermId: os2main.c,v 1.227 2006/07/23 20:12:59 tom Exp $ */
+/* $XTermId: os2main.c,v 1.256 2008/09/14 19:37:07 tom Exp $ */
 
 /* removed all foreign stuff to get the code more clear (hv)
  * and did some rewrite for the obscure OS/2 environment
  */
-
-/* $XFree86: xc/programs/xterm/os2main.c,v 3.87 2006/06/19 00:36:51 dickey Exp $ */
 
 /***********************************************************
 
@@ -95,6 +93,7 @@ SOFTWARE.
 #include <menu.h>
 #include <main.h>
 #include <xstrings.h>
+#include <xtermcap.h>
 #include <xterm_io.h>
 
 #if OPT_WIDE_CHARS
@@ -125,18 +124,20 @@ ttyname(int fd)
 #include <signal.h>
 
 static SIGNAL_T reapchild(int n);
-static int spawn(void);
-static void get_terminal(void);
-static void resize(TScreen * s, char *oldtc, char *newtc);
+static int spawnXTerm(XtermWidget /* xw */ );
+static void resize_termcap(XtermWidget xw, char *newtc);
 static void set_owner(char *device, uid_t uid, gid_t gid, mode_t mode);
 
 static Bool added_utmp_entry = False;
+
+static uid_t save_ruid;
+static gid_t save_rgid;
 
 /*
 ** Ordinarily it should be okay to omit the assignment in the following
 ** statement. Apparently the c89 compiler on AIX 4.1.3 has a bug, or does
 ** it? Without the assignment though the compiler will init command_to_exec
-** to 0xffffffff instead of NULL; and subsequent usage, e.g. in spawn() to
+** to 0xffffffff instead of NULL; and subsequent usage, e.g. in spawnXTerm() to
 ** SEGV.
 */
 static char **command_to_exec = NULL;
@@ -189,19 +190,21 @@ static struct termio d_tio;
 #define CWERASE CONTROL('W')
 #endif
 
+#define TERMIO_STRUCT struct termio
+
 /*
  * SYSV has the termio.c_cc[V] and ltchars; BSD has tchars and ltchars;
  * SVR4 has only termio.c_cc, but it includes everything from ltchars.
  * POSIX termios has termios.c_cc, which is similar to SVR4.
  */
 #define TTYMODE(name) { name, sizeof(name)-1, 0, 0 }
-static int override_tty_modes = 0;
+static Boolean override_tty_modes = False;
 /* *INDENT-OFF* */
 static struct _xttymodes {
     char *name;
     size_t len;
     int set;
-    Char value;
+    int value;
 } ttymodelist[] = {
     TTYMODE("intr"),		/* tchars.t_intrc ; VINTR */
 #define XTTYMODE_intr	0
@@ -271,6 +274,7 @@ static XtResource application_resources[] =
     Bres("messages", "Messages", messages, True),
     Ires("minBufSize", "MinBufSize", minBufSize, 4096),
     Ires("maxBufSize", "MaxBufSize", maxBufSize, 32768),
+    Sres("menuLocale", "MenuLocale", menuLocale, ""),
     Sres("keyboardType", "KeyboardType", keyboardType, "unknown"),
 #if OPT_SUNPC_KBD
     Bres("sunKeyboard", "SunKeyboard", sunKeyboard, False),
@@ -284,17 +288,21 @@ static XtResource application_resources[] =
 #if OPT_SUN_FUNC_KEYS
     Bres("sunFunctionKeys", "SunFunctionKeys", sunFunctionKeys, False),
 #endif
+#if OPT_TCAP_FKEYS
+    Bres("tcapFunctionKeys", "TcapFunctionKeys", termcapKeys, False),
+#endif
 #if OPT_INITIAL_ERASE
     Bres("ptyInitialErase", "PtyInitialErase", ptyInitialErase, DEF_INITIAL_ERASE),
     Bres("backarrowKeyIsErase", "BackarrowKeyIsErase", backarrow_is_erase, DEF_BACKARO_ERASE),
 #endif
-    Bres("waitForMap", "WaitForMap", wait_for_map, False),
     Bres("useInsertMode", "UseInsertMode", useInsertMode, False),
 #if OPT_ZICONBEEP
     Ires("zIconBeep", "ZIconBeep", zIconBeep, 0),
 #endif
 #if OPT_PTY_HANDSHAKE
+    Bres("waitForMap", "WaitForMap", wait_for_map, False),
     Bres("ptyHandshake", "PtyHandshake", ptyHandshake, True),
+    Bres("ptySttySize", "PtySttySize", ptySttySize, DEF_PTY_STTY_SIZE),
 #endif
 #if OPT_SAME_NAME
     Bres("sameName", "SameName", sameName, True),
@@ -378,6 +386,10 @@ static XrmOptionDescRec optionDescList[] = {
 #endif
 #if OPT_HIGHLIGHT_COLOR
 {"-hc",		"*highlightColor", XrmoptionSepArg,	(caddr_t) NULL},
+{"-hm",		"*highlightColorMode", XrmoptionNoArg,	(caddr_t) "on"},
+{"+hm",		"*highlightColorMode", XrmoptionNoArg,	(caddr_t) "off"},
+{"-selfg",	"*highlightTextColor", XrmoptionSepArg,	(caddr_t) NULL},
+{"-selbg",	"*highlightColor", XrmoptionSepArg,	(caddr_t) NULL},
 #endif
 #if OPT_HP_FUNC_KEYS
 {"-hf",		"*hpFunctionKeys",XrmoptionNoArg,	(caddr_t) "on"},
@@ -454,6 +466,8 @@ static XrmOptionDescRec optionDescList[] = {
 {"-lcc",	"*localeFilter",XrmoptionSepArg,	(caddr_t) NULL},
 {"-en",		"*locale",	XrmoptionSepArg,	(caddr_t) NULL},
 #endif
+{"-uc",		"*cursorUnderLine", XrmoptionNoArg,	(caddr_t) "on"},
+{"+uc",		"*cursorUnderLine", XrmoptionNoArg,	(caddr_t) "off"},
 {"-ulc",	"*colorULMode",	XrmoptionNoArg,		(caddr_t) "off"},
 {"+ulc",	"*colorULMode",	XrmoptionNoArg,		(caddr_t) "on"},
 {"-ulit",       "*italicULMode", XrmoptionNoArg,        (caddr_t) "off"},
@@ -560,7 +574,9 @@ static OptionHelp xtermOptions[] = {
 { "-/+cu",                 "turn on/off curses emulation" },
 { "-/+dc",                 "turn off/on dynamic color selection" },
 #if OPT_HIGHLIGHT_COLOR
-{ "-hc color",             "selection background color" },
+{ "-/+hm",                 "turn on/off selection-color override" },
+{ "-selbg color",          "selection background color" },
+{ "-selfg color",          "selection foreground color" },
 #endif
 #if OPT_HP_FUNC_KEYS
 { "-/+hf",                 "turn on/off HP Function Key escape codes" },
@@ -622,6 +638,7 @@ static OptionHelp xtermOptions[] = {
 { "-/+lc",                 "turn on/off locale mode using luit" },
 { "-lcc path",             "filename of locale converter (" DEFLOCALEFILTER ")" },
 #endif
+{ "-/+uc",                 "turn on/off underline cursor" },
 { "-/+ulc",                "turn off/on display of underline as color" },
 { "-/+ut",                 "turn on/off utmp inhibit (not supported)" },
 { "-/+ulit",               "turn off/on display of underline as italics" },
@@ -655,21 +672,32 @@ static OptionHelp xtermOptions[] = {
 { NULL, NULL }};
 /* *INDENT-ON* */
 
-/*debug FILE *confd;*/
-/*static void opencons()
-{
-        if ((confd=fopen("/dev/console$","w")) < 0) {
-                fputs("!!! Cannot open console device.\n",
-                        stderr);
-                exit(1);
-        }
-}
+#ifdef DBG_CONSOLE
+FILE *confd;
 
-static void closecons(void)
+static void
+closecons(void)
 {
+    if (confs != 0) {
 	fclose(confd);
+	confd = 0;
+    }
 }
-*/
+static void
+opencons(void)
+{
+    closecons();
+    if ((confd = fopen("/dev/console$", "w")) < 0) {
+	fputs("!!! Cannot open console device.\n",
+	      stderr);
+	exit(1);
+    }
+}
+#else
+#define opencons()		/* nothing */
+#define closecons()		/* nothing */
+#endif
+
 static char *message[] =
 {
     "Fonts should be fixed width and, if both normal and bold are specified, should",
@@ -694,7 +722,7 @@ decode_keyvalue(char **ptr, int termcap)
     if (*string == '^') {
 	switch (*++string) {
 	case '?':
-	    value = A2E(DEL);
+	    value = A2E(ANSI_DEL);
 	    break;
 	case '-':
 	    if (!termcap) {
@@ -736,36 +764,6 @@ decode_keyvalue(char **ptr, int termcap)
     }
     *ptr = string;
     return value;
-}
-
-/*
- * If we're linked to terminfo, tgetent() will return an empty buffer.  We
- * cannot use that to adjust the $TERMCAP variable.
- */
-static Bool
-get_termcap(char *name, char *buffer, char *resized)
-{
-    TScreen *screen = &term->screen;
-
-    *buffer = 0;		/* initialize, in case we're using terminfo's tgetent */
-
-    if (name != 0) {
-	if (tgetent(buffer, name) == 1) {
-	    TRACE(("get_termcap(%s) succeeded (%s)\n", name,
-		   (*buffer
-		    ? "ok:termcap, we can update $TERMCAP"
-		    : "assuming this is terminfo")));
-	    if (*buffer) {
-		if (!TEK4014_ACTIVE(screen)) {
-		    resize(screen, buffer, resized);
-		}
-	    }
-	    return True;
-	} else {
-	    *buffer = 0;	/* just in case */
-	}
-    }
-    return False;
 }
 
 static int
@@ -876,7 +874,7 @@ DeleteWindow(Widget w,
 {
 #if OPT_TEK4014
     if (w == toplevel) {
-	if (term->screen.Tshow)
+	if (TEK4014_SHOWN(term))
 	    hide_vt_window();
 	else
 	    do_hangup(w, (XtPointer) 0, (XtPointer) 0);
@@ -918,9 +916,16 @@ main(int argc, char **argv ENVP_ARG)
     int mode;
     char *my_class = DEFCLASS;
     Window winToEmbedInto = None;
+#if OPT_COLOR_RES
+    Bool reversed = False;
+#endif
+
+    ProgramName = argv[0];
+
+    save_ruid = getuid();
+    save_rgid = getgid();
 
     /* Do these first, since we may not be able to open the display */
-    ProgramName = argv[0];
     TRACE_OPTS(xtermOptions, optionDescList, XtNumber(optionDescList));
     TRACE_ARGV("Before XtOpenApplication", argv);
     if (argc > 1) {
@@ -942,6 +947,14 @@ main(int argc, char **argv ENVP_ARG)
 		}
 		unique = 3;
 	    } else {
+#if OPT_COLOR_RES
+		if (abbrev(argv[n], "-reverse", 2)
+		    || !strcmp("-rv", argv[n])) {
+		    reversed = True;
+		} else if (!strcmp("+rv", argv[n])) {
+		    reversed = False;
+		}
+#endif
 		quit = False;
 		unique = 3;
 	    }
@@ -959,7 +972,7 @@ main(int argc, char **argv ENVP_ARG)
     setlocale(LC_ALL, NULL);
 #endif
 
-/*debug	opencons();*/
+    opencons();
 
     ttydev = TypeMallocN(char, PTMS_BUFSZ);
     ptydev = TypeMallocN(char, PTMS_BUFSZ);
@@ -983,7 +996,7 @@ main(int argc, char **argv ENVP_ARG)
     d_tio.c_lflag = ISIG | ICANON | ECHO | ECHOE | ECHOK;
     d_tio.c_line = 0;
     d_tio.c_cc[VINTR] = CONTROL('C');	/* '^C' */
-    d_tio.c_cc[VERASE] = DEL;	/* DEL  */
+    d_tio.c_cc[VERASE] = ANSI_DEL;	/* DEL  */
     d_tio.c_cc[VKILL] = CONTROL('U');	/* '^U' */
     d_tio.c_cc[VQUIT] = CQUIT;	/* '^\' */
     d_tio.c_cc[VEOF] = CEOF;	/* '^D' */
@@ -1011,8 +1024,6 @@ main(int argc, char **argv ENVP_ARG)
 			      XtNumber(application_resources), NULL, 0);
     TRACE_XRES();
 
-    waiting_for_initial_map = resource.wait_for_map;
-
     /*
      * ICCCM delete_window.
      */
@@ -1027,21 +1038,16 @@ main(int argc, char **argv ENVP_ARG)
 	    fprintf(stderr, "%s:  bad tty modes \"%s\"\n",
 		    ProgramName, resource.tty_modes);
 	} else if (n > 0) {
-	    override_tty_modes = 1;
+	    override_tty_modes = True;
 	}
     }
 #if OPT_ZICONBEEP
-    zIconBeep = resource.zIconBeep;
-    zIconBeep_flagged = False;
-    if (zIconBeep > 100 || zIconBeep < -100) {
-	zIconBeep = 0;		/* was 100, but I prefer to defaulting off. */
+    if (resource.zIconBeep > 100 || resource.zIconBeep < -100) {
+	resource.zIconBeep = 0;	/* was 100, but I prefer to defaulting off. */
 	fprintf(stderr,
 		"a number between -100 and 100 is required for zIconBeep.  0 used by default\n");
     }
 #endif /* OPT_ZICONBEEP */
-#if OPT_SAME_NAME
-    sameName = resource.sameName;
-#endif
     hold_screen = resource.hold_screen ? 1 : 0;
     xterm_name = resource.xterm_name;
     if (strcmp(xterm_name, "-") == 0)
@@ -1093,7 +1099,7 @@ main(int argc, char **argv ENVP_ARG)
 		/* Must be owner and have read/write permission.
 		   xdm cooperates to give the console the right user. */
 		if (!stat("/dev/console", &sbuf) &&
-		    (sbuf.st_uid == getuid()) &&
+		    (sbuf.st_uid == save_ruid) &&
 		    !access("/dev/console", R_OK | W_OK)) {
 		    Console = True;
 		} else
@@ -1153,11 +1159,9 @@ main(int argc, char **argv ENVP_ARG)
 						 XtNmenuHeight, menu_high,
 #endif
 						 (XtPointer) 0);
-
     decode_keyboard_type(term, &resource);
 
-    screen = &term->screen;
-
+    screen = TScreenOf(term);
     screen->inhibit = 0;
 #ifdef ALLOWLOGGING
     if (term->misc.logInhibit)
@@ -1175,9 +1179,9 @@ main(int argc, char **argv ENVP_ARG)
      */
 #if OPT_TEK4014
     if (screen->inhibit & I_TEK)
-	screen->TekEmu = False;
+	TEK4014_ACTIVE(term) = False;
 
-    if (screen->TekEmu && !TekInit())
+    if (TEK4014_ACTIVE(term) && !TekInit())
 	exit(ERROR_INIT);
 #endif
 
@@ -1257,10 +1261,13 @@ main(int argc, char **argv ENVP_ARG)
 	/* Set up stderr properly.  Opening this log file cannot be
 	   done securely by a privileged xterm process (although we try),
 	   so the debug feature is disabled by default. */
+	char dbglogfile[45];
 	int i = -1;
 	if (debug) {
-	    creat_as(getuid(), getgid(), True, "xterm.debug.log", 0666);
-	    i = open("xterm.debug.log", O_WRONLY | O_TRUNC);
+	    timestamp_filename(dbglogfile, "xterm.debug.log.");
+	    if (creat_as(save_ruid, save_rgid, False, dbglogfile, 0666) > 0) {
+		i = open(dbglogfile, O_WRONLY | O_TRUNC);
+	    }
 	}
 	if (i >= 0) {
 	    dup2(i, 2);
@@ -1271,10 +1278,7 @@ main(int argc, char **argv ENVP_ARG)
     }
 #endif /* DEBUG */
 
-    /* open a terminal for client */
-    get_terminal();
-
-    spawn();
+    spawnXTerm(term);
 
     /* Child process is out there, let's catch its termination */
     (void) signal(SIGCHLD, reapchild);
@@ -1285,7 +1289,7 @@ main(int argc, char **argv ENVP_ARG)
 	char buf[80];
 
 	buf[0] = '\0';
-	sprintf(buf, "%lx\n", XtWindow(SHELL_OF(CURRENT_EMU(screen))));
+	sprintf(buf, "%lx\n", XtWindow(SHELL_OF(CURRENT_EMU())));
 	write(screen->respond, buf, strlen(buf));
     }
 
@@ -1338,22 +1342,18 @@ main(int argc, char **argv ENVP_ARG)
 	   NonNull(term->screen.Tcolors[TEXT_FG].resource),
 	   NonNull(term->screen.Tcolors[TEXT_BG].resource)));
 
-    if ((term->misc.re_verse)
+    if ((reversed && term->misc.re_verse0)
 	&& ((term->screen.Tcolors[TEXT_FG].resource
-	     && (x_strcasecmp(term->screen.Tcolors[TEXT_FG].resource,
-			      XtDefaultForeground) != 0)
-	    )
+	     && !isDefaultForeground(term->screen.Tcolors[TEXT_FG].resource))
 	    || (term->screen.Tcolors[TEXT_BG].resource
-		&& (x_strcasecmp(term->screen.Tcolors[TEXT_BG].resource,
-				 XtDefaultBackground) != 0)
-	    )
+		&& !isDefaultBackground(term->screen.Tcolors[TEXT_BG].resource))
 	))
 	ReverseVideo(term);
 #endif /* OPT_COLOR_RES */
 
     for (;;) {
 #if OPT_TEK4014
-	if (screen->TekEmu)
+	if (TEK4014_ACTIVE(term))
 	    TekRun();
 	else
 #endif
@@ -1404,19 +1404,6 @@ static int
 get_pty(int *pty)
 {
     return pty_search(pty);
-}
-
-/*
- * sets up X and initializes the terminal structure except for term.buf.fildes.
- */
-static void
-get_terminal(void)
-{
-    TScreen *screen = &term->screen;
-
-    screen->arrow = make_colored_cursor(XC_left_ptr,
-					T_COLOR(screen, MOUSE_FG),
-					T_COLOR(screen, MOUSE_BG));
 }
 
 /*
@@ -1474,6 +1461,7 @@ hungtty(int i GCC_UNUSED)
     SIGNAL_RETURN;
 }
 
+#if OPT_PTY_HANDSHAKE
 struct {
     int rows;
     int cols;
@@ -1485,11 +1473,14 @@ struct {
 void
 first_map_occurred(void)
 {
-    TScreen *screen = &term->screen;
-    handshake.rows = screen->max_row;
-    handshake.cols = screen->max_col;
-    waiting_for_initial_map = False;
+    if (resource.wait_for_map) {
+	TScreen *screen = TScreenOf(term);
+	handshake.rows = screen->max_row;
+	handshake.cols = screen->max_col;
+	resource.wait_for_map = False;
+    }
 }
+#endif /* OPT_PTY_HANDSHAKE else !OPT_PTY_HANDSHAKE */
 
 static void
 set_owner(char *device, uid_t uid, gid_t gid, mode_t mode)
@@ -1499,28 +1490,12 @@ set_owner(char *device, uid_t uid, gid_t gid, mode_t mode)
     if (chown(device, uid, gid) < 0) {
 	why = errno;
 	if (why != ENOENT
-	    && getuid() == 0) {
+	    && save_ruid == 0) {
 	    fprintf(stderr, "Cannot chown %s to %ld,%ld: %s\n",
-		    device, (long) uid, (long) gid, strerror(why));
+		    device, (long) uid, (long) gid,
+		    strerror(why));
 	}
     }
-#ifndef __EMX__
-/* EMX can chmod files only, not devices */
-    if (chmod(device, mode) < 0) {
-	why = errno;
-	if (why != ENOENT) {
-	    struct stat sb;
-	    if (stat(device, &sb) < 0) {
-		fprintf(stderr, "Cannot chmod %s to %03o: %s\n",
-			device, mode, strerror(why));
-	    } else {
-		fprintf(stderr,
-			"Cannot chmod %s to %03o currently %03o: %s\n",
-			device, mode, (sb.st_mode & S_IFMT), strerror(why));
-	    }
-	}
-    }
-#endif
 }
 
 #define THE_PARENT 1
@@ -1554,31 +1529,32 @@ killit(int sig)
 #define close_fd(fd) close(fd), fd = -1
 
 static int
-spawn(void)
+spawnXTerm(XtermWidget xw)
 /*
  *  Inits pty and tty and forks a login process.
  *  Does not close fd Xsocket.
  *  If slave, the pty named in passedPty is already open for use
  */
 {
-    TScreen *screen = &term->screen;
+    TScreen *screen = TScreenOf(xw);
     int Xsocket = ConnectionNumber(screen->display);
 
     int ttyfd = -1;
-    struct termio tio;
+    TERMIO_STRUCT tio;
     int status;
+    Bool ok_termcap;
+    char *newtc;
 
-    char termcap[TERMCAP_SIZE], newtc[TERMCAP_SIZE];
     char *TermName = NULL;
     char *ptr, *shname, buf[64];
-    int i, no_dev_tty = False, envsize;
+    int i, no_dev_tty = False;
     char *dev_tty_name = (char *) 0;
     TTYSIZE_STRUCT ts;
     int pgrp = getpid();
     char numbuf[12], **envnew;
 
-    screen->uid = getuid();
-    screen->gid = getgid();
+    screen->uid = save_ruid;
+    screen->gid = save_rgid;
 
     if (am_slave >= 0) {
 	screen->respond = am_slave;
@@ -1645,12 +1621,12 @@ spawn(void)
     }
 
     /* avoid double MapWindow requests */
-    XtSetMappedWhenManaged(SHELL_OF(CURRENT_EMU(screen)), False);
+    XtSetMappedWhenManaged(SHELL_OF(CURRENT_EMU()), False);
 
     wm_delete_window = XInternAtom(XtDisplay(toplevel), "WM_DELETE_WINDOW",
 				   False);
 
-    if (!TEK4014_ACTIVE(screen))
+    if (!TEK4014_ACTIVE(xw))
 	VTInit();		/* realize now so know window size for tty driver */
 
     if (Console) {
@@ -1661,19 +1637,19 @@ spawn(void)
 	XmuGetHostname(mit_console_name + MIT_CONSOLE_LEN, 255);
 	mit_console = XInternAtom(screen->display, mit_console_name, False);
 	/* the user told us to be the console, so we can use CurrentTime */
-	XtOwnSelection(SHELL_OF(CURRENT_EMU(screen)),
+	XtOwnSelection(SHELL_OF(CURRENT_EMU()),
 		       mit_console, CurrentTime,
 		       ConvertConsoleSelection, NULL, NULL);
     }
 #if OPT_TEK4014
-    if (screen->TekEmu) {
+    if (TEK4014_ACTIVE(xw)) {
 	envnew = tekterm;
-	ptr = newtc;
+	newtc = TekScreenOf(tekWidget)->tcapbuf;
     } else
 #endif
     {
 	envnew = vtterm;
-	ptr = termcap;
+	newtc = screen->tcapbuf;
     }
 
     /*
@@ -1682,27 +1658,33 @@ spawn(void)
      * the program to proceed (but not to set $TERMCAP) if the termcap
      * entry is not found.
      */
-    if (!get_termcap(TermName = resource.term_name, ptr, newtc)) {
+    ok_termcap = True;
+    if (!get_termcap(TermName = resource.term_name, newtc)) {
 	char *last = NULL;
 	TermName = *envnew;
+	ok_termcap = False;
 	while (*envnew != NULL) {
 	    if ((last == NULL || strcmp(last, *envnew))
-		&& get_termcap(*envnew, ptr, newtc)) {
+		&& get_termcap(*envnew, newtc)) {
 		TermName = *envnew;
+		ok_termcap = True;
 		break;
 	    }
 	    last = *envnew;
 	    envnew++;
 	}
     }
+    if (ok_termcap) {
+	resize_termcap(xw, newtc);
+    }
 
     /* tell tty how big window is */
 #if OPT_TEK4014
-    if (TEK4014_ACTIVE(screen)) {
+    if (TEK4014_ACTIVE(xw)) {
 	TTYSIZE_ROWS(ts) = 38;
 	TTYSIZE_COLS(ts) = 81;
-	ts.ws_xpixel = TFullWidth(screen);
-	ts.ws_ypixel = TFullHeight(screen);
+	ts.ws_xpixel = TFullWidth(&(tekWidget->screen));
+	ts.ws_ypixel = TFullHeight(&(tekWidget->screen));
     } else
 #endif
     {
@@ -1734,8 +1716,7 @@ spawn(void)
 	case 0:		/* child */
 	    whoami = THE_CHILD;
 
-/*debug fclose(confd);
-opencons();*/
+	    opencons();
 	    /* we don't need the socket, or the pty master anymore */
 	    close(ConnectionNumber(screen->display));
 	    close(screen->respond);
@@ -1775,7 +1756,7 @@ opencons();*/
 	     * not have a line discipline structure
 	     */
 	    {
-		struct termio t, t1;
+		TERMIO_STRUCT t, t1;
 		if (ptioctl(ttyfd, TCGETA, (char *) &t) < 0)
 		    t = d_tio;
 
@@ -1790,7 +1771,8 @@ opencons();*/
 		if (Console) {
 		    int on = 1;
 		    if (ioctl(ttyfd, TIOCCONS, (char *) &on) == -1)
-			fprintf(stderr, "%s: cannot open console\n", xterm_name);
+			fprintf(stderr, "%s: cannot open console: %s\n",
+				ProgramName, strerror(errno));
 		}
 	    }
 
@@ -1802,29 +1784,20 @@ opencons();*/
 	    signal(SIGQUIT, SIG_DFL);
 	    signal(SIGTERM, SIG_DFL);
 
-	    /* copy the environment before Setenv'ing */
-	    for (i = 0; gblenvp[i] != NULL; i++) ;
+	    xtermCopyEnv(gblenvp);
 
-	    /* compute number of xtermSetenv() calls below */
-	    envsize = 1;	/* (NULL terminating entry) */
-	    envsize += 5;	/* TERM, WINDOWID, DISPLAY, _SHELL, _VERSION */
-	    envsize += 2;	/* COLUMNS, LINES */
-
-	    envnew = TypeCallocN(char *, (unsigned) i + envsize);
-	    memmove((char *) envnew, (char *) gblenvp, i * sizeof(char *));
-	    gblenvp = envnew;
-	    xtermSetenv("TERM=", TermName);
+	    xtermSetenv("TERM", TermName);
 	    if (!TermName)
 		*newtc = 0;
 
 	    sprintf(buf, "%lu",
-		    ((unsigned long) XtWindow(SHELL_OF(CURRENT_EMU(screen)))));
-	    xtermSetenv("WINDOWID=", buf);
+		    ((unsigned long) XtWindow(SHELL_OF(CURRENT_EMU()))));
+	    xtermSetenv("WINDOWID", buf);
 
 	    /* put the display into the environment of the shell */
-	    xtermSetenv("DISPLAY=", XDisplayString(screen->display));
+	    xtermSetenv("DISPLAY", XDisplayString(screen->display));
 
-	    xtermSetenv("XTERM_VERSION=", xtermVersion());
+	    xtermSetenv("XTERM_VERSION", xtermVersion());
 
 	    signal(SIGTERM, SIG_DFL);
 
@@ -1854,12 +1827,11 @@ opencons();*/
 	    }
 
 	    sprintf(numbuf, "%d", MaxCols(screen));
-	    xtermSetenv("COLUMNS=", numbuf);
+	    xtermSetenv("COLUMNS", numbuf);
 	    sprintf(numbuf, "%d", MaxRows(screen));
-	    xtermSetenv("LINES=", numbuf);
+	    xtermSetenv("LINES", numbuf);
 
-	    /* reconstruct dead environ variable */
-	    environ = gblenvp;
+	    gblenvp = environ;
 
 	    /* need to reset after all the ioctl bashing we did above */
 	    ptioctl(0, TIOCSWINSZ, (char *) &ts);
@@ -1883,37 +1855,37 @@ opencons();*/
 	     * to command that the user gave anyway.
 	     */
 	    if (command_to_exec_with_luit) {
-		xtermSetenv("XTERM_SHELL=",
+		xtermSetenv("XTERM_SHELL",
 			    xtermFindShell(*command_to_exec_with_luit, False));
 		TRACE(("spawning command \"%s\"\n", *command_to_exec_with_luit));
 		execvp(*command_to_exec_with_luit, command_to_exec_with_luit);
 		/* print error message on screen */
 		fprintf(stderr, "%s: Can't execvp %s: %s\n",
-			xterm_name, *command_to_exec_with_luit, strerror(errno));
+			ProgramName, *command_to_exec_with_luit, strerror(errno));
 		fprintf(stderr, "%s: cannot support your locale.\n",
-			xterm_name);
+			ProgramName);
 	    }
 #endif
 	    if (command_to_exec) {
-		xtermSetenv("XTERM_SHELL=",
+		xtermSetenv("XTERM_SHELL",
 			    xtermFindShell(*command_to_exec, False));
 		TRACE(("spawning command \"%s\"\n", *command_to_exec));
 		execvpe(*command_to_exec, command_to_exec, gblenvp);
 
 		/* print error message on screen */
 		fprintf(stderr, "%s: Can't execvp %s\n",
-			xterm_name, *command_to_exec);
+			ProgramName, *command_to_exec);
 	    }
 
 	    /* use a layered mechanism to find a shell */
-	    ptr = getenv("X11SHELL");
+	    ptr = x_getenv("X11SHELL");
 	    if (!ptr)
-		ptr = getenv("SHELL");
+		ptr = x_getenv("SHELL");
 	    if (!ptr)
-		ptr = getenv("OS2_SHELL");
+		ptr = x_getenv("OS2_SHELL");
 	    if (!ptr)
 		ptr = "SORRY_NO_SHELL_FOUND";
-	    xtermSetenv("XTERM_SHELL=", ptr);
+	    xtermSetenv("XTERM_SHELL", ptr);
 
 	    shname = x_basename(ptr);
 	    if (command_to_exec) {
@@ -1933,13 +1905,13 @@ opencons();*/
 
 		/* print error message on screen */
 		fprintf(stderr, "%s: Can't execvp %s\n",
-			xterm_name, *command_to_exec);
+			ProgramName, *command_to_exec);
 	    } else {
 		execlpe(ptr, shname, 0, gblenvp);
 
 		/* Exec failed. */
 		fprintf(stderr, "%s: Could not exec %s!\n",
-			xterm_name, ptr);
+			ProgramName, ptr);
 	    }
 	    sleep(5);
 
@@ -1966,12 +1938,12 @@ opencons();*/
     signal(SIGQUIT, SIG_IGN);
 /*  signal (SIGTERM, SIG_IGN);*/
     return 0;
-}				/* end spawn */
+}				/* end spawnXTerm */
 
 SIGNAL_T
 Exit(int n)
 {
-    TScreen *screen = &term->screen;
+    TScreen *screen = TScreenOf(term);
     int pty = term->screen.respond;	/* file descriptor of pty */
     close(pty);			/* close explicitly to avoid race with slave side */
 #ifdef ALLOWLOGGING
@@ -1989,7 +1961,7 @@ Exit(int n)
 
 /* ARGSUSED */
 static void
-resize(TScreen * screen, char *oldtc, char *newtc)
+resize_termcap(XtermWidget xw, char *newtc)
 {
 }
 
@@ -2028,7 +2000,7 @@ reapchild(int n GCC_UNUSED)
 		fputs("Exiting\n", stderr);
 #endif
 	    if (!hold_screen)
-		need_cleanup = TRUE;
+		need_cleanup = True;
 	}
     } while ((pid = nonblocking_wait()) > 0);
 
@@ -2053,13 +2025,17 @@ parse_tty_modes(char *s, struct _xttymodes *modelist)
 
     TRACE(("parse_tty_modes\n"));
     while (1) {
+	size_t len;
+
 	while (*s && isascii(CharOf(*s)) && isspace(CharOf(*s)))
 	    s++;
 	if (!*s)
 	    return count;
 
+	for (len = 0; isalnum(CharOf(s[len])); ++len) ;
 	for (mp = modelist; mp->name; mp++) {
-	    if (strncmp(s, mp->name, mp->len) == 0)
+	    if (len == mp->len
+		&& strncmp(s, mp->name, mp->len) == 0)
 		break;
 	}
 	if (!mp->name)
@@ -2103,7 +2079,7 @@ ptioctl(int fd, int func, void *data)
     APIRET rc;
     ULONG len;
     struct pt_termios pt;
-    struct termio *t;
+    TERMIO_STRUCT *t;
     int i;
 
     switch (func) {
@@ -2113,7 +2089,7 @@ ptioctl(int fd, int func, void *data)
 			 (ULONG *) & pt, sizeof(struct pt_termios), &len);
 	if (rc)
 	    return -1;
-	t = (struct termio *) data;
+	t = (TERMIO_STRUCT *) data;
 	t->c_iflag = pt.c_iflag;
 	t->c_oflag = pt.c_oflag;
 	t->c_cflag = pt.c_cflag;
@@ -2124,7 +2100,7 @@ ptioctl(int fd, int func, void *data)
     case TCSETA:
     case TCSETAW:
     case TCSETAF:
-	t = (struct termio *) data;
+	t = (TERMIO_STRUCT *) data;
 	pt.c_iflag = t->c_iflag;
 	pt.c_oflag = t->c_oflag;
 	pt.c_cflag = t->c_cflag;
