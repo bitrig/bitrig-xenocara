@@ -1,4 +1,3 @@
-/* $XFree86: $ */
 
 #ifndef _S3_REG_H
 #define _S3_REG_H
