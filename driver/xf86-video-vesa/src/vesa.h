@@ -69,21 +69,17 @@
 #include "xf86Resources.h"
 #include "xf86RAC.h"
 
-#include "xf1bpp.h"
-#include "xf4bpp.h"
 #include "fb.h"
 
-#ifdef USE_AFB
-#include "afb.h"
+#ifdef XSERVER_LIBPCIACCESS
+#include <pciaccess.h>
 #endif
-
-#include "mfb.h"
 
 #define VESA_VERSION		4000
 #define VESA_NAME		"VESA"
 #define VESA_DRIVER_NAME	"vesa"
 #define VESA_MAJOR_VERSION	1
-#define VESA_MINOR_VERSION	2
+#define VESA_MINOR_VERSION	3
 #define VESA_PATCHLEVEL		0
 
 /*XXX*/
@@ -94,9 +90,12 @@ typedef struct _VESARec
     EntityInfoPtr pEnt;
     CARD16 major, minor;
     VbeInfoBlock *vbeInfo;
-    GDevPtr device;
+#ifdef XSERVER_LIBPCIACCESS
+    struct pci_device *pciInfo;
+#else
     pciVideoPtr pciInfo;
     PCITAG pciTag;
+#endif
     miBankInfoRec bank;
     int curBank, bankSwitchWindowB;
     CARD16 maxBytesPerScanline;
@@ -108,7 +107,7 @@ typedef struct _VESARec
     CARD32 *pal, *savedPal;
     CARD8 *fonts;
     xf86MonPtr monitor;
-    Bool shadowFB, primary;
+    Bool shadowFB, strict_validation;
     CARD32 windowAoffset;
     /* Don't override the default refresh rate. */
     Bool defaultRefresh;
@@ -116,9 +115,15 @@ typedef struct _VESARec
     DGAModePtr pDGAMode;
     int nDGAMode;
     CloseScreenProcPtr CloseScreen;
+    CreateScreenResourcesProcPtr CreateScreenResources;
+    xf86EnableDisableFBAccessProc *EnableDisableFBAccess;
+    Bool accessEnabled;
     OptionInfoPtr Options;
     IOADDRESS ioBase;
     Bool ModeSetClearScreen;
+    void *shadow;
+    ShadowUpdateProc update;
+    ShadowWindowProc window;
 } VESARec, *VESAPtr;
 
 
