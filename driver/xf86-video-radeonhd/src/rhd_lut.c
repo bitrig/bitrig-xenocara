@@ -33,8 +33,8 @@
 #include "rhd_lut.h"
 #include "rhd_regs.h"
 
-#define RHD_REGOFFSET_LUTA 0x0000
-#define RHD_REGOFFSET_LUTB 0x8000
+#define RHD_REGOFFSET_LUTA 0x000
+#define RHD_REGOFFSET_LUTB 0x800
 
 /*
  *
@@ -44,7 +44,8 @@ LUTxSave(struct rhdLUT *LUT)
 {
     CARD16 RegOff;
     int i;
-
+    RHDFUNC(LUT);
+    
     if (LUT->Id == RHD_LUT_A)
 	RegOff = RHD_REGOFFSET_LUTA;
     else
@@ -81,6 +82,7 @@ LUTxRestore(struct rhdLUT *LUT)
 {
     CARD16 RegOff;
     int i;
+    RHDFUNC(LUT);
 
     if (!LUT->Stored) {
 	xf86DrvMsg(LUT->scrnIndex, X_ERROR, "%s: %s: nothing stored!\n",

@@ -40,17 +40,17 @@
 #include "xf86Cursor.h"
 #include "cursorstr.h"
 #include "servermd.h"
+#if HAVE_XF86_ANSIC_H
+# include "xf86_ansic.h"
+#else
+#include <string.h>
+#endif
 
 /* Driver specific headers */
 #include "rhd.h"
 #include "rhd_cursor.h"
 #include "rhd_crtc.h"
 #include "rhd_regs.h"
-
-/* System headers */
-#ifndef _XF86_ANSIC_H
-#include <string.h>
-#endif
 
 /*
  * Bit-banging ONLY
@@ -325,6 +325,8 @@ rhdReloadCursor(ScrnInfoPtr pScrn)
     int i;
 
     RHDFUNC(pScrn);
+    if (! rhdPtr->CursorImage)
+	return;
     for (i = 0; i < 2; i++) {
 	struct rhdCrtc *Crtc = rhdPtr->Crtc[i];
 
@@ -427,11 +429,14 @@ rhdLoadCursorImage(ScrnInfoPtr pScrn, unsigned char *src)
 }
 
 static Bool
-rhdUseHWCursorARGB(ScreenPtr pScreen, CursorPtr cur)
+rhdUseHWCursor(ScreenPtr pScreen, CursorPtr cur)
 {
     /* Inconsistency in interface: UseHWCursor == NULL is trivial accept,
      * UseHWCursorARGB == NULL is trivial reject. */
-    return TRUE;
+    if (cur->bits->width <= MAX_CURSOR_WIDTH &&
+	cur->bits->height <= MAX_CURSOR_HEIGHT)
+	return TRUE;
+    return FALSE;
 }
 
 static void
@@ -502,10 +507,8 @@ RHDCursorsInit(RHDPtr rhdPtr)
 	Cursor->RegOffset = i * 0x0800;
 
 	/* grab our cursor FB */
-	/* I love a bit of a challenge, so move start instead of end */
-	Cursor->Base = rhdPtr->FbFreeStart;
-	rhdPtr->FbFreeStart += size;
-	rhdPtr->FbFreeSize -= size;
+	Cursor->Base = RHDAllocFb(rhdPtr, size, "Cursor Image");
+	ASSERT(Cursor->Base != -1);
 
 	rhdPtr->Crtc[i]->Cursor = Cursor;	/* HW is fixed anyway */
     }
@@ -552,9 +555,9 @@ RHDxf86InitCursor(ScreenPtr pScreen)
     infoPtr->LoadCursorImage   = rhdLoadCursorImage;
     infoPtr->HideCursor        = rhdHideCursor;
     infoPtr->ShowCursor        = rhdShowCursor;
-    infoPtr->UseHWCursor       = NULL;
+    infoPtr->UseHWCursor       = rhdUseHWCursor;
 #ifdef ARGB_CURSOR
-    infoPtr->UseHWCursorARGB   = rhdUseHWCursorARGB; /* may not be NULL */
+    infoPtr->UseHWCursorARGB   = rhdUseHWCursor;
     infoPtr->LoadCursorARGB    = rhdLoadCursorARGB;
 #endif
     infoPtr->RealizeCursor     = rhdRealizeCursor;
