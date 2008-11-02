@@ -19,7 +19,6 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-/* $Header: /home/thib/scm/openbsd-cvs/xenocara/xserver/miext/cw/cw.c,v 1.1 2006/11/26 18:15:05 matthieu Exp $ */
 
 #ifdef HAVE_DIX_CONFIG_H
 #include <dix-config.h>
@@ -44,14 +43,12 @@
 #define CW_ASSERT(x) do {} while (0)
 #endif
 
-int cwGCIndex;
-int cwScreenIndex;
-int cwWindowIndex;
+DevPrivateKey cwGCKey = &cwGCKey;
+DevPrivateKey cwScreenKey = &cwScreenKey;
+DevPrivateKey cwWindowKey = &cwWindowKey;
 #ifdef RENDER
-int cwPictureIndex;
+DevPrivateKey cwPictureKey = &cwPictureKey;
 #endif
-static Bool cwDisabled[MAXSCREENS];
-static unsigned long cwGeneration = 0;
 extern GCOps cwGCOps;
 
 static Bool
@@ -125,7 +122,7 @@ cwCreateBackingGC(GCPtr pGC, DrawablePtr pDrawable)
 
     pBackingDrawable = cwGetBackingDrawable(pDrawable, &x_off, &y_off);
     pPriv->pBackingGC = CreateGC(pBackingDrawable, GCGraphicsExposures,
-				 &noexpose, &status);
+				 &noexpose, &status, (XID)0, serverClient);
     if (status != Success)
 	return FALSE;
 
@@ -239,7 +236,7 @@ cwValidateGC(GCPtr pGC, unsigned long stateChanges, DrawablePtr pDrawable)
 static void
 cwChangeGC(GCPtr pGC, unsigned long mask)
 {
-    cwGCPtr	pPriv = (cwGCPtr)(pGC)->devPrivates[cwGCIndex].ptr;
+    cwGCPtr pPriv = (cwGCPtr)dixLookupPrivate(&pGC->devPrivates, cwGCKey);
 
     FUNC_PROLOGUE(pGC, pPriv);
 
@@ -251,7 +248,7 @@ cwChangeGC(GCPtr pGC, unsigned long mask)
 static void
 cwCopyGC(GCPtr pGCSrc, unsigned long mask, GCPtr pGCDst)
 {
-    cwGCPtr	pPriv = (cwGCPtr)(pGCDst)->devPrivates[cwGCIndex].ptr;
+    cwGCPtr pPriv = (cwGCPtr)dixLookupPrivate(&pGCDst->devPrivates, cwGCKey);
 
     FUNC_PROLOGUE(pGCDst, pPriv);
 
@@ -263,7 +260,7 @@ cwCopyGC(GCPtr pGCSrc, unsigned long mask, GCPtr pGCDst)
 static void
 cwDestroyGC(GCPtr pGC)
 {
-    cwGCPtr	pPriv = (cwGCPtr)(pGC)->devPrivates[cwGCIndex].ptr;
+    cwGCPtr pPriv = (cwGCPtr)dixLookupPrivate(&pGC->devPrivates, cwGCKey);
 
     FUNC_PROLOGUE(pGC, pPriv);
 
@@ -277,7 +274,7 @@ cwDestroyGC(GCPtr pGC)
 static void
 cwChangeClip(GCPtr pGC, int type, pointer pvalue, int nrects)
 {
-    cwGCPtr	pPriv = (cwGCPtr)(pGC)->devPrivates[cwGCIndex].ptr;
+    cwGCPtr pPriv = (cwGCPtr)dixLookupPrivate(&pGC->devPrivates, cwGCKey);
 
     FUNC_PROLOGUE(pGC, pPriv);
 
@@ -289,7 +286,7 @@ cwChangeClip(GCPtr pGC, int type, pointer pvalue, int nrects)
 static void
 cwCopyClip(GCPtr pgcDst, GCPtr pgcSrc)
 {
-    cwGCPtr	pPriv = (cwGCPtr)(pgcDst)->devPrivates[cwGCIndex].ptr;
+    cwGCPtr pPriv = (cwGCPtr)dixLookupPrivate(&pgcDst->devPrivates, cwGCKey);
 
     FUNC_PROLOGUE(pgcDst, pPriv);
 
@@ -301,7 +298,7 @@ cwCopyClip(GCPtr pgcDst, GCPtr pgcSrc)
 static void
 cwDestroyClip(GCPtr pGC)
 {
-    cwGCPtr	pPriv = (cwGCPtr)(pGC)->devPrivates[cwGCIndex].ptr;
+    cwGCPtr pPriv = (cwGCPtr)dixLookupPrivate(&pGC->devPrivates, cwGCKey);
 
     FUNC_PROLOGUE(pGC, pPriv);
 
@@ -382,149 +379,6 @@ cwGetSpans(DrawablePtr pSrc, int wMax, DDXPointPtr ppt, int *pwidth,
     SCREEN_EPILOGUE(pScreen, GetSpans, cwGetSpans);
 }
 
-static void
-cwFillRegionSolid(DrawablePtr pDrawable, RegionPtr pRegion, unsigned long pixel)
-{
-    ScreenPtr pScreen = pDrawable->pScreen;
-    GCPtr     pGC;
-    BoxPtr    pBox;
-    int       nbox, i;
-    ChangeGCVal v[3];
-
-    pGC = GetScratchGC(pDrawable->depth, pScreen);
-    v[0].val = GXcopy;
-    v[1].val = pixel;
-    v[2].val = FillSolid;
-    dixChangeGC(NullClient, pGC, (GCFunction | GCForeground | GCFillStyle),
-		NULL, v);
-    ValidateGC(pDrawable, pGC);
-
-    pBox = REGION_RECTS(pRegion);
-    nbox = REGION_NUM_RECTS(pRegion);
-
-    for (i = 0; i < nbox; i++, pBox++) {
-	xRectangle rect;
-	rect.x      = pBox->x1;
-	rect.y      = pBox->y1;
-	rect.width  = pBox->x2 - pBox->x1;
-	rect.height = pBox->y2 - pBox->y1;
-	(*pGC->ops->PolyFillRect)(pDrawable, pGC, 1, &rect);
-    }
-
-   FreeScratchGC(pGC);
-}
-
-static void
-cwFillRegionTiled(DrawablePtr pDrawable, RegionPtr pRegion, PixmapPtr pTile,
-		  int x_off, int y_off)
-{
-    ScreenPtr pScreen = pDrawable->pScreen;
-    GCPtr     pGC;
-    BoxPtr    pBox;
-    int       nbox, i;
-    ChangeGCVal v[5];
-
-    pGC = GetScratchGC(pDrawable->depth, pScreen);
-    v[0].val = GXcopy;
-    v[1].val = FillTiled;
-    v[2].ptr = (pointer) pTile;
-    v[3].val = x_off;
-    v[4].val = y_off;
-    dixChangeGC(NullClient, pGC, (GCFunction | GCFillStyle | GCTile |
-		GCTileStipXOrigin | GCTileStipYOrigin), NULL, v);
-
-    ValidateGC(pDrawable, pGC);
-
-    pBox = REGION_RECTS(pRegion);
-    nbox = REGION_NUM_RECTS(pRegion);
-
-    for (i = 0; i < nbox; i++, pBox++) {
-	xRectangle rect;
-	rect.x      = pBox->x1;
-	rect.y      = pBox->y1;
-	rect.width  = pBox->x2 - pBox->x1;
-	rect.height = pBox->y2 - pBox->y1;
-	(*pGC->ops->PolyFillRect)(pDrawable, pGC, 1, &rect);
-    }
-
-   FreeScratchGC(pGC);
-}
-
-static void
-cwPaintWindowBackground(WindowPtr pWin, RegionPtr pRegion, int what)
-{
-    ScreenPtr pScreen = pWin->drawable.pScreen;
-
-    SCREEN_PROLOGUE(pScreen, PaintWindowBackground);
-
-    if (!cwDrawableIsRedirWindow((DrawablePtr)pWin)) {
-	(*pScreen->PaintWindowBackground)(pWin, pRegion, what);
-    } else {
-	DrawablePtr pBackingDrawable;
-	int x_off, y_off, x_screen, y_screen;
-
-	while (pWin->backgroundState == ParentRelative)
-	    pWin = pWin->parent;
-
-	pBackingDrawable = cwGetBackingDrawable((DrawablePtr)pWin, &x_off,
-						&y_off);
-
-	x_screen = x_off - pWin->drawable.x;
-	y_screen = y_off - pWin->drawable.y;
-
-	if (pWin && (pWin->backgroundState == BackgroundPixel ||
-		pWin->backgroundState == BackgroundPixmap))
-	{
-	    REGION_TRANSLATE(pScreen, pRegion, x_screen, y_screen);
-
-	    if (pWin->backgroundState == BackgroundPixel) {
-		cwFillRegionSolid(pBackingDrawable, pRegion,
-				  pWin->background.pixel);
-	    } else {
-		cwFillRegionTiled(pBackingDrawable, pRegion,
-				  pWin->background.pixmap, x_off, y_off);
-	    }
-
-	    REGION_TRANSLATE(pScreen, pRegion, -x_screen, -y_screen);
-	}
-    }
-
-    SCREEN_EPILOGUE(pScreen, PaintWindowBackground, cwPaintWindowBackground);
-}
-
-static void
-cwPaintWindowBorder(WindowPtr pWin, RegionPtr pRegion, int what)
-{
-    ScreenPtr pScreen = pWin->drawable.pScreen;
-
-    SCREEN_PROLOGUE(pScreen, PaintWindowBorder);
-
-    if (!cwDrawableIsRedirWindow((DrawablePtr)pWin)) {
-	(*pScreen->PaintWindowBorder)(pWin, pRegion,  what);
-    } else {
-	DrawablePtr pBackingDrawable;
-	int x_off, y_off, x_screen, y_screen;
-
-	pBackingDrawable = cwGetBackingDrawable((DrawablePtr)pWin, &x_off,
-						&y_off);
-
-	x_screen = x_off - pWin->drawable.x;
-	y_screen = y_off - pWin->drawable.y;
-
-	REGION_TRANSLATE(pScreen, pRegion, x_screen, y_screen);
-
-	if (pWin->borderIsPixel) {
-	    cwFillRegionSolid(pBackingDrawable, pRegion, pWin->border.pixel);
-	} else {
-	    cwFillRegionTiled(pBackingDrawable, pRegion, pWin->border.pixmap,
-			      x_off, y_off);
-	}
-
-	REGION_TRANSLATE(pScreen, pRegion, -x_screen, -y_screen);
-    }
-
-    SCREEN_EPILOGUE(pScreen, PaintWindowBorder, cwPaintWindowBorder);
-}
 
 static void
 cwCopyWindow(WindowPtr pWin, DDXPointRec ptOldOrg, RegionPtr prgnSrc)
@@ -619,57 +473,32 @@ void
 miInitializeCompositeWrapper(ScreenPtr pScreen)
 {
     cwScreenPtr pScreenPriv;
-
-    if (cwDisabled[pScreen->myNum])
-	return;
-
-    if (cwGeneration != serverGeneration)
-    {
-	cwScreenIndex = AllocateScreenPrivateIndex();
-	if (cwScreenIndex < 0)
-	    return;
-	cwGCIndex = AllocateGCPrivateIndex();
-	cwWindowIndex = AllocateWindowPrivateIndex();
 #ifdef RENDER
-	cwPictureIndex = AllocatePicturePrivateIndex();
+    Bool has_render = GetPictureScreenIfSet(pScreen) != NULL;
 #endif
-	cwGeneration = serverGeneration;
-    }
-    if (!AllocateGCPrivate(pScreen, cwGCIndex, sizeof(cwGCRec)))
+
+    if (!dixRequestPrivate(cwGCKey, sizeof(cwGCRec)))
 	return;
-    if (!AllocateWindowPrivate(pScreen, cwWindowIndex, 0))
-	return;
-#ifdef RENDER
-    if (!AllocatePicturePrivate(pScreen, cwPictureIndex, 0))
-	return;
-#endif
+
     pScreenPriv = (cwScreenPtr)xalloc(sizeof(cwScreenRec));
     if (!pScreenPriv)
 	return;
 
-    pScreen->devPrivates[cwScreenIndex].ptr = (pointer)pScreenPriv;
+    dixSetPrivate(&pScreen->devPrivates, cwScreenKey, pScreenPriv);
     
     SCREEN_EPILOGUE(pScreen, CloseScreen, cwCloseScreen);
     SCREEN_EPILOGUE(pScreen, GetImage, cwGetImage);
     SCREEN_EPILOGUE(pScreen, GetSpans, cwGetSpans);
     SCREEN_EPILOGUE(pScreen, CreateGC, cwCreateGC);
-    SCREEN_EPILOGUE(pScreen, PaintWindowBackground, cwPaintWindowBackground);
-    SCREEN_EPILOGUE(pScreen, PaintWindowBorder, cwPaintWindowBorder);
     SCREEN_EPILOGUE(pScreen, CopyWindow, cwCopyWindow);
 
     SCREEN_EPILOGUE(pScreen, SetWindowPixmap, cwSetWindowPixmap);
     SCREEN_EPILOGUE(pScreen, GetWindowPixmap, cwGetWindowPixmap);
 
 #ifdef RENDER
-    if (GetPictureScreen (pScreen))
+    if (has_render)
 	cwInitializeRender(pScreen);
 #endif
-}
-
-_X_EXPORT void
-miDisableCompositeWrapper(ScreenPtr pScreen)
-{
-    cwDisabled[pScreen->myNum] = TRUE;
 }
 
 static Bool
@@ -680,14 +509,12 @@ cwCloseScreen (int i, ScreenPtr pScreen)
     PictureScreenPtr ps = GetPictureScreenIfSet(pScreen);
 #endif
 
-    pScreenPriv = (cwScreenPtr)pScreen->devPrivates[cwScreenIndex].ptr;
-
+    pScreenPriv = (cwScreenPtr)dixLookupPrivate(&pScreen->devPrivates,
+						cwScreenKey);
     pScreen->CloseScreen = pScreenPriv->CloseScreen;
     pScreen->GetImage = pScreenPriv->GetImage;
     pScreen->GetSpans = pScreenPriv->GetSpans;
     pScreen->CreateGC = pScreenPriv->CreateGC;
-    pScreen->PaintWindowBackground = pScreenPriv->PaintWindowBackground;
-    pScreen->PaintWindowBorder = pScreenPriv->PaintWindowBorder;
     pScreen->CopyWindow = pScreenPriv->CopyWindow;
 
 #ifdef RENDER

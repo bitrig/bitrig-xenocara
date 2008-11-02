@@ -164,10 +164,10 @@ BitVectorIterateSet(RecordSetPtr pSet, RecordSetIteratePtr pIter,
     return (RecordSetIteratePtr)(long)(pInterval->last + 1);
 }
 
-RecordSetOperations BitVectorSetOperations = {
+static RecordSetOperations BitVectorSetOperations = {
     BitVectorDestroySet, BitVectorIsMemberOfSet, BitVectorIterateSet };
 
-RecordSetOperations BitVectorNoFreeOperations = {
+static RecordSetOperations BitVectorNoFreeOperations = {
     NoopDestroySet, BitVectorIsMemberOfSet, BitVectorIterateSet };
 
 static int
@@ -277,10 +277,10 @@ IntervalListIterateSet(RecordSetPtr pSet, RecordSetIteratePtr pIter,
 	return (RecordSetIteratePtr)NULL;
 }
 
-RecordSetOperations IntervalListSetOperations = {
+static RecordSetOperations IntervalListSetOperations = {
     IntervalListDestroySet, IntervalListIsMemberOfSet, IntervalListIterateSet };
 
-RecordSetOperations IntervalListNoFreeOperations = {
+static RecordSetOperations IntervalListNoFreeOperations = {
     NoopDestroySet, IntervalListIsMemberOfSet, IntervalListIterateSet };
 
 static int
@@ -302,7 +302,7 @@ IntervalListCreateSet(RecordSetInterval *pIntervals, int nIntervals,
 
     if (nIntervals > 0)
     {
-	stackIntervals = (RecordSetInterval *)ALLOCATE_LOCAL(
+	stackIntervals = (RecordSetInterval *)xalloc(
 				sizeof(RecordSetInterval) * nIntervals);
 	if (!stackIntervals) return NULL;
 
@@ -360,7 +360,7 @@ IntervalListCreateSet(RecordSetInterval *pIntervals, int nIntervals,
     memcpy(&prls[1], stackIntervals, nIntervals * sizeof(RecordSetInterval));
     prls->nIntervals = nIntervals;
 bailout:
-    if (stackIntervals) DEALLOCATE_LOCAL(stackIntervals);
+    if (stackIntervals) xfree(stackIntervals);
     return (RecordSetPtr)prls;
 }
 

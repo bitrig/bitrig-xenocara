@@ -1,6 +1,4 @@
 /*
- * $Id: compint.h,v 1.1 2006/11/26 18:16:15 matthieu Exp $
- *
  * Copyright © 2006 Sun Microsystems
  *
  * Permission to use, copy, modify, distribute, and sell this software and its
@@ -66,6 +64,7 @@
 #include "globals.h"
 #include "picturestr.h"
 #include "extnsionst.h"
+#include "privates.h"
 #include "mi.h"
 #include "damage.h"
 #include "damageextint.h"
@@ -125,7 +124,6 @@ typedef struct _CompScreen {
     DestroyWindowProcPtr	DestroyWindow;
     RealizeWindowProcPtr	RealizeWindow;
     UnrealizeWindowProcPtr	UnrealizeWindow;
-    PaintWindowProcPtr		PaintWindowBackground;
     ClipNotifyProcPtr		ClipNotify;
     /*
      * Called from ConfigureWindow, these
@@ -145,6 +143,11 @@ typedef struct _CompScreen {
      */
     InstallColormapProcPtr	InstallColormap;
 
+    /*
+     * Fake backing store via automatic redirection
+     */
+    ChangeWindowAttributesProcPtr ChangeWindowAttributes;
+
     ScreenBlockHandlerProcPtr	BlockHandler;
     CloseScreenProcPtr		CloseScreen;
     Bool			damaged;
@@ -156,13 +159,16 @@ typedef struct _CompScreen {
     
 } CompScreenRec, *CompScreenPtr;
 
-extern int  CompScreenPrivateIndex;
-extern int  CompWindowPrivateIndex;
-extern int  CompSubwindowsPrivateIndex;
+extern DevPrivateKey CompScreenPrivateKey;
+extern DevPrivateKey CompWindowPrivateKey;
+extern DevPrivateKey CompSubwindowsPrivateKey;
 
-#define GetCompScreen(s) ((CompScreenPtr) ((s)->devPrivates[CompScreenPrivateIndex].ptr))
-#define GetCompWindow(w) ((CompWindowPtr) ((w)->devPrivates[CompWindowPrivateIndex].ptr))
-#define GetCompSubwindows(w) ((CompSubwindowsPtr) ((w)->devPrivates[CompSubwindowsPrivateIndex].ptr))
+#define GetCompScreen(s) ((CompScreenPtr) \
+    dixLookupPrivate(&(s)->devPrivates, CompScreenPrivateKey))
+#define GetCompWindow(w) ((CompWindowPtr) \
+    dixLookupPrivate(&(w)->devPrivates, CompWindowPrivateKey))
+#define GetCompSubwindows(w) ((CompSubwindowsPtr) \
+    dixLookupPrivate(&(w)->devPrivates, CompSubwindowsPrivateKey))
 
 extern RESTYPE		CompositeClientWindowType;
 extern RESTYPE		CompositeClientSubwindowsType;
@@ -170,9 +176,6 @@ extern RESTYPE		CompositeClientSubwindowsType;
 /*
  * compalloc.c
  */
-
-void
-compReportDamage (DamagePtr pDamage, RegionPtr pRegion, void *closure);
 
 Bool
 compRedirectWindow (ClientPtr pClient, WindowPtr pWin, int update);
@@ -237,6 +240,9 @@ compCheckTree (ScreenPtr pScreen);
 #define compCheckTree(s)
 #endif
 
+PictFormatPtr
+compWindowFormat (WindowPtr pWin);
+
 void
 compSetPixmap (WindowPtr pWin, PixmapPtr pPixmap);
 
@@ -251,9 +257,6 @@ compRealizeWindow (WindowPtr pWin);
 
 Bool
 compUnrealizeWindow (WindowPtr pWin);
-
-void
-compPaintWindowBackground (WindowPtr pWin, RegionPtr pRegion, int what);
 
 void
 compClipNotify (WindowPtr pWin, int dx, int dy);
@@ -291,18 +294,6 @@ compWindowUpdate (WindowPtr pWin);
 
 void
 deleteCompOverlayClientsForScreen (ScreenPtr pScreen);
-
-int
-ProcCompositeGetOverlayWindow (ClientPtr client);
-
-int
-ProcCompositeReleaseOverlayWindow (ClientPtr client);
-
-int
-SProcCompositeGetOverlayWindow (ClientPtr client);
-
-int
-SProcCompositeReleaseOverlayWindow (ClientPtr client);
 
 WindowPtr
 CompositeRealChildHead (WindowPtr pWin);

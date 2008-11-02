@@ -45,6 +45,8 @@ is" without express or implied warranty.
 
 Bool xnestDoFullGeneration = True;
 
+xEvent *xnestEvents = NULL;
+
 void
 InitOutput(ScreenInfo *screenInfo, int argc, char *argv[])
 {
@@ -72,8 +74,6 @@ InitOutput(ScreenInfo *screenInfo, int argc, char *argv[])
 	break;
       }
   
-  xnestWindowPrivateIndex = AllocateWindowPrivateIndex();
-  xnestGCPrivateIndex = AllocateGCPrivateIndex();
   xnestFontPrivateIndex = AllocateFontPrivateIndex();
   
   if (!xnestNumScreens) xnestNumScreens = 1;
@@ -92,10 +92,15 @@ InitInput(int argc, char *argv[])
   xnestPointerDevice = AddInputDevice(xnestPointerProc, TRUE);
   xnestKeyboardDevice = AddInputDevice(xnestKeyboardProc, TRUE);
 
+  if (!xnestEvents)
+      xnestEvents = (xEvent *) xcalloc(sizeof(xEvent), GetMaximumEventsNum());
+  if (!xnestEvents)
+      FatalError("couldn't allocate room for events\n");
+
   RegisterPointerDevice(xnestPointerDevice);
   RegisterKeyboardDevice(xnestKeyboardDevice);
 
-  mieqInit((DevicePtr)xnestKeyboardDevice, (DevicePtr)xnestPointerDevice);
+  mieqInit();
 
   AddEnabledDevice(XConnectionNumber(xnestDisplay));
 
@@ -117,26 +122,10 @@ void ddxGiveUp()
   AbortDDX();
 }
 
-#ifdef __DARWIN__
+#ifdef __APPLE__
 void
 DarwinHandleGUI(int argc, char *argv[])
 {
-}
-
-void GlxExtensionInit();
-void GlxWrapInitVisuals(void *procPtr);
-
-void
-DarwinGlxExtensionInit()
-{
-    GlxExtensionInit();
-}
-
-void
-DarwinGlxWrapInitVisuals(
-    void *procPtr)
-{
-    GlxWrapInitVisuals(procPtr);
 }
 #endif
 

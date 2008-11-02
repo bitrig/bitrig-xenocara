@@ -183,12 +183,20 @@ print_xfree_mode(char *txt, DisplayModePtr mode)
 static void
 xfree2fbdev_fblayout(ScrnInfoPtr pScrn, struct fb_var_screeninfo *var)
 {
-	var->xres_virtual   = pScrn->virtualX;
+	var->xres_virtual   = pScrn->displayWidth ? pScrn->displayWidth :
+			      pScrn->virtualX;
 	var->yres_virtual   = pScrn->virtualY;
 	var->bits_per_pixel = pScrn->bitsPerPixel;
-	var->red.length     = pScrn->weight.red;
-	var->green.length   = pScrn->weight.green;
-	var->blue.length    = pScrn->weight.blue;
+	if (pScrn->defaultVisual == TrueColor ||
+	    pScrn->defaultVisual == DirectColor) {
+	    var->red.length     = pScrn->weight.red;
+	    var->green.length   = pScrn->weight.green;
+	    var->blue.length    = pScrn->weight.blue;
+	} else {
+	    var->red.length     = 8;
+	    var->green.length   = 8;
+	    var->blue.length    = 8;
+	}
 }
 
 static void
@@ -227,10 +235,30 @@ xfree2fbdev_timing(DisplayModePtr mode, struct fb_var_screeninfo *var)
 		var->vmode = FB_VMODE_NONINTERLACED;
 }
 
+static Bool
+fbdev_modes_equal(struct fb_var_screeninfo *set, struct fb_var_screeninfo *req)
+{
+	return (set->xres_virtual >= req->xres_virtual &&
+		set->yres_virtual >= req->yres_virtual &&
+		set->bits_per_pixel == req->bits_per_pixel &&
+		set->red.length == req->red.length &&
+		set->green.length == req->green.length &&
+		set->blue.length == req->blue.length &&
+		set->xres == req->xres && set->yres == req->yres &&
+		set->pixclock == req->pixclock &&
+		set->right_margin == req->right_margin &&
+		set->hsync_len == req->hsync_len &&
+		set->left_margin == req->left_margin &&
+		set->lower_margin == req->lower_margin &&
+		set->vsync_len == req->vsync_len &&
+		set->upper_margin == req->upper_margin &&
+		set->sync == req->sync && set->vmode == req->vmode);
+}
+
 static void
 fbdev2xfree_timing(struct fb_var_screeninfo *var, DisplayModePtr mode)
 {
-	mode->Clock = var->pixclock ? 1000000000/var->pixclock : 28000000;
+	mode->Clock = var->pixclock ? 1000000000/var->pixclock : 0;
 	mode->HDisplay = var->xres;
 	mode->HSyncStart = mode->HDisplay+var->right_margin;
 	mode->HSyncEnd = mode->HSyncStart+var->hsync_len;
@@ -268,53 +296,99 @@ fbdev2xfree_timing(struct fb_var_screeninfo *var, DisplayModePtr mode)
 /* -------------------------------------------------------------------- */
 /* open correct framebuffer device                                      */
 
-/* try to find the framebuffer device for a given PCI device */
+/**
+ * Try to find the framebuffer device for a given PCI device 
+ */
 static int
-fbdev_open_pci(pciVideoPtr pPci, char **namep)
+fbdev_open_pci(struct pci_device * pPci, char **namep)
 {
-	struct	fb_fix_screeninfo fix;
-	char	filename[16];
-	int	fd,i,j;
-	memType res_start, res_end;
+    struct	fb_fix_screeninfo fix;
+    char	filename[256];
+    int	fd,i,j;
 
-	for (i = 0; i < 8; i++) {
-		sprintf(filename,"/dev/fb%d",i);
-		if (-1 == (fd = open(filename,O_RDWR,0))) {
-			xf86DrvMsg(-1, X_WARNING,
-				   "open %s: %s\n", filename, strerror(errno));
-			continue;
+
+    /* There are two ways to that we can determine which fb device is
+     * associated with this PCI device.  The more modern way is to look in
+     * the sysfs directory for the PCI device for a file named
+     * "graphics/fb*"
+     */
+
+    for (i = 0; i < 8; i++) {
+	sprintf(filename, 
+		"/sys/bus/pci/devices/%04x:%02x:%02x.%d/graphics/fb%d",
+		pPci->domain, pPci->bus, pPci->dev, pPci->func, i);
+
+	fd = open(filename, O_RDONLY, 0);
+	if (fd != -1) {
+	    close(fd);
+	    sprintf(filename, "/dev/fb%d", i);
+
+	    fd = open(filename, O_RDWR, 0);
+	    if (fd != -1) {
+		if (ioctl(fd, FBIOGET_FSCREENINFO, (void*) & fix) != -1) {
+		    if (namep) {
+			*namep = xnfalloc(16);
+			strncpy(*namep,fix.id,16);
+		    }
+
+		    return fd;
 		}
-		if (-1 == ioctl(fd,FBIOGET_FSCREENINFO,(void*)&fix)) {
-			close(fd);
-			continue;
-		}
-		for (j = 0; j < 6; j++) {
-			res_start = pPci->memBase[j];
-			res_end = res_start+pPci->size[j];
-			if ((0 != fix.smem_len &&
-			     (memType) fix.smem_start >= res_start &&
-			     (memType) fix.smem_start < res_end) ||
-			    (0 != fix.mmio_len &&
-			     (memType) fix.mmio_start >= res_start &&
-			     (memType) fix.mmio_start < res_end))
-				break;
-		}
-		if (j == 6) {
-			close(fd);
-			continue;
-		}
-		if (namep) {
-		    *namep = xnfalloc(16);
-		    strncpy(*namep,fix.id,16);
-		}
-		return fd;
+	    }
 	}
-	if (namep)
-	    *namep = NULL;
-	xf86DrvMsg(-1, X_ERROR,
-		   "Unable to find a valid framebuffer device\n");
-	return -1;
 
+	close(fd);
+    }
+
+
+    /* The other way is to examine the resources associated with each fb
+     * device and see if there is a match with the PCI device.  This technique
+     * has some problems on certain mixed 64-bit / 32-bit architectures.
+     * There is a flaw in the fb_fix_screeninfo structure in that it only
+     * returns the low 32-bits of the address of the resources associated with
+     * a device.  However, on a mixed architecture the base addresses of PCI
+     * devices, even for 32-bit applications, may be higher than 0x0f0000000.
+     */
+
+    for (i = 0; i < 8; i++) {
+	sprintf(filename,"/dev/fb%d",i);
+	if (-1 == (fd = open(filename,O_RDWR,0))) {
+	    xf86DrvMsg(-1, X_WARNING,
+		       "open %s: %s\n", filename, strerror(errno));
+	    continue;
+	}
+	if (-1 == ioctl(fd,FBIOGET_FSCREENINFO,(void*)&fix)) {
+	    close(fd);
+	    continue;
+	}
+	for (j = 0; j < 6; j++) {
+	    const pciaddr_t res_start = pPci->regions[j].base_addr;
+	    const pciaddr_t res_end = res_start + pPci->regions[j].size;
+
+	    if ((0 != fix.smem_len &&
+		 (pciaddr_t) fix.smem_start >= res_start &&
+		 (pciaddr_t) fix.smem_start < res_end) ||
+		(0 != fix.mmio_len &&
+		 (pciaddr_t) fix.mmio_start >= res_start &&
+		 (pciaddr_t) fix.mmio_start < res_end))
+	      break;
+	}
+	if (j == 6) {
+	    close(fd);
+	    continue;
+	}
+	if (namep) {
+	    *namep = xnfalloc(16);
+	    strncpy(*namep,fix.id,16);
+	}
+	return fd;
+    }
+
+    if (namep)
+      *namep = NULL;
+
+    xf86DrvMsg(-1, X_ERROR,
+	       "Unable to find a valid framebuffer device\n");
+    return -1;
 }
 
 static int
@@ -359,7 +433,7 @@ fbdev_open(int scrnIndex, char *dev, char** namep)
 /* -------------------------------------------------------------------- */
 
 Bool
-fbdevHWProbe(pciVideoPtr pPci, char *device,char **namep)
+fbdevHWProbe(struct pci_device * pPci, char *device,char **namep)
 {
 	int fd;
 
@@ -375,7 +449,7 @@ fbdevHWProbe(pciVideoPtr pPci, char *device,char **namep)
 }
 
 Bool
-fbdevHWInit(ScrnInfoPtr pScrn, pciVideoPtr pPci, char *device)
+fbdevHWInit(ScrnInfoPtr pScrn, struct pci_device * pPci, char *device)
 {
 	fbdevHWPtr fPtr;
 
@@ -470,19 +544,62 @@ fbdevHWGetVidmem(ScrnInfoPtr pScrn)
 	return fPtr->fix.smem_len;
 }
 
+static Bool
+fbdevHWSetMode(ScrnInfoPtr pScrn, DisplayModePtr mode, Bool check)
+{
+	fbdevHWPtr fPtr = FBDEVHWPTR(pScrn);
+	struct fb_var_screeninfo req_var = fPtr->var, set_var;
+	
+	TRACE_ENTER("SetMode");
+
+	xfree2fbdev_fblayout(pScrn, &req_var);
+	xfree2fbdev_timing(mode, &req_var);
+
+#if DEBUG
+	print_xfree_mode("init", mode);
+	print_fbdev_mode("init", &req_var);
+#endif
+
+	set_var = req_var;
+
+	if (check)
+		set_var.activate = FB_ACTIVATE_TEST;
+
+	if (0 != ioctl(fPtr->fd, FBIOPUT_VSCREENINFO, (void*)(&set_var))) {
+		xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
+			   "FBIOPUT_VSCREENINFO: %s\n", strerror(errno));
+		return FALSE;
+	}
+
+	if (!fbdev_modes_equal(&set_var, &req_var)) {
+		if (!check)
+			xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
+				   "FBIOPUT_VSCREENINFO succeeded but modified "
+				   "mode\n");
+#if DEBUG
+		print_fbdev_mode("returned", &set_var);
+#endif
+		return FALSE;
+	}
+
+	if (!check)
+		fPtr->var = set_var;
+
+	return TRUE;
+}
+
 void
 fbdevHWSetVideoModes(ScrnInfoPtr pScrn)
 {
-	fbdevHWPtr fPtr = FBDEVHWPTR(pScrn);
-	int virtX = pScrn->display->virtualX;
-	int virtY = pScrn->display->virtualY;
-	struct fb_var_screeninfo var;
 	char **modename;
 	DisplayModePtr mode,this,last = pScrn->modes;
 
 	TRACE_ENTER("VerifyModes");
 	if (NULL == pScrn->display->modes)
 		return;
+
+	pScrn->virtualX = pScrn->display->virtualX;
+	pScrn->virtualY = pScrn->display->virtualY;
 
 	for (modename = pScrn->display->modes; *modename != NULL; modename++) {
 		for (mode = pScrn->monitor->Modes; mode != NULL; mode = mode->next)
@@ -493,36 +610,26 @@ fbdevHWSetVideoModes(ScrnInfoPtr pScrn)
 				   "\tmode \"%s\" not found\n", *modename);
 			continue;
 		}
-		memset(&var,0,sizeof(var));
-		xfree2fbdev_timing(mode,&var);
-		var.xres_virtual = virtX;
-		var.yres_virtual = virtY;
-		var.bits_per_pixel = pScrn->bitsPerPixel;
-		var.red.length = pScrn->weight.red;
-		var.green.length = pScrn->weight.green;
-		var.blue.length = pScrn->weight.blue;
 
-		var.activate = FB_ACTIVATE_TEST;
-		if (var.xres_virtual < var.xres) var.xres_virtual = var.xres;
-		if (var.yres_virtual < var.yres) var.yres_virtual = var.yres;
-		if (-1 == ioctl(fPtr->fd,FBIOPUT_VSCREENINFO,(void*)(&var))) {
+		if (!fbdevHWSetMode(pScrn, mode, TRUE)) {
 			xf86DrvMsg(pScrn->scrnIndex, X_INFO,
 				   "\tmode \"%s\" test failed\n", *modename);
 			continue;
 		}
 		xf86DrvMsg(pScrn->scrnIndex, X_INFO,
 			   "\tmode \"%s\" ok\n", *modename);
-		if (virtX < var.xres) virtX = var.xres;
-		if (virtY < var.yres) virtY = var.yres;
+
+		if (pScrn->virtualX < mode->HDisplay)
+			pScrn->virtualX = mode->HDisplay;
+		if (pScrn->virtualY < mode->VDisplay)
+			pScrn->virtualY = mode->VDisplay;
+
 		if (NULL == pScrn->modes) {
-			pScrn->modes = xnfalloc(sizeof(DisplayModeRec));
-			this = pScrn->modes;
-			memcpy(this,mode,sizeof(DisplayModeRec));
+			this = pScrn->modes = xf86DuplicateMode(mode);
 			this->next = this;
 			this->prev = this;
 		} else {
-			this = xnfalloc(sizeof(DisplayModeRec));
-			memcpy(this,mode,sizeof(DisplayModeRec));
+			this = xf86DuplicateMode(mode);
 			this->next = pScrn->modes;
 			this->prev = last;
 			last->next = this;
@@ -530,8 +637,6 @@ fbdevHWSetVideoModes(ScrnInfoPtr pScrn)
 		}
 		last = this;
 	}
-	pScrn->virtualX     = virtX;
-	pScrn->virtualY     = virtY;
 }
 
 DisplayModePtr
@@ -673,21 +778,12 @@ fbdevHWModeInit(ScrnInfoPtr pScrn, DisplayModePtr mode)
 {	
 	fbdevHWPtr fPtr = FBDEVHWPTR(pScrn);
 	
-	TRACE_ENTER("ModeInit");
-	xfree2fbdev_fblayout(pScrn, &fPtr->var);
-	xfree2fbdev_timing(mode,  &fPtr->var);
-#if DEBUG
-	print_xfree_mode("init",mode);
-	print_fbdev_mode("init",&fPtr->var);
-#endif
 	pScrn->vtSema = TRUE;
 
 	/* set */
-	if (0 != ioctl(fPtr->fd,FBIOPUT_VSCREENINFO,(void*)(&fPtr->var))) {
-		xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
-			   "FBIOPUT_VSCREENINFO: %s\n", strerror(errno));
+	if (!fbdevHWSetMode(pScrn, mode, FALSE))
 		return FALSE;
-	}
+
 	/* read back */
 	if (0 != ioctl(fPtr->fd,FBIOGET_FSCREENINFO,(void*)(&fPtr->fix))) {
 		xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
@@ -699,6 +795,20 @@ fbdevHWModeInit(ScrnInfoPtr pScrn, DisplayModePtr mode)
 			   "FBIOGET_VSCREENINFO: %s\n", strerror(errno));
 		return FALSE;
 	}
+
+	if (pScrn->defaultVisual == TrueColor ||
+	    pScrn->defaultVisual == DirectColor) {
+	    /* XXX: This is a hack, but it should be a NOP for all the setups that
+	     * worked before and actually seems to fix some others...
+	     */
+	    pScrn->offset.red   = fPtr->var.red.offset;
+	    pScrn->offset.green = fPtr->var.green.offset;
+	    pScrn->offset.blue  = fPtr->var.blue.offset;
+	    pScrn->mask.red     = ((1 << fPtr->var.red.length) - 1) << fPtr->var.red.offset;
+	    pScrn->mask.green   = ((1 << fPtr->var.green.length) - 1) << fPtr->var.green.offset;
+	    pScrn->mask.blue    = ((1 << fPtr->var.blue.length) - 1) << fPtr->var.blue.offset;
+	}
+
 	return TRUE;
 }
 
@@ -767,18 +877,12 @@ ModeStatus
 fbdevHWValidMode(int scrnIndex, DisplayModePtr mode, Bool verbose, int flags)
 {
 	ScrnInfoPtr pScrn = xf86Screens[scrnIndex];
-	fbdevHWPtr fPtr = FBDEVHWPTR(pScrn);
-	struct fb_var_screeninfo var;
 
 	TRACE_ENTER("ValidMode");
-	memcpy(&var,&fPtr->var,sizeof(var));
-	xfree2fbdev_timing(mode, &var);
-	var.activate = FB_ACTIVATE_TEST;
-	if (0 != ioctl(fPtr->fd,FBIOPUT_VSCREENINFO,(void*)(&fPtr->var))) {
-		xf86DrvMsg(scrnIndex, X_ERROR,
-			   "FBIOPUT_VSCREENINFO: %s\n", strerror(errno));
+
+	if (!fbdevHWSetMode(pScrn, mode, TRUE))
 		return MODE_BAD;
-	}
+
 	return MODE_OK;
 }
 
@@ -786,15 +890,12 @@ Bool
 fbdevHWSwitchMode(int scrnIndex, DisplayModePtr mode, int flags)
 {
 	ScrnInfoPtr pScrn = xf86Screens[scrnIndex];
-	fbdevHWPtr fPtr = FBDEVHWPTR(pScrn);
 
 	TRACE_ENTER("SwitchMode");
-	xfree2fbdev_timing(mode, &fPtr->var);
-	if (0 != ioctl(fPtr->fd,FBIOPUT_VSCREENINFO,(void*)(&fPtr->var))) {
-		xf86DrvMsg(scrnIndex, X_ERROR,
-			   "FBIOPUT_VSCREENINFO: %s\n", strerror(errno));
+
+	if (!fbdevHWSetMode(pScrn, mode, FALSE))
 		return FALSE;
-	}
+
 	return TRUE;
 }
 

@@ -112,13 +112,13 @@ miShapedWindowIn (pScreen, universe, bounding, rect, x, y)
     ScreenPtr	pScreen;
     RegionPtr	universe, bounding;
     BoxPtr	rect;
-    register int x, y;
+    int 	x, y;
 {
-    BoxRec  box;
-    register BoxPtr  boundBox;
-    int	    nbox;
-    Bool    someIn, someOut;
-    register int t, x1, y1, x2, y2;
+    BoxRec  	box;
+    BoxPtr	boundBox;
+    int		nbox;
+    Bool	someIn, someOut;
+    int 	t, x1, y1, x2, y2;
 
     nbox = REGION_NUM_RECTS (bounding);
     boundBox = REGION_RECTS (bounding);
@@ -179,6 +179,17 @@ miRegisterRedirectBorderClipProc (SetRedirectBorderClipProcPtr setBorderClip,
     miGetRedirectBorderClipProc = getBorderClip;
 }
 
+/*
+ * Manual redirected windows are treated as transparent; they do not obscure
+ * siblings or parent windows
+ */
+
+#ifdef COMPOSITE
+#define TreatAsTransparent(w)	((w)->redirectDraw == RedirectDrawManual)
+#else
+#define TreatAsTransparent(w)	FALSE
+#endif
+
 #define HasParentRelativeBorder(w) (!(w)->borderIsPixel && \
 				    HasBorder(w) && \
 				    (w)->backgroundState == ParentRelative)
@@ -202,16 +213,16 @@ miRegisterRedirectBorderClipProc (SetRedirectBorderClipProcPtr setBorderClip,
  */
 static void
 miComputeClips (
-    register WindowPtr	pParent,
-    register ScreenPtr	pScreen,
-    register RegionPtr	universe,
+    WindowPtr	pParent,
+    ScreenPtr	pScreen,
+    RegionPtr	universe,
     VTKind		kind,
     RegionPtr		exposed ) /* for intermediate calculations */
 {
     int			dx,
 			dy;
     RegionRec		childUniverse;
-    register WindowPtr	pChild;
+    WindowPtr		pChild;
     int     	  	oldVis, newVis;
     BoxRec		borderSize;
     RegionRec		childUnion;
@@ -241,10 +252,14 @@ miComputeClips (
     /*
      * In redirected drawing case, reset universe to borderSize
      */
-    if (pParent->redirectDraw)
+    if (pParent->redirectDraw != RedirectDrawNone)
     {
 	if (miSetRedirectBorderClipProc)
+	{
+	    if (TreatAsTransparent (pParent))
+		REGION_EMPTY (pScreen, universe);
 	    (*miSetRedirectBorderClipProc) (pParent, universe);
+	}
 	REGION_COPY(pScreen, universe, &pParent->borderSize);
     }
 #endif
@@ -432,7 +447,7 @@ miComputeClips (
 	{
 	    for (; pChild; pChild = pChild->nextSib)
 	    {
-		if (pChild->viewable)
+		if (pChild->viewable && !TreatAsTransparent(pChild))
 		    REGION_APPEND( pScreen, &childUnion, &pChild->borderSize);
 	    }
 	}
@@ -440,7 +455,7 @@ miComputeClips (
 	{
 	    for (pChild = pParent->lastChild; pChild; pChild = pChild->prevSib)
 	    {
-		if (pChild->viewable)
+		if (pChild->viewable && !TreatAsTransparent(pChild))
 		    REGION_APPEND( pScreen, &childUnion, &pChild->borderSize);
 	    }
 	}
@@ -472,7 +487,7 @@ miComputeClips (
 		 * from the current universe, thus denying its space to any
 		 * other sibling.
 		 */
-		if (overlap)
+		if (overlap && !TreatAsTransparent (pChild))
 		    REGION_SUBTRACT( pScreen, universe, universe,
 					  &pChild->borderSize);
 	    }
@@ -502,18 +517,6 @@ miComputeClips (
 			       universe, &pParent->clipList);
     }
 
-    /*
-     * One last thing: backing storage. We have to try to save what parts of
-     * the window are about to be obscured. We can just subtract the universe
-     * from the old clipList and get the areas that were in the old but aren't
-     * in the new and, hence, are about to be obscured.
-     */
-    if (pParent->backStorage && !resized)
-    {
-	REGION_SUBTRACT( pScreen, exposed, &pParent->clipList, universe);
-	(* pScreen->SaveDoomedAreas)(pParent, exposed, dx, dy);
-    }
-    
     /* HACK ALERT - copying contents of regions, instead of regions */
     {
 	RegionRec   tmp;
@@ -535,10 +538,10 @@ miComputeClips (
 
 static void
 miTreeObscured(
-    register WindowPtr pParent )
+    WindowPtr pParent )
 {
-    register WindowPtr pChild;
-    register int    oldVis;
+    WindowPtr 	pChild;
+    int    	oldVis;
 
     pChild = pParent;
     while (1)
@@ -609,8 +612,8 @@ miValidateTree (pParent, pChild, kind)
     RegionRec		childUnion; /* the space covered by borderSize for
 				     * all marked children */
     RegionRec		exposed;    /* For intermediate calculations */
-    register ScreenPtr	pScreen;
-    register WindowPtr	pWin;
+    ScreenPtr		pScreen;
+    WindowPtr		pWin;
     Bool		overlap;
     int			viewvals;
     Bool		forward;
@@ -644,7 +647,7 @@ miValidateTree (pParent, pChild, kind)
 	
 	for (pWin = pParent->firstChild; pWin != pChild; pWin = pWin->nextSib)
 	{
-	    if (pWin->viewable)
+	    if (pWin->viewable && !TreatAsTransparent (pWin))
 		REGION_SUBTRACT (pScreen, &totalClip, &totalClip, &pWin->borderSize);
 	}
 	for (pWin = pChild; pWin; pWin = pWin->nextSib)
@@ -666,7 +669,7 @@ miValidateTree (pParent, pChild, kind)
 		{
 		    RegionPtr	pBorderClip = &pWin->borderClip;
 #ifdef COMPOSITE
-		    if (pWin->redirectDraw && miGetRedirectBorderClipProc)
+		    if (pWin->redirectDraw != RedirectDrawNone && miGetRedirectBorderClipProc)
 			pBorderClip = (*miGetRedirectBorderClipProc)(pWin);
 #endif
 		    REGION_APPEND( pScreen, &totalClip, pBorderClip );
@@ -685,7 +688,7 @@ miValidateTree (pParent, pChild, kind)
 		{
 		    RegionPtr	pBorderClip = &pWin->borderClip;
 #ifdef COMPOSITE
-		    if (pWin->redirectDraw && miGetRedirectBorderClipProc)
+		    if (pWin->redirectDraw != RedirectDrawNone && miGetRedirectBorderClipProc)
 			pBorderClip = (*miGetRedirectBorderClipProc)(pWin);
 #endif
 		    REGION_APPEND( pScreen, &totalClip, pBorderClip );
@@ -724,7 +727,7 @@ miValidateTree (pParent, pChild, kind)
 	    if (forward)
 	    {
 		for (pWin = pChild; pWin; pWin = pWin->nextSib)
-		    if (pWin->valdata && pWin->viewable)
+		    if (pWin->valdata && pWin->viewable && !TreatAsTransparent (pWin))
 			REGION_APPEND( pScreen, &childUnion,
 						   &pWin->borderSize);
 	    }
@@ -733,7 +736,7 @@ miValidateTree (pParent, pChild, kind)
 		pWin = pParent->lastChild;
 		while (1)
 		{
-		    if (pWin->valdata && pWin->viewable)
+		    if (pWin->valdata && pWin->viewable && !TreatAsTransparent (pWin))
 			REGION_APPEND( pScreen, &childUnion,
 						   &pWin->borderSize);
 		    if (pWin == pChild)
@@ -757,7 +760,7 @@ miValidateTree (pParent, pChild, kind)
 					&totalClip,
  					&pWin->borderSize);
 		miComputeClips (pWin, pScreen, &childClip, kind, &exposed);
-		if (overlap)
+		if (overlap && !TreatAsTransparent (pWin))
 		{
 		    REGION_SUBTRACT( pScreen, &totalClip,
 				       	   &totalClip,
@@ -805,11 +808,6 @@ miValidateTree (pParent, pChild, kind)
 			       &totalClip, &pParent->clipList);
 	/* fall through */
     case VTMap:
-	if (pParent->backStorage) {
-	    REGION_SUBTRACT( pScreen, &exposed, &pParent->clipList, &totalClip);
-	    (* pScreen->SaveDoomedAreas)(pParent, &exposed, 0, 0);
-	}
-	
 	REGION_COPY( pScreen, &pParent->clipList, &totalClip);
 	pParent->drawable.serialNumber = NEXT_SERIAL_NUMBER;
 	break;

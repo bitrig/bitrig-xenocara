@@ -25,7 +25,6 @@
  * or other dealings in this Software without prior written authorization
  * from the XFree86 Project.
  */
-/* $OpenBSD: bsd_kqueue_apm.c,v 1.1 2006/11/26 18:21:31 matthieu Exp $ */
 
 #ifdef HAVE_XORG_CONFIG_H
 #include <xorg-config.h>
@@ -103,7 +102,7 @@ bsdPMGetEventFromOS(int kq, pmEvent *events, int num)
 	    break;
 	} else if (result < 0) {
 	    xf86Msg(X_WARNING, "bsdPMGetEventFromOS: kevent returns"
-		    " errno = %d\n", errno);
+		    " %s\n", strerror(errno));
 	    break;
 	}
 	events[i] = bsdToXF86(APM_EVENT_TYPE(ev.data));

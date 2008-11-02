@@ -183,6 +183,8 @@ xf86ModeStatusToString(ModeStatus status)
         return "all modes must have the same resolution";
     case MODE_NO_REDUCED:
         return "monitor doesn't support reduced blanking";
+    case MODE_BANDWIDTH:
+	return "mode requires too much memory bandwidth";
     case MODE_BAD:
 	return "unknown reason";
     case MODE_ERROR:
@@ -368,38 +370,6 @@ xf86HandleBuiltinMode(ScrnInfoPtr scrp,
     return MODE_OK;
 }
 
-static double
-ModeHSync(DisplayModePtr mode)
-{
-    double hsync = 0.0;
-    
-    if (mode->HSync > 0.0)
-	    hsync = mode->HSync;
-    else if (mode->HTotal > 0)
-	    hsync = (float)mode->Clock / (float)mode->HTotal;
-
-    return hsync;
-}
-
-static double
-ModeVRefresh(DisplayModePtr mode)
-{
-    double refresh = 0.0;
-
-    if (mode->VRefresh > 0.0)
-	refresh = mode->VRefresh;
-    else if (mode->HTotal > 0 && mode->VTotal > 0) {
-	refresh = mode->Clock * 1000.0 / mode->HTotal / mode->VTotal;
-	if (mode->Flags & V_INTERLACE)
-	    refresh *= 2.0;
-	if (mode->Flags & V_DBLSCAN)
-	    refresh /= 2.0;
-	if (mode->VScan > 1)
-	    refresh /= (float)(mode->VScan);
-    }
-    return refresh;
-}
-
 /*
  * xf86LookupMode
  *
@@ -444,7 +414,6 @@ xf86LookupMode(ScrnInfoPtr scrp, DisplayModePtr modep,
     int ModePrivFlags = 0;
     ModeStatus status = MODE_NOMODE;
     Bool allowDiv2 = (strategy & LOOKUP_CLKDIV2) != 0;
-    Bool haveBuiltin;
     int n;
     const int types[] = {
 	M_T_BUILTIN | M_T_PREFERRED,
@@ -529,7 +498,7 @@ xf86LookupMode(ScrnInfoPtr scrp, DisplayModePtr modep,
 			ModePrivFlags = cp->PrivFlags;
 			break;
 		    }
-		    refresh = ModeVRefresh(p);
+		    refresh = xf86ModeVRefresh(p);
 		    if (p->Flags & V_INTERLACE)
 			refresh /= INTERLACE_REFRESH_WEIGHT;
 		    if (refresh > bestRefresh) {
@@ -570,7 +539,7 @@ xf86LookupMode(ScrnInfoPtr scrp, DisplayModePtr modep,
 		found = TRUE;
 
 		if (strategy == LOOKUP_BEST_REFRESH) {
-		    refresh = ModeVRefresh(p);
+		    refresh = xf86ModeVRefresh(p);
 		    if (p->Flags & V_INTERLACE)
 			refresh /= INTERLACE_REFRESH_WEIGHT;
 		    if (refresh > bestRefresh) {
@@ -667,95 +636,6 @@ xf86LookupMode(ScrnInfoPtr scrp, DisplayModePtr modep,
     return MODE_OK;
 }
 
-
-/*
- * xf86SetModeCrtc
- *
- * Initialises the Crtc parameters for a mode.  The initialisation includes
- * adjustments for interlaced and double scan modes.
- */
-static void
-xf86SetModeCrtc(DisplayModePtr p, int adjustFlags)
-{
-    if ((p == NULL) || ((p->type & M_T_CRTC_C) == M_T_BUILTIN))
-	return;
-
-    p->CrtcHDisplay             = p->HDisplay;
-    p->CrtcHSyncStart           = p->HSyncStart;
-    p->CrtcHSyncEnd             = p->HSyncEnd;
-    p->CrtcHTotal               = p->HTotal;
-    p->CrtcHSkew                = p->HSkew;
-    p->CrtcVDisplay             = p->VDisplay;
-    p->CrtcVSyncStart           = p->VSyncStart;
-    p->CrtcVSyncEnd             = p->VSyncEnd;
-    p->CrtcVTotal               = p->VTotal;
-    if (p->Flags & V_INTERLACE) {
-	if (adjustFlags & INTERLACE_HALVE_V) {
-	    p->CrtcVDisplay         /= 2;
-	    p->CrtcVSyncStart       /= 2;
-	    p->CrtcVSyncEnd         /= 2;
-	    p->CrtcVTotal           /= 2;
-	}
-	/* Force interlaced modes to have an odd VTotal */
-	/* maybe we should only do this when INTERLACE_HALVE_V is set? */
-	p->CrtcVTotal |= 1;
-    }
-
-    if (p->Flags & V_DBLSCAN) {
-        p->CrtcVDisplay         *= 2;
-        p->CrtcVSyncStart       *= 2;
-        p->CrtcVSyncEnd         *= 2;
-        p->CrtcVTotal           *= 2;
-    }
-    if (p->VScan > 1) {
-        p->CrtcVDisplay         *= p->VScan;
-        p->CrtcVSyncStart       *= p->VScan;
-        p->CrtcVSyncEnd         *= p->VScan;
-        p->CrtcVTotal           *= p->VScan;
-    }
-    p->CrtcHAdjusted = FALSE;
-    p->CrtcVAdjusted = FALSE;
-
-    /*
-     * XXX
-     *
-     * The following is taken from VGA, but applies to other cores as well.
-     */
-    p->CrtcVBlankStart = min(p->CrtcVSyncStart, p->CrtcVDisplay);
-    p->CrtcVBlankEnd = max(p->CrtcVSyncEnd, p->CrtcVTotal);
-    if ((p->CrtcVBlankEnd - p->CrtcVBlankStart) >= 127) {
-        /* 
-         * V Blanking size must be < 127.
-         * Moving blank start forward is safer than moving blank end
-         * back, since monitors clamp just AFTER the sync pulse (or in
-         * the sync pulse), but never before.
-         */
-        p->CrtcVBlankStart = p->CrtcVBlankEnd - 127;
-	/*
-	 * If VBlankStart is now > VSyncStart move VBlankStart
-	 * to VSyncStart using the maximum width that fits into
-	 * VTotal.
-	 */
-	if (p->CrtcVBlankStart > p->CrtcVSyncStart) {
-	    p->CrtcVBlankStart = p->CrtcVSyncStart;
-	    p->CrtcVBlankEnd = min(p->CrtcHBlankStart + 127, p->CrtcVTotal);
-	}
-    }
-    p->CrtcHBlankStart = min(p->CrtcHSyncStart, p->CrtcHDisplay);
-    p->CrtcHBlankEnd = max(p->CrtcHSyncEnd, p->CrtcHTotal);
-
-    if ((p->CrtcHBlankEnd - p->CrtcHBlankStart) >= 63 * 8) {
-        /*
-         * H Blanking size must be < 63*8. Same remark as above.
-         */
-        p->CrtcHBlankStart = p->CrtcHBlankEnd - 63 * 8;
-	if (p->CrtcHBlankStart > p->CrtcHSyncStart) {
-	    p->CrtcHBlankStart = p->CrtcHSyncStart;
-	    p->CrtcHBlankEnd = min(p->CrtcHBlankStart + 63 * 8, p->CrtcHTotal);
-	}
-    }
-}
-
 /*
  * xf86CheckModeForMonitor
  *
@@ -789,7 +669,7 @@ xf86CheckModeForMonitor(DisplayModePtr mode, MonPtr monitor)
 
     if (monitor->nHsync > 0) {
 	/* Check hsync against the allowed ranges */
-	float hsync = ModeHSync(mode);
+	float hsync = xf86ModeHSync(mode);
 	for (i = 0; i < monitor->nHsync; i++) 
 	    if ((hsync > monitor->hsync[i].lo * (1.0 - SYNC_TOLERANCE)) &&
 		(hsync < monitor->hsync[i].hi * (1.0 + SYNC_TOLERANCE)))
@@ -802,7 +682,7 @@ xf86CheckModeForMonitor(DisplayModePtr mode, MonPtr monitor)
 
     if (monitor->nVrefresh > 0) {
 	/* Check vrefresh against the allowed ranges */
-	float vrefrsh = ModeVRefresh(mode);
+	float vrefrsh = xf86ModeVRefresh(mode);
 	for (i = 0; i < monitor->nVrefresh; i++)
 	    if ((vrefrsh > monitor->vrefresh[i].lo * (1.0 - SYNC_TOLERANCE)) &&
 		(vrefrsh < monitor->vrefresh[i].hi * (1.0 + SYNC_TOLERANCE)))
@@ -1033,8 +913,8 @@ xf86InitialCheckModeForDriver(ScrnInfoPtr scrp, DisplayModePtr mode,
 		/ (mode->CrtcHTotal * mode->CrtcVTotal);
     }
     
-    mode->HSync = ModeHSync(mode);
-    mode->VRefresh = ModeVRefresh(mode);
+    mode->HSync = xf86ModeHSync(mode);
+    mode->VRefresh = xf86ModeVRefresh(mode);
 
     /* Assume it is OK */
     return MODE_OK;
@@ -1195,20 +1075,40 @@ inferVirtualSize(ScrnInfoPtr scrp, DisplayModePtr modes, int *vx, int *vy)
 {
     float aspect = 0.0;
     MonPtr mon = scrp->monitor;
+    xf86MonPtr DDC;
     int x = 0, y = 0;
     DisplayModePtr mode;
 
     if (!mon) return 0;
+    DDC = mon->DDC;
+
+    if (DDC && DDC->ver.revision >= 4) {
+	/* For 1.4, we might actually get native pixel format.  How novel. */
+	if (PREFERRED_TIMING_MODE(DDC->features.msc)) {
+		for (mode = modes; mode; mode = mode->next) {
+		    if (mode->type & (M_T_DRIVER | M_T_PREFERRED)) {
+			x = mode->HDisplay;
+			y = mode->VDisplay;
+			goto found;
+		    }
+		}
+	}
+	/*
+	 * Even if we don't, we might get aspect ratio from extra CVT info
+	 * or from the monitor size fields.  TODO.
+	 */
+    }
 
     /*
-     * technically this triggers if _either_ is zero, which is not what EDID
-     * says, but if only one is zero this is best effort.  also we don't
-     * know that all projectors are 4:3, but we certainly suspect it.
+     * Technically this triggers if either is zero.  That wasn't legal
+     * before EDID 1.4, but right now we'll get that wrong. TODO.
      */
-    if (!mon->widthmm || !mon->heightmm)
-	aspect = 4.0/3.0;
-    else
-	aspect = (float)mon->widthmm / (float)mon->heightmm;
+    if (!aspect) {
+	if (!mon->widthmm || !mon->heightmm)
+	    aspect = 4.0/3.0;
+	else
+	    aspect = (float)mon->widthmm / (float)mon->heightmm;
+    }
 
     /* find the largest M_T_DRIVER mode with that aspect ratio */
     for (mode = modes; mode; mode = mode->next) {
@@ -1232,6 +1132,7 @@ inferVirtualSize(ScrnInfoPtr scrp, DisplayModePtr modes, int *vx, int *vy)
 	return 0;
     }
 
+found:
     *vx = x;
     *vy = y;
 
@@ -1408,6 +1309,12 @@ xf86ValidateModes(ScrnInfoPtr scrp, DisplayModePtr availModes,
 			 scrp->monitor->vrefresh[i].lo,
 			 scrp->monitor->vrefresh[i].hi);
 	}
+	if (scrp->monitor->maxPixClock) {
+	    xf86DrvMsg(scrp->scrnIndex, X_INFO,
+		       "%s: Using maximum pixel clock of %.2f MHz\n",
+		       scrp->monitor->id,
+		       (float)scrp->monitor->maxPixClock / 1000.0);
+	}
     }
 
     /*
@@ -1572,7 +1479,7 @@ xf86ValidateModes(ScrnInfoPtr scrp, DisplayModePtr availModes,
 				      "TargetRefresh", 0.0);
     if (targetRefresh > 0.0) {
 	for (p = scrp->modePool; p != NULL; p = p->next) {
-	    if (ModeVRefresh(p) > targetRefresh * (1.0 - SYNC_TOLERANCE))
+	    if (xf86ModeVRefresh(p) > targetRefresh * (1.0 - SYNC_TOLERANCE))
 		break;
 	}
 	if (!p)
@@ -1661,7 +1568,7 @@ xf86ValidateModes(ScrnInfoPtr scrp, DisplayModePtr availModes,
 			 * If there is a target refresh rate, skip modes that
 			 * don't match up.
 			 */
-			if (ModeVRefresh(q) <
+			if (xf86ModeVRefresh(q) <
 			    (1.0 - SYNC_TOLERANCE) * targetRefresh)
 			    continue;
 
@@ -1825,7 +1732,7 @@ xf86ValidateModes(ScrnInfoPtr scrp, DisplayModePtr availModes,
 		       virtX, virtY, vx, vy);
 	    virtX = vx;
 	    virtY = vy;
-	    linePitch = miScanLineWidth(vx, vy, linePitch, apertureSize,
+	    linePitch = miScanLineWidth(vx, vy, minPitch, apertureSize,
 					BankFormat, pitchInc);
 	}
     }
@@ -1973,6 +1880,7 @@ xf86SetCrtcForModes(ScrnInfoPtr scrp, int adjustFlags)
 }
 
 
+#if 0
 static void
 add(char **p, char *new)
 {
@@ -1981,8 +1889,8 @@ add(char **p, char *new)
     strcat(*p, new);
 }
 
-static void
-PrintModeline(int scrnIndex,DisplayModePtr mode)
+_X_EXPORT void
+xf86PrintModeline(int scrnIndex,DisplayModePtr mode)
 {
     char tmp[256];
     char *flags = xnfcalloc(1, 1);
@@ -2016,6 +1924,7 @@ PrintModeline(int scrnIndex,DisplayModePtr mode)
 		   mode->VTotal, flags);
     xfree(flags);
 }
+#endif
 
 _X_EXPORT void
 xf86PrintModes(ScrnInfoPtr scrp)
@@ -2037,8 +1946,8 @@ xf86PrintModes(ScrnInfoPtr scrp)
 
     do {
 	desc = desc2 = "";
-	hsync = ModeHSync(p);
-	refresh = ModeVRefresh(p);
+	hsync = xf86ModeHSync(p);
+	refresh = xf86ModeVRefresh(p);
 	if (p->Flags & V_INTERLACE) {
 	    desc = " (I)";
 	}
@@ -2081,7 +1990,33 @@ xf86PrintModes(ScrnInfoPtr scrp)
 			p->SynthClock / 1000.0, hsync, refresh, desc, desc2);
 	}
 	if (hsync != 0 && refresh != 0)
-	    PrintModeline(scrp->scrnIndex,p);
+	    xf86PrintModeline(scrp->scrnIndex,p);
 	p = p->next;
     } while (p != NULL && p != scrp->modes);
 }
+
+#if 0
+/**
+ * Adds the new mode into the mode list, and returns the new list
+ *
+ * \param modes doubly-linked mode list.
+ */
+_X_EXPORT DisplayModePtr
+xf86ModesAdd(DisplayModePtr modes, DisplayModePtr new)
+{
+    if (modes == NULL)
+	return new;
+
+    if (new) {
+        DisplayModePtr mode = modes;
+
+        while (mode->next)
+            mode = mode->next;
+
+        mode->next = new;
+        new->prev = mode;
+    }
+
+    return modes;
+}
+#endif

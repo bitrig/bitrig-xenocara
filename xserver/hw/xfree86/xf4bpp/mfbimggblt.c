@@ -1,4 +1,3 @@
-
 /* Combined Purdue/PurduePlus patches, level 2.0, 1/17/89 */
 /***********************************************************
 
@@ -47,7 +46,6 @@ ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
 SOFTWARE.
 
 ******************************************************************/
-/* $XConsortium: mfbimggblt.c /main/5 1996/02/21 17:56:44 kaleb $ */
 
 #ifdef HAVE_XORG_CONFIG_H
 #include <xorg-config.h>
@@ -151,7 +149,8 @@ xf4bppImageGlyphBlt(pDrawable, pGC, x, y, nglyph, ppci, pglyphBase)
        backrect.height = FONTASCENT(pGC->font) + FONTDESCENT(pGC->font);
 
 
-       pPrivGC = pGC->devPrivates[mfbGetGCPrivateIndex()].ptr;
+       pPrivGC = (ppcPrivGC *)dixLookupPrivate(&pGC->devPrivates,
+					       mfbGetGCPrivateKey());
        oldfillStyle = pPrivGC->colorRrop.fillStyle; /* GJA */
        oldfg = pPrivGC->colorRrop.fgPixel; /* GJA */
        oldalu = pPrivGC->colorRrop.alu; /* GJA */
@@ -357,7 +356,7 @@ doImageGlyphBlt(pDrawable, pGC, x, y, nglyph, ppci, pglyphBase,infop)
 	int getWidth;		/* bits to get from glyph */
 #endif
 
-	if(!(ppos = (TEXTPOS *)ALLOCATE_LOCAL(nglyph * sizeof(TEXTPOS))))
+	if(!(ppos = (TEXTPOS *)xalloc(nglyph * sizeof(TEXTPOS))))
 	    return;
 
         pdstBase = pdstBase + (widthDst * y) + (x >> PWSH);
@@ -496,7 +495,7 @@ doImageGlyphBlt(pDrawable, pGC, x, y, nglyph, ppci, pglyphBase,infop)
 		}
 	    } /* for each glyph */
 	} /* while nbox-- */
-	DEALLOCATE_LOCAL(ppos);
+	xfree(ppos);
 	break;
       }
       default:

@@ -97,7 +97,6 @@ typedef enum {
 
     /* File tokens */
     FONTPATH,
-    RGBPATH,
     MODULEPATH,
     INPUTDEVICES,
     LOGFILEPATH,
@@ -170,6 +169,7 @@ typedef enum {
     /* Module tokens */
     LOAD,
     LOAD_DRIVER,
+    DISABLE,
     
     /* Device tokens */
     DRIVER,
@@ -208,7 +208,6 @@ typedef enum {
     XKBVARIANT,
     XKBOPTIONS,
     /* The next two have become ServerFlags options */
-    VTINIT,
     VTSYSREQ,
     /* Obsolete keyboard tokens */
     SERVERNUM,

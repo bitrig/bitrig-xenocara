@@ -46,7 +46,6 @@ ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
 SOFTWARE.
 
 ******************************************************************/
-/* $XConsortium: ppcFillRct.c /main/5 1996/02/21 17:57:35 kaleb $ */
 
 #ifdef HAVE_XORG_CONFIG_H
 #include <xorg-config.h>
@@ -107,7 +106,7 @@ xf4bppPolyFillRect(pDrawable, pGC, nrectFill, prectInit)
     numRects = REGION_NUM_RECTS(prgnClip) * nrectFill;
     if (numRects > NUM_STACK_RECTS)
     {
-	pboxClippedBase = (BoxPtr)ALLOCATE_LOCAL(numRects * sizeof(BoxRec));
+	pboxClippedBase = (BoxPtr)xalloc(numRects * sizeof(BoxRec));
 	if (!pboxClippedBase)
 	    return;
     }
@@ -212,5 +211,5 @@ xf4bppPolyFillRect(pDrawable, pGC, nrectFill, prectInit)
 	xf4bppFillArea((WindowPtr)pDrawable, pboxClipped-pboxClippedBase,
 		       pboxClippedBase, pGC);
     if (pboxClippedBase != stackRects)
-    	DEALLOCATE_LOCAL(pboxClippedBase);
+    	xfree(pboxClippedBase);
 }

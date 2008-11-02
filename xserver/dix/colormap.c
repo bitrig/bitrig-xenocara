@@ -63,9 +63,10 @@ SOFTWARE.
 #include "scrnintstr.h"
 #include "resource.h"
 #include "windowstr.h"
+#include "privates.h"
+#include "xace.h"
 
 extern XID clientErrorValue;
-extern int colormapPrivateCount;
 
 static Pixel FindBestPixel(
     EntryPtr /*pentFirst*/,
@@ -95,8 +96,8 @@ static int BlueComp(
 );
 
 static void FreePixels(
-    register ColormapPtr /*pmap*/,
-    register int /*client*/
+    ColormapPtr /*pmap*/,
+    int /*client*/
 );
 
 static void CopyFree(
@@ -259,9 +260,9 @@ CreateColormap (Colormap mid, ScreenPtr pScreen, VisualPtr pVisual,
     int		class, size;
     unsigned long sizebytes;
     ColormapPtr	pmap;
-    register	EntryPtr	pent;
+    EntryPtr	pent;
     int		i;
-    register	Pixel	*ppix, **pptr;
+    Pixel	*ppix, **pptr;
 
     class = pVisual->class;
     if(!(class & DynamicClass) && (alloc != AllocNone) && (client != SERVER_ID))
@@ -386,31 +387,25 @@ CreateColormap (Colormap mid, ScreenPtr pScreen, VisualPtr pVisual,
 	    pmap->numPixelsBlue[client] = size;
 	}
     }
+    pmap->devPrivates = NULL;
+    pmap->flags |= BeingCreated;
+
     if (!AddResource(mid, RT_COLORMAP, (pointer)pmap))
 	return (BadAlloc);
+
+    /*  
+     * Security creation/labeling check
+     */
+    i = XaceHook(XACE_RESOURCE_ACCESS, clients[client], mid, RT_COLORMAP,
+		 pmap, RT_NONE, NULL, DixCreateAccess);
+    if (i != Success) {
+	FreeResource(mid, RT_NONE);
+	return i;
+    }
+
     /* If the device wants a chance to initialize the colormap in any way,
      * this is it.  In specific, if this is a Static colormap, this is the
      * time to fill in the colormap's values */
-    pmap->flags |= BeingCreated;
-
-
-    /*
-     * Allocate the array of devPrivate's for this colormap.
-     */
-
-    if (colormapPrivateCount == 0)
-	pmap->devPrivates = NULL;
-    else
-    {
-	pmap->devPrivates = (DevUnion *) xcalloc (
-	    sizeof(DevUnion), colormapPrivateCount);
-	if (!pmap->devPrivates)
-	{
-	    FreeResource (mid, RT_NONE);
-	    return BadAlloc;
-	}
-    }
-
     if (!(*pScreen->CreateColormap)(pmap))
     {
 	FreeResource (mid, RT_NONE);
@@ -428,8 +423,8 @@ CreateColormap (Colormap mid, ScreenPtr pScreen, VisualPtr pVisual,
 int
 FreeColormap (pointer value, XID mid)
 {
-    int		i;
-    register EntryPtr pent;
+    int	i;
+    EntryPtr pent;
     ColormapPtr	pmap = (ColormapPtr)value;
 
     if(CLIENT_ID(mid) != SERVER_ID)
@@ -474,9 +469,7 @@ FreeColormap (pointer value, XID mid)
         }
     }
 
-    if (pmap->devPrivates)
-	xfree(pmap->devPrivates);
-
+    dixFreePrivates(pmap->devPrivates);
     xfree(pmap);
     return(Success);
 }
@@ -744,14 +737,14 @@ static void
 UpdateColors (ColormapPtr pmap)
 {
     xColorItem		*defs;
-    register xColorItem *pdef;
-    register EntryPtr 	pent;
-    register VisualPtr	pVisual;
+    xColorItem *pdef;
+    EntryPtr 	pent;
+    VisualPtr	pVisual;
     int			i, n, size;
 
     pVisual = pmap->pVisual;
     size = pVisual->ColormapEntries;
-    defs = (xColorItem *)ALLOCATE_LOCAL(size * sizeof(xColorItem));
+    defs = (xColorItem *)xalloc(size * sizeof(xColorItem));
     if (!defs)
 	return;
     n = 0;
@@ -801,7 +794,7 @@ UpdateColors (ColormapPtr pmap)
     }
     if (n)
 	(*pmap->pScreen->StoreColors)(pmap, n, defs);
-    DEALLOCATE_LOCAL(defs);
+    xfree(defs);
 }
 
 /* Get a read-only color from a ColorMap (probably slow for large maps)
@@ -903,7 +896,7 @@ AllocColor (ColormapPtr pmap,
 	{
 	    ColormapPtr prootmap = (ColormapPtr)
 		SecurityLookupIDByType (clients[client], pmap->pScreen->defColormap,
-					 RT_COLORMAP, SecurityReadAccess);
+					 RT_COLORMAP, DixReadAccess);
 
 	    if (pmap->class == prootmap->class)
 		FindColorInRootCmap (prootmap, prootmap->red, entries, &rgb, 
@@ -920,7 +913,7 @@ AllocColor (ColormapPtr pmap,
 	{
 	    ColormapPtr prootmap = (ColormapPtr)
 		SecurityLookupIDByType (clients[client], pmap->pScreen->defColormap,
-					 RT_COLORMAP, SecurityReadAccess);
+					 RT_COLORMAP, DixReadAccess);
 
 	    if (pmap->class == prootmap->class)
 	    {
@@ -993,14 +986,14 @@ AllocColor (ColormapPtr pmap,
  */
 
 _X_EXPORT void
-FakeAllocColor (register ColormapPtr pmap, register xColorItem *item)
+FakeAllocColor (ColormapPtr pmap, xColorItem *item)
 {
-    Pixel	pixR, pixG, pixB;
-    Pixel	temp;
-    int		entries;
-    xrgb	rgb;
-    int		class;
-    register VisualPtr	pVisual;
+    Pixel pixR, pixG, pixB;
+    Pixel temp;
+    int	entries;
+    xrgb rgb;
+    int	class;
+    VisualPtr pVisual;
 
     pVisual = pmap->pVisual;
     rgb.red = item->red;
@@ -1013,6 +1006,7 @@ FakeAllocColor (register ColormapPtr pmap, register xColorItem *item)
     switch (class) {
     case GrayScale:
     case PseudoColor:
+	temp = 0;
 	item->pixel = 0;
 	if (FindColor(pmap, pmap->red, entries, &rgb, &temp, PSEUDOMAP,
 		      -1, AllComp) == Success) {
@@ -1059,9 +1053,9 @@ FakeAllocColor (register ColormapPtr pmap, register xColorItem *item)
 
 /* free a pixel value obtained from FakeAllocColor */
 _X_EXPORT void
-FakeFreeColor(register ColormapPtr pmap, Pixel pixel)
+FakeFreeColor(ColormapPtr pmap, Pixel pixel)
 {
-    register VisualPtr pVisual;
+    VisualPtr pVisual;
     Pixel pixR, pixG, pixB;
 
     switch (pmap->class) {
@@ -1507,11 +1501,11 @@ QueryColors (ColormapPtr pmap, int count, Pixel *ppixIn, xrgb *prgbList)
 }
 
 static void
-FreePixels(register ColormapPtr pmap, register int client)
+FreePixels(ColormapPtr pmap, int client)
 {
-    register Pixel		*ppix, *ppixStart;
-    register int 		n;
-    int				class;
+    Pixel *ppix, *ppixStart;
+    int n;
+    int	class;
 
     class = pmap->class;
     ppixStart = pmap->clientPixelsRed[client];
@@ -1646,8 +1640,8 @@ AllocColorPlanes (int client, ColormapPtr pmap, int colors,
 {
     int		ok;
     Pixel	mask, *ppixFirst;
-    register Pixel shift;
-    register int i;
+    Pixel shift;
+    int i;
     int		class;
     int		oldcount;
     colorResource *pcr = (colorResource *)NULL;
@@ -1752,14 +1746,14 @@ AllocDirect (int client, ColormapPtr pmap, int c, int r, int g, int b, Bool cont
     for(p = pixels; p < pixels + c; p++)
 	*p = 0;
 
-    ppixRed = (Pixel *)ALLOCATE_LOCAL(npixR * sizeof(Pixel));
-    ppixGreen = (Pixel *)ALLOCATE_LOCAL(npixG * sizeof(Pixel));
-    ppixBlue = (Pixel *)ALLOCATE_LOCAL(npixB * sizeof(Pixel));
+    ppixRed = (Pixel *)xalloc(npixR * sizeof(Pixel));
+    ppixGreen = (Pixel *)xalloc(npixG * sizeof(Pixel));
+    ppixBlue = (Pixel *)xalloc(npixB * sizeof(Pixel));
     if (!ppixRed || !ppixGreen || !ppixBlue)
     {
-	if (ppixBlue) DEALLOCATE_LOCAL(ppixBlue);
-	if (ppixGreen) DEALLOCATE_LOCAL(ppixGreen);
-	if (ppixRed) DEALLOCATE_LOCAL(ppixRed);
+	if (ppixBlue) xfree(ppixBlue);
+	if (ppixGreen) xfree(ppixGreen);
+	if (ppixRed) xfree(ppixRed);
 	return(BadAlloc);
     }
 
@@ -1797,9 +1791,9 @@ AllocDirect (int client, ColormapPtr pmap, int c, int r, int g, int b, Bool cont
 	if (okB)
 	    for(ppix = ppixBlue, npix = npixB; --npix >= 0; ppix++)
 		pmap->blue[*ppix].refcnt = 0;
-	DEALLOCATE_LOCAL(ppixBlue);
-	DEALLOCATE_LOCAL(ppixGreen);
-	DEALLOCATE_LOCAL(ppixRed);
+	xfree(ppixBlue);
+	xfree(ppixGreen);
+	xfree(ppixRed);
 	return(BadAlloc);
     }
 
@@ -1841,9 +1835,9 @@ AllocDirect (int client, ColormapPtr pmap, int c, int r, int g, int b, Bool cont
     for (pDst = pixels; pDst < pixels + c; pDst++)
 	*pDst |= ALPHAMASK(pmap->pVisual);
 
-    DEALLOCATE_LOCAL(ppixBlue);
-    DEALLOCATE_LOCAL(ppixGreen);
-    DEALLOCATE_LOCAL(ppixRed);
+    xfree(ppixBlue);
+    xfree(ppixGreen);
+    xfree(ppixRed);
 
     return (Success);
 }
@@ -1859,7 +1853,7 @@ AllocPseudo (int client, ColormapPtr pmap, int c, int r, Bool contig,
     npix = c << r;
     if ((r >= 32) || (npix > pmap->freeRed) || (npix < c))
 	return(BadAlloc);
-    if(!(ppixTemp = (Pixel *)ALLOCATE_LOCAL(npix * sizeof(Pixel))))
+    if(!(ppixTemp = (Pixel *)xalloc(npix * sizeof(Pixel))))
 	return(BadAlloc);
     ok = AllocCP(pmap, pmap->red, c, r, contig, ppixTemp, pmask);
 
@@ -1889,7 +1883,7 @@ AllocPseudo (int client, ColormapPtr pmap, int c, int r, Bool contig,
 	pmap->numPixelsRed[client] += npix;
 	pmap->freeRed -= npix;
     }
-    DEALLOCATE_LOCAL(ppixTemp);
+    xfree(ppixTemp);
     return (ok ? Success : BadAlloc);
 }
 
@@ -2089,7 +2083,7 @@ AllocShared (ColormapPtr pmap, Pixel *ppix, int c, int r, int g, int b,
 
     npixClientNew = c << (r + g + b);
     npixShared = (c << r) + (c << g) + (c << b);
-    psharedList = (SHAREDCOLOR **)ALLOCATE_LOCAL(npixShared *
+    psharedList = (SHAREDCOLOR **)xalloc(npixShared *
 						 sizeof(SHAREDCOLOR *));
     if (!psharedList)
 	return FALSE;
@@ -2204,7 +2198,7 @@ AllocShared (ColormapPtr pmap, Pixel *ppix, int c, int r, int g, int b,
 	    }
 	}
     }
-    DEALLOCATE_LOCAL(psharedList);
+    xfree(psharedList);
     return TRUE;
 }
 
@@ -2409,10 +2403,10 @@ FreeCo (ColormapPtr pmap, int client, int color, int npixIn, Pixel *ppixIn, Pixe
 _X_EXPORT int
 StoreColors (ColormapPtr pmap, int count, xColorItem *defs)
 {
-    register Pixel 	pix;
-    register xColorItem *pdef;
-    register EntryPtr 	pent, pentT, pentLast;
-    register VisualPtr	pVisual;
+    Pixel 	pix;
+    xColorItem *pdef;
+    EntryPtr 	pent, pentT, pentLast;
+    VisualPtr	pVisual;
     SHAREDCOLOR		*pred, *pgreen, *pblue;
     int			n, ChgRed, ChgGreen, ChgBlue, idef;
     int			class, errVal = Success;
@@ -2679,7 +2673,7 @@ IsMapInstalled(Colormap map, WindowPtr pWin)
     Colormap	*pmaps;
     int		imap, nummaps, found;
 
-    pmaps = (Colormap *) ALLOCATE_LOCAL( 
+    pmaps = (Colormap *) xalloc( 
              pWin->drawable.pScreen->maxInstalledCmaps * sizeof(Colormap));
     if(!pmaps)
 	return(FALSE);
@@ -2694,6 +2688,6 @@ IsMapInstalled(Colormap map, WindowPtr pWin)
 	    break;
 	}
     }
-    DEALLOCATE_LOCAL(pmaps);
+    xfree(pmaps);
     return (found);
 }

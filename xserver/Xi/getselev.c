@@ -56,14 +56,10 @@ SOFTWARE.
 #include <dix-config.h>
 #endif
 
-#include <X11/X.h>	/* for inputstr.h    */
-#include <X11/Xproto.h>	/* Request macro     */
 #include <X11/extensions/XI.h>
 #include <X11/extensions/XIproto.h>
 #include "inputstr.h"	/* DeviceIntPtr      */
 #include "windowstr.h"	/* window struct     */
-#include "extnsionst.h"
-#include "extinit.h"	/* LookupDeviceIntRec */
 #include "exglobals.h"
 #include "swaprep.h"
 
@@ -77,9 +73,9 @@ SOFTWARE.
  */
 
 int
-SProcXGetSelectedExtensionEvents(register ClientPtr client)
+SProcXGetSelectedExtensionEvents(ClientPtr client)
 {
-    register char n;
+    char n;
 
     REQUEST(xGetSelectedExtensionEventsReq);
     swaps(&stuff->length, n);
@@ -96,10 +92,9 @@ SProcXGetSelectedExtensionEvents(register ClientPtr client)
  */
 
 int
-ProcXGetSelectedExtensionEvents(register ClientPtr client)
+ProcXGetSelectedExtensionEvents(ClientPtr client)
 {
-    int i;
-    int total_length = 0;
+    int i, rc, total_length = 0;
     xGetSelectedExtensionEventsReply rep;
     WindowPtr pWin;
     XEventClass *buf = NULL;
@@ -118,11 +113,9 @@ ProcXGetSelectedExtensionEvents(register ClientPtr client)
     rep.this_client_count = 0;
     rep.all_clients_count = 0;
 
-    if (!(pWin = LookupWindow(stuff->window, client))) {
-	SendErrorToClient(client, IReqCode, X_GetSelectedExtensionEvents, 0,
-			  BadWindow);
-	return Success;
-    }
+    rc = dixLookupWindow(&pWin, stuff->window, client, DixGetAttrAccess);
+    if (rc != Success)
+	return rc;
 
     if ((pOthers = wOtherInputMasks(pWin)) != 0) {
 	for (others = pOthers->inputClients; others; others = others->next)
@@ -177,7 +170,7 @@ void
 SRepXGetSelectedExtensionEvents(ClientPtr client, int size,
 				xGetSelectedExtensionEventsReply * rep)
 {
-    register char n;
+    char n;
 
     swaps(&rep->sequenceNumber, n);
     swapl(&rep->length, n);

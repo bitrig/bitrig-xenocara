@@ -1,11 +1,7 @@
- 
 #ifdef HAVE_XORG_CONFIG_H
 #include <xorg-config.h>
 #endif
 
-#ifdef __UNIXOS2__
-#define I_NEED_OS2_H
-#endif
 #include <X11/X.h>
 #include "xf86.h"
 #include "xf86Priv.h"
@@ -22,7 +18,7 @@ xf86UDelay(long usec)
     int sigio;
 
     sigio = xf86BlockSIGIO();
-    xf86usleep(usec);
+    usleep(usec);
     xf86UnblockSIGIO(sigio);
 #endif
 

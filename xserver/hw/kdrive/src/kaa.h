@@ -1,6 +1,4 @@
 /*
- * $RCSId: $
- *
  * Copyright © 2001 Keith Packard
  *
  * Partly based on code that is Copyright © The XFree86 Project Inc.
@@ -29,11 +27,14 @@
 
 #include "picturestr.h"
 
-#define KaaGetScreenPriv(s)	((KaaScreenPrivPtr)(s)->devPrivates[kaaScreenPrivateIndex].ptr)
+#define KaaGetScreenPriv(s) ((KaaScreenPrivPtr) \
+    dixLookupPrivate(&(s)->devPrivates, kaaScreenPrivateKey))
 #define KaaScreenPriv(s)	KaaScreenPrivPtr    pKaaScr = KaaGetScreenPriv(s)
 
-#define KaaGetPixmapPriv(p)	((KaaPixmapPrivPtr)(p)->devPrivates[kaaPixmapPrivateIndex].ptr)
-#define KaaSetPixmapPriv(p,a)	((p)->devPrivates[kaaPixmapPrivateIndex].ptr = (pointer) (a))
+#define KaaGetPixmapPriv(p) ((KaaPixmapPrivPtr) \
+    dixLookupPrivate(&(p)->devPrivates, kaaPixmapPrivateKey))
+#define KaaSetPixmapPriv(p,a) \
+    dixSetPrivate(&(p)->devPrivates, kaaPixmapPrivateKey, a)
 #define KaaPixmapPriv(p)	KaaPixmapPrivPtr pKaaPixmap = KaaGetPixmapPriv(p)
 
 typedef struct {
@@ -48,8 +49,8 @@ typedef struct {
     Bool	    dirty;
 } KaaPixmapPrivRec, *KaaPixmapPrivPtr;
 
-extern int kaaScreenPrivateIndex;
-extern int kaaPixmapPrivateIndex;
+extern DevPrivateKey kaaScreenPrivateKey;
+extern DevPrivateKey kaaPixmapPrivateKey;
 
 
 void

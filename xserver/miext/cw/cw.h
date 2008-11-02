@@ -19,7 +19,6 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-/* $Header: /home/thib/scm/openbsd-cvs/xenocara/xserver/miext/cw/cw.h,v 1.1 2006/11/26 18:15:05 matthieu Exp $ */
 
 #ifdef HAVE_DIX_CONFIG_H
 #include <dix-config.h>
@@ -27,6 +26,7 @@
 
 #include "gcstruct.h"
 #include "picturestr.h"
+#include "privates.h"
 
 /*
  * One of these structures is allocated per GC that gets used with a window with
@@ -44,10 +44,10 @@ typedef struct {
     GCFuncs	    *wrapFuncs;	    /* wrapped funcs */
 } cwGCRec, *cwGCPtr;
 
-extern int cwGCIndex;
+extern DevPrivateKey cwGCKey;
 
-#define getCwGC(pGC)	((cwGCPtr)(pGC)->devPrivates[cwGCIndex].ptr)
-#define setCwGC(pGC,p)	((pGC)->devPrivates[cwGCIndex].ptr = (pointer) (p))
+#define getCwGC(pGC) ((cwGCPtr)dixLookupPrivate(&(pGC)->devPrivates, cwGCKey))
+#define setCwGC(pGC,p) dixSetPrivate(&(pGC)->devPrivates, cwGCKey, p)
 
 /*
  * One of these structures is allocated per Picture that gets used with a
@@ -60,17 +60,17 @@ typedef struct {
     unsigned long   stateChanges;
 } cwPictureRec, *cwPicturePtr;
 
-#define getCwPicture(pPicture)	\
-    (pPicture->pDrawable ? (cwPicturePtr)(pPicture)->devPrivates[cwPictureIndex].ptr : 0)
-#define setCwPicture(pPicture,p) ((pPicture)->devPrivates[cwPictureIndex].ptr = (pointer) (p))
+#define getCwPicture(pPicture) (pPicture->pDrawable ? \
+    (cwPicturePtr)dixLookupPrivate(&(pPicture)->devPrivates, cwPictureKey) : 0)
+#define setCwPicture(pPicture,p) dixSetPrivate(&(pPicture)->devPrivates, cwPictureKey, p)
 
-extern int  cwPictureIndex;
+extern DevPrivateKey cwPictureKey;
+extern DevPrivateKey cwWindowKey;
 
-extern int cwWindowIndex;
-
-#define cwWindowPrivate(pWindow)    ((pWindow)->devPrivates[cwWindowIndex].ptr)
+#define cwWindowPrivate(pWin) dixLookupPrivate(&(pWin)->devPrivates, cwWindowKey)
 #define getCwPixmap(pWindow)	    ((PixmapPtr) cwWindowPrivate(pWindow))
-#define setCwPixmap(pWindow,pPixmap) (cwWindowPrivate(pWindow) = (pointer) (pPixmap))
+#define setCwPixmap(pWindow,pPixmap) \
+    dixSetPrivate(&(pWindow)->devPrivates, cwWindowKey, pPixmap)
 
 #define cwDrawableIsRedirWindow(pDraw)					\
 	((pDraw)->type == DRAWABLE_WINDOW &&				\
@@ -85,8 +85,6 @@ typedef struct {
     GetSpansProcPtr		GetSpans;
     CreateGCProcPtr		CreateGC;
 
-    PaintWindowBackgroundProcPtr PaintWindowBackground;
-    PaintWindowBorderProcPtr	PaintWindowBorder;
     CopyWindowProcPtr		CopyWindow;
 
     GetWindowPixmapProcPtr	GetWindowPixmap;
@@ -101,7 +99,6 @@ typedef struct {
     ValidatePictureProcPtr	ValidatePicture;
 
     CompositeProcPtr		Composite;
-    GlyphsProcPtr		Glyphs;
     CompositeRectsProcPtr	CompositeRects;
 
     TrapezoidsProcPtr		Trapezoids;
@@ -113,10 +110,10 @@ typedef struct {
 #endif
 } cwScreenRec, *cwScreenPtr;
 
-extern int cwScreenIndex;
+extern DevPrivateKey cwScreenKey;
 
-#define getCwScreen(pScreen)	((cwScreenPtr)(pScreen)->devPrivates[cwScreenIndex].ptr)
-#define setCwScreen(pScreen,p)	((cwScreenPtr)(pScreen)->devPrivates[cwScreenIndex].ptr = (p))
+#define getCwScreen(pScreen) ((cwScreenPtr)dixLookupPrivate(&(pScreen)->devPrivates, cwScreenKey))
+#define setCwScreen(pScreen,p) dixSetPrivate(&(pScreen)->devPrivates, cwScreenKey, p)
 
 #define CW_OFFSET_XYPOINTS(ppt, npt) do { \
     DDXPointPtr _ppt = (DDXPointPtr)(ppt); \
@@ -169,7 +166,3 @@ cwFiniRender (ScreenPtr pScreen);
 
 void
 miInitializeCompositeWrapper(ScreenPtr pScreen);
-
-/* Must be called before miInitializeCompositeWrapper */
-void
-miDisableCompositeWrapper(ScreenPtr pScreen);

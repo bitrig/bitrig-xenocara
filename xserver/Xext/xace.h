@@ -20,15 +20,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _XACE_H
 #define _XACE_H
 
-#define XACE_EXTENSION_NAME		"XAccessControlExtension"
-#define XACE_MAJOR_VERSION		1
+#ifdef XACE
+
+#define XACE_MAJOR_VERSION		2
 #define XACE_MINOR_VERSION		0
 
-#include "pixmap.h"     /* for DrawablePtr */
-#include "regionstr.h"  /* for RegionPtr */
+#include "pixmap.h"
+#include "region.h"
+#include "window.h"
+#include "property.h"
+#include "selection.h"
 
-#define XaceNumberEvents		0
-#define XaceNumberErrors		0
+/* Default window background */
+#define XaceBackgroundNoneState(w) ((w)->forcedBG ? BackgroundPixel : None)
 
 /* security hooks */
 /* Constants used to identify the available security hooks
@@ -38,16 +42,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define XACE_RESOURCE_ACCESS		2
 #define XACE_DEVICE_ACCESS		3
 #define XACE_PROPERTY_ACCESS		4
-#define XACE_DRAWABLE_ACCESS		5
-#define XACE_MAP_ACCESS			6
-#define XACE_BACKGRND_ACCESS		7
+#define XACE_SEND_ACCESS		5
+#define XACE_RECEIVE_ACCESS		6
+#define XACE_CLIENT_ACCESS		7
 #define XACE_EXT_ACCESS			8
-#define XACE_HOSTLIST_ACCESS		9
-#define XACE_SITE_POLICY		10
-#define XACE_DECLARE_EXT_SECURE		11
-#define XACE_AUTH_AVAIL			12
-#define XACE_KEY_AVAIL			13
-#define XACE_WINDOW_INIT		14
+#define XACE_SERVER_ACCESS		9
+#define XACE_SELECTION_ACCESS		10
+#define XACE_SCREEN_ACCESS		11
+#define XACE_SCREENSAVER_ACCESS		12
+#define XACE_AUTH_AVAIL			13
+#define XACE_KEY_AVAIL			14
 #define XACE_AUDIT_BEGIN		15
 #define XACE_AUDIT_END			16
 #define XACE_NUM_HOOKS			17
@@ -60,6 +64,15 @@ extern int XaceHook(
     int /*hook*/,
     ... /*appropriate args for hook*/
     ); 
+
+/* Special-cased hook functions
+ */
+extern int XaceHookDispatch(ClientPtr ptr, int major);
+extern int XaceHookPropertyAccess(ClientPtr ptr, WindowPtr pWin,
+				  PropertyPtr *ppProp, Mask access_mode);
+extern int XaceHookSelectionAccess(ClientPtr ptr,
+				   Selection **ppSel, Mask access_mode);
+extern void XaceHookAuditEnd(ClientPtr ptr, int result);
 
 /* Register a callback for a given hook.
  */
@@ -75,21 +88,6 @@ extern int XaceHook(
 /* From the original Security extension...
  */
 
-/* Hook return codes */
-#define SecurityAllowOperation  0
-#define SecurityIgnoreOperation 1
-#define SecurityErrorOperation  2
-
-/* Proc vectors for untrusted clients, swapped and unswapped versions.
- * These are the same as the normal proc vectors except that extensions
- * that haven't declared themselves secure will have ProcBadRequest plugged
- * in for their major opcode dispatcher.  This prevents untrusted clients
- * from guessing extension major opcodes and using the extension even though
- * the extension can't be listed or queried.
- */
-extern int (*UntrustedProcVector[256])(ClientPtr client);
-extern int (*SwappedUntrustedProcVector[256])(ClientPtr client);
-
 extern void XaceCensorImage(
     ClientPtr client,
     RegionPtr pVisibleRegion,
@@ -99,5 +97,30 @@ extern void XaceCensorImage(
     unsigned int format,
     char * pBuf
     );
+
+#else /* XACE */
+
+/* Default window background */
+#define XaceBackgroundNoneState(w)		None
+
+/* Define calls away when XACE is not being built. */
+
+#ifdef __GNUC__
+#define XaceHook(args...) Success
+#define XaceHookDispatch(args...) Success
+#define XaceHookPropertyAccess(args...) Success
+#define XaceHookSelectionAccess(args...) Success
+#define XaceHookAuditEnd(args...) { ; }
+#define XaceCensorImage(args...) { ; }
+#else
+#define XaceHook(...) Success
+#define XaceHookDispatch(...) Success
+#define XaceHookPropertyAccess(...) Success
+#define XaceHookSelectionAccess(...) Success
+#define XaceHookAuditEnd(...) { ; }
+#define XaceCensorImage(...) { ; }
+#endif
+
+#endif /* XACE */
 
 #endif /* _XACE_H */

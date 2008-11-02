@@ -67,7 +67,6 @@ ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
 SOFTWARE.
 
 */
-/* $XConsortium: ppcWindow.c /main/5 1996/02/21 17:58:43 kaleb $ */
 
 #ifdef HAVE_XORG_CONFIG_H
 #include <xorg-config.h>
@@ -124,7 +123,7 @@ xf4bppCopyWindow(pWin, ptOldOrg, prgnSrc)
 		/* walk source bottom to top */
 		/* keep ordering in each band, reverse order of bands */
 		if ( !( pboxNew =
-			(BoxPtr) ALLOCATE_LOCAL( sizeof( BoxRec ) * nbox ) ) )
+			(BoxPtr) xalloc( sizeof( BoxRec ) * nbox ) ) )
 			return ;
 		pboxBase = pboxNext = pbox+nbox - 1 ;
 		while ( pboxBase >= pbox ) {
@@ -159,7 +158,7 @@ xf4bppCopyWindow(pWin, ptOldOrg, prgnSrc)
         else if ( dx < 0 ) {
 	/* walk source right to left */
 	    /* reverse order of rects in each band */
-	    if ( !( pboxNew = (BoxPtr)ALLOCATE_LOCAL(sizeof(BoxRec) * nbox) ) )
+	    if ( !( pboxNew = (BoxPtr)xalloc(sizeof(BoxRec) * nbox) ) )
 		return ;
 	    pboxBase = pboxNext = pbox ;
 	    while (pboxBase < pbox+nbox)
@@ -191,7 +190,7 @@ xf4bppCopyWindow(pWin, ptOldOrg, prgnSrc)
 
     /* free up stuff */
     if ( pboxNew )
-	DEALLOCATE_LOCAL( pboxNew ) ;
+	xfree( pboxNew ) ;
 
     REGION_DESTROY(pWin->drawable.pScreen, prgnDst);
 }
@@ -215,15 +214,7 @@ Bool
 xf4bppCreateWindowForXYhardware(pWin)
 register WindowPtr pWin ;
 {
-    register mfbPrivWin *pPrivWin;
-
     TRACE(("xf4bppCreateWindowForXYhardware (pWin= 0x%x)\n", pWin));
-
-    pPrivWin = (mfbPrivWin *)(pWin->devPrivates[mfbGetWindowPrivateIndex()].ptr);
-    pPrivWin->pRotatedBorder = NullPixmap;
-    pPrivWin->pRotatedBackground = NullPixmap;
-    pPrivWin->fastBackground = 0;
-    pPrivWin->fastBorder = 0;
 
     return TRUE;
 }

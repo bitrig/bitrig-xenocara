@@ -56,14 +56,10 @@ SOFTWARE.
 #include <dix-config.h>
 #endif
 
-#include <X11/X.h>	/* for inputstr.h    */
-#include <X11/Xproto.h>	/* Request macro     */
 #include "inputstr.h"	/* DeviceIntPtr      */
 #include "windowstr.h"	/* window structs    */
 #include <X11/extensions/XI.h>
 #include <X11/extensions/XIproto.h>
-#include "extnsionst.h"
-#include "extinit.h"	/* LookupDeviceIntRec */
 #include "exglobals.h"
 #include "swaprep.h"
 
@@ -79,9 +75,9 @@ extern int ExtEventIndex;
  */
 
 int
-SProcXGetDeviceDontPropagateList(register ClientPtr client)
+SProcXGetDeviceDontPropagateList(ClientPtr client)
 {
-    register char n;
+    char n;
 
     REQUEST(xGetDeviceDontPropagateListReq);
     swaps(&stuff->length, n);
@@ -97,10 +93,10 @@ SProcXGetDeviceDontPropagateList(register ClientPtr client)
  */
 
 int
-ProcXGetDeviceDontPropagateList(register ClientPtr client)
+ProcXGetDeviceDontPropagateList(ClientPtr client)
 {
     CARD16 count = 0;
-    int i;
+    int i, rc;
     XEventClass *buf = NULL, *tbuf;
     WindowPtr pWin;
     xGetDeviceDontPropagateListReply rep;
@@ -115,13 +111,9 @@ ProcXGetDeviceDontPropagateList(register ClientPtr client)
     rep.length = 0;
     rep.count = 0;
 
-    pWin = (WindowPtr) LookupWindow(stuff->window, client);
-    if (!pWin) {
-	client->errorValue = stuff->window;
-	SendErrorToClient(client, IReqCode, X_GetDeviceDontPropagateList, 0,
-			  BadWindow);
-	return Success;
-    }
+    rc = dixLookupWindow(&pWin, stuff->window, client, DixGetAttrAccess);
+    if (rc != Success)
+	return rc;
 
     if ((others = wOtherInputMasks(pWin)) != 0) {
 	for (i = 0; i < EMASKSIZE; i++)
@@ -188,7 +180,7 @@ void
 SRepXGetDeviceDontPropagateList(ClientPtr client, int size,
 				xGetDeviceDontPropagateListReply * rep)
 {
-    register char n;
+    char n;
 
     swaps(&rep->sequenceNumber, n);
     swapl(&rep->length, n);

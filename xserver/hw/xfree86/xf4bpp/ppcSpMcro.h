@@ -20,7 +20,6 @@
  * SOFTWARE.
  *
 */
-/* $XConsortium: ppcSpMcro.h /main/3 1996/02/21 17:58:36 kaleb $ */
 
 /* This screwy macro is used in all the spans routines and you find
    it all over the place, so it is a macro just to tidy things up.
@@ -29,11 +28,11 @@
 #define SETSPANPTRS(IN,N,IPW,PW,IPPT,PPT,FPW,FPPT,FSORT)		\
 	{								\
 	N = IN * miFindMaxBand(pGC->pCompositeClip);			\
-	if(!(PW = (int *)ALLOCATE_LOCAL(N * sizeof(int))))		\
+	if(!(PW = (int *)xalloc(N * sizeof(int))))		\
 		return;							\
-	if(!(PPT = (DDXPointRec *)ALLOCATE_LOCAL(N * sizeof(DDXPointRec)))) \
+	if(!(PPT = (DDXPointRec *)xalloc(N * sizeof(DDXPointRec)))) \
 		{							\
-		DEALLOCATE_LOCAL(PW);					\
+		free(PW);					\
 		return;							\
     		}							\
 	FPW = PW;							\

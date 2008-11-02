@@ -92,18 +92,18 @@ miPolyGlyphBlt(pDrawable, pGC, x, y, nglyph, ppci, pglyphBase)
 {
     int width, height;
     PixmapPtr pPixmap;
-    int nbyLine;			/* bytes per line of padded pixmap */
+    int nbyLine;		/* bytes per line of padded pixmap */
     FontPtr pfont;
     GCPtr pGCtmp;
-    register int i;
-    register int j;
-    unsigned char *pbits;		/* buffer for PutImage */
-    register unsigned char *pb;		/* temp pointer into buffer */
-    register CharInfoPtr pci;		/* currect char info */
-    register unsigned char *pglyph;	/* pointer bits in glyph */
-    int gWidth, gHeight;		/* width and height of glyph */
-    register int nbyGlyphWidth;		/* bytes per scanline of glyph */
-    int nbyPadGlyph;			/* server padded line of glyph */
+    int i;
+    int j;
+    unsigned char *pbits;	/* buffer for PutImage */
+    unsigned char *pb;		/* temp pointer into buffer */
+    CharInfoPtr pci;		/* currect char info */
+    unsigned char *pglyph;	/* pointer bits in glyph */
+    int gWidth, gHeight;	/* width and height of glyph */
+    int nbyGlyphWidth;		/* bytes per scanline of glyph */
+    int nbyPadGlyph;		/* server padded line of glyph */
 
     XID gcvals[3];
 
@@ -120,7 +120,8 @@ miPolyGlyphBlt(pDrawable, pGC, x, y, nglyph, ppci, pglyphBase)
 	     FONTMAXBOUNDS(pfont,descent);
 
     pPixmap = (*pDrawable->pScreen->CreatePixmap)(pDrawable->pScreen,
-						  width, height, 1);
+						  width, height, 1,
+						  CREATE_PIXMAP_USAGE_SCRATCH);
     if (!pPixmap)
 	return;
 
@@ -138,7 +139,7 @@ miPolyGlyphBlt(pDrawable, pGC, x, y, nglyph, ppci, pglyphBase)
     DoChangeGC(pGCtmp, GCFunction|GCForeground|GCBackground, gcvals, 0);
 
     nbyLine = BitmapBytePad(width);
-    pbits = (unsigned char *)ALLOCATE_LOCAL(height*nbyLine);
+    pbits = (unsigned char *)xalloc(height*nbyLine);
     if (!pbits)
     {
 	(*pDrawable->pScreen->DestroyPixmap)(pPixmap);
@@ -189,7 +190,7 @@ miPolyGlyphBlt(pDrawable, pGC, x, y, nglyph, ppci, pglyphBase)
 	x += pci->metrics.characterWidth;
     }
     (*pDrawable->pScreen->DestroyPixmap)(pPixmap);
-    DEALLOCATE_LOCAL(pbits);
+    xfree(pbits);
     FreeScratchGC(pGCtmp);
 }
 

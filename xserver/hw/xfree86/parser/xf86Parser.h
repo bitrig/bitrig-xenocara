@@ -71,7 +71,6 @@
 typedef struct
 {
 	char *file_logfile;
-	char *file_rgbpath;
 	char *file_modulepath;
 	char *file_inputdevs;
 	char *file_fontpath;
@@ -82,6 +81,7 @@ XF86ConfFilesRec, *XF86ConfFilesPtr;
 /* Values for load_type */
 #define XF86_LOAD_MODULE	0
 #define XF86_LOAD_DRIVER	1
+#define XF86_DISABLE_MODULE	2
 
 typedef struct
 {
@@ -97,6 +97,7 @@ XF86LoadRec, *XF86LoadPtr;
 typedef struct
 {
 	XF86LoadPtr mod_load_lst;
+    XF86LoadPtr mod_disable_lst;
 	char *mod_comment;
 }
 XF86ConfModuleRec, *XF86ConfModulePtr;
@@ -306,6 +307,7 @@ typedef struct
 	XF86ConfDisplayPtr scrn_display_lst;
 	XF86OptionPtr scrn_option_lst;
 	char *scrn_comment;
+	int scrn_virtualX, scrn_virtualY;
 }
 XF86ConfScreenRec, *XF86ConfScreenPtr;
 
@@ -469,7 +471,6 @@ XF86ConfModeLinePtr xf86findModeLine(const char *ident, XF86ConfModeLinePtr p);
 XF86ConfScreenPtr xf86findScreen(const char *ident, XF86ConfScreenPtr p);
 XF86ConfInputPtr xf86findInput(const char *ident, XF86ConfInputPtr p);
 XF86ConfInputPtr xf86findInputByDriver(const char *driver, XF86ConfInputPtr p);
-XF86ConfVendorPtr xf86findVendor(const char *name, XF86ConfVendorPtr list);
 XF86ConfVideoAdaptorPtr xf86findVideoAdaptor(const char *ident,
 						XF86ConfVideoAdaptorPtr p);
 

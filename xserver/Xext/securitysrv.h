@@ -72,27 +72,12 @@ typedef struct {
     struct _OtherClients *eventClients; /* clients wanting events */
 } SecurityAuthorizationRec, *SecurityAuthorizationPtr;
 
-/* The following callback is called when a GenerateAuthorization request
- * is processed to sanity check the group argument.  The call data will
- * be a pointer to a SecurityValidateGroupInfoRec (below).  
- * Functions registered on this callback are expected to examine the
- * group and set the valid field to TRUE if they recognize the group as a
- * legitimate group.  If they don't recognize it, they should not change the
- * valid field.
- */
-extern CallbackListPtr SecurityValidateGroupCallback;
 typedef struct {
     XID group;	/* the group that was sent in GenerateAuthorization */
     Bool valid; /* did anyone recognize it? if so, set to TRUE */
 } SecurityValidateGroupInfoRec;
 
-extern int XSecurityOptions(int argc, char **argv, int i);
-
 /* Give this value or higher to the -audit option to get security messages */
 #define SECURITY_AUDIT_LEVEL 4
-
-#define SECURITY_POLICY_FILE_VERSION "version-1"
-
-extern char **SecurityGetSitePolicyStrings(int *n);
 
 #endif /* _SECURITY_SRV_H */

@@ -1,28 +1,32 @@
 bin_PROGRAMS = Xvfb
+noinst_LIBRARIES = libfbcmap.a
+
+AM_CFLAGS = -DHAVE_DIX_CONFIG_H \
+            -DNO_HW_ONLY_EXTS \
+            -DNO_MODULE_EXTS \
+            $(XVFBMODULES_CFLAGS) \
+	    $(DIX_CFLAGS)
 
 SRCS =	InitInput.c \
 	InitOutput.c \
 	lk201kbd.h \
 	$(top_srcdir)/Xext/dpmsstubs.c \
 	$(top_srcdir)/Xi/stubs.c \
-	$(top_srcdir)/mi/miinitext.c \
-	$(top_srcdir)/fb/fbcmap.c
+	$(top_srcdir)/mi/miinitext.c
+
+libfbcmap_a_CFLAGS = $(AM_CFLAGS)
+libfbcmap_a_SOURCES = $(top_srcdir)/fb/fbcmap_mi.c
 
 Xvfb_SOURCES = $(SRCS)
 
-Xvfb_LDADD = $(XORG_CORE_LIBS) \
-             $(XVFB_LIBS) \
-             $(XSERVER_LIBS) \
-             $(EXTENSION_LIBS) \
-             $(XVFBMODULES_LIBS)
+XVFB_LIBS = \
+        @XVFB_LIBS@ \
+	libfbcmap.a \
+	$(XSERVER_LIBS)
 
-Xvfb_LDFLAGS =
-
-AM_CFLAGS = -DHAVE_DIX_CONFIG_H \
-            -DNO_HW_ONLY_EXTS \
-            -DNO_MODULE_EXTS \
- \
-            $(XVFBMODULES_CFLAGS)
+Xvfb_LDADD = $(XVFB_LIBS) $(XVFB_SYS_LIBS) $(XSERVER_SYS_LIBS)
+Xvfb_DEPENDENCIES = $(XVFB_LIBS)
+Xvfb_LDFLAGS = $(LD_EXPORT_SYMBOLS_FLAG)
 
 # Man page
 include $(top_srcdir)/cpprules.in

@@ -1,4 +1,3 @@
-/* $XFree86$ */
 /*
  * Copyright 2001-2004 Red Hat Inc., Durham, North Carolina.
  *
@@ -83,13 +82,9 @@ static GCOps dmxGCOps = {
     dmxPushPixels
 };
 
-/** Initialize the GC on \a pScreen, which currently involves allocating
- *  the GC private associated with this screen. */
+/** Initialize the GC on \a pScreen */
 Bool dmxInitGC(ScreenPtr pScreen)
 {
-    if (!AllocateGCPrivate(pScreen, dmxGCPrivateIndex, sizeof(dmxGCPrivRec)))
-	return FALSE;
-
     return TRUE;
 }
 

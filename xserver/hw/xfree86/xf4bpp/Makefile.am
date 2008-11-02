@@ -6,7 +6,6 @@ libxf4bpp_la_LDFLAGS = -avoid-version
 
 libxf4bpp_la_SOURCES = \
         ppcArea.c \
-        ppcBStore.c \
         ppcClip.c \
         ppcCpArea.c \
         ppcCReduce.c \
@@ -18,9 +17,7 @@ libxf4bpp_la_SOURCES = \
         ppcGetSp.c \
         ppcImg.c \
         ppcPixmap.c \
-        ppcPntWin.c \
         ppcPolyPnt.c \
-        ppcPolyRec.c \
         ppcQuery.c \
         ppcRslvC.c \
         ppcSetSp.c \
@@ -46,8 +43,6 @@ libxf4bpp_la_SOURCES = \
         mfbzerarc.c \
         vgamodule.c
 
-libxf4bpp_la_LIBADD = ../xf1bpp/libxf1bpp.la
-
 EXTRA_DIST = OScompiler.h ibmTrace.h ppcGCstr.h ppcSpMcro.h vgaReg.h \
              vgaVideo.h wm3.h NOTES
 
@@ -59,4 +54,4 @@ mfbseg.c:
 
 INCLUDES = $(XORG_INCS) -I$(srcdir)/../xf1bpp -I$(top_srcdir)/mfb
 
-AM_CFLAGS = $(XORG_CFLAGS)
+AM_CFLAGS = $(DIX_CFLAGS) $(XORG_CFLAGS)

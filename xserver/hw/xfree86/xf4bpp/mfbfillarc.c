@@ -27,8 +27,6 @@ in this Software without prior written authorization from the X Consortium.
 
 /* GJA -- Took mfb code and modified it. */
 
-/* $XConsortium: mfbfillarc.c /main/4 1996/02/21 17:56:37 kaleb $ */
-
 #ifdef HAVE_XORG_CONFIG_H
 #include <xorg-config.h>
 #endif
@@ -255,7 +253,8 @@ xf4bppPolyFillArcSolid
     mfbPrivGC *priv;
     int rop;
 
-    priv = (mfbPrivGC *) pGC->devPrivates[mfbGetGCPrivateIndex()].ptr;
+    priv = (mfbPrivGC *)dixLookupPrivate(&pGC->devPrivates,
+					 mfbGetGCPrivateKey());
     rop = priv->rop;
     if ((rop == RROP_NOP) || !(pGC->planemask & 1))
 #else

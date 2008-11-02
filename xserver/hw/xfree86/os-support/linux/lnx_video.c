@@ -22,7 +22,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  */
-/* $XConsortium: lnx_video.c /main/9 1996/10/19 18:06:34 kaleb $ */
 
 #ifdef HAVE_XORG_CONFIG_H
 #include <xorg-config.h>
@@ -62,7 +61,8 @@ static Bool ExtendedEnabled = FALSE;
 #elif !defined(__powerpc__) && \
       !defined(__mc68000__) && \
       !defined(__sparc__) && \
-      !defined(__mips__)
+      !defined(__mips__) && \
+      !defined(__arm__)
 
 /*
  * Due to conflicts with "compiler.h", don't rely on <sys/io.h> to declare
@@ -142,17 +142,8 @@ mtrr_open(int verbosity)
 	/* Only report absence of /proc/mtrr once. */
 	static Bool warned = FALSE;
 
-	char **fn;
-	static char *mtrr_files[] = {
-		"/dev/cpu/mtrr",	/* Possible future name */
-		"/proc/mtrr",		/* Current name */
-		NULL
-	};
-
 	if (mtrr_fd == MTRR_FD_UNOPENED) { 
-		/* So open it. */
-		for (fn = mtrr_files; mtrr_fd < 0 && *fn; fn++)
-			mtrr_fd = open(*fn, O_WRONLY);
+		mtrr_fd = open("/proc/mtrr", O_WRONLY);
 
 		if (mtrr_fd < 0)
 			mtrr_fd = MTRR_FD_PROBLEM;
@@ -411,7 +402,7 @@ xf86OSInitVidMem(VidMemInfoPtr pVidMem)
 # ifndef JENSEN_SUPPORT
 	  FatalError("Jensen is not supported any more\n"
 		     "If you are intereseted in fixing Jensen support\n"
-		     "please contact xfree86@xfree86.org\n");
+		     "please contact xorg@lists.freedesktop.org\n");
 # else
 	  xf86Msg(X_INFO,"Machine type is Jensen\n");
 	  pVidMem->mapMem = mapVidMemJensen;
@@ -567,7 +558,7 @@ xf86EnableIO(void)
 #endif
 	}
 	close(fd);
-#elif !defined(__mc68000__) && !defined(__sparc__) && !defined(__mips__) && !defined(__sh__) && !defined(__hppa__)
+#elif !defined(__mc68000__) && !defined(__sparc__) && !defined(__mips__) && !defined(__sh__) && !defined(__hppa__) && !defined(__s390__) && !defined(__arm__)
         if (ioperm(0, 1024, 1) || iopl(3)) {
                 if (errno == ENODEV)
                         ErrorF("xf86EnableIOPorts: no I/O ports found\n");
@@ -603,73 +594,21 @@ xf86DisableIO(void)
 	return;
 }
 
-
-/***************************************************************************/
-/* Interrupt Handling section                                              */
-/***************************************************************************/
-
-/* XXX The #ifdefs should be made simpler. */
+/*
+ * Don't use these two functions.  They can't possibly work.  If you actually
+ * need interrupts off for something, you ought to be doing it in the kernel
+ * anyway.
+ */
 
 _X_EXPORT Bool
 xf86DisableInterrupts()
 {
-#if !defined(__mc68000__) && !defined(__powerpc__) && !defined(__sparc__) && !defined(__mips__) && !defined(__ia64__) && !defined(__sh__) && !defined(__hppa__) && !defined(__arm__) && !defined(__s390__)
-	if (!ExtendedEnabled)
-	    if (iopl(3) || ioperm(0, 1024, 1))
-			return (FALSE);
-#endif
-#if defined(__alpha__) || defined(__mc68000__) || defined(__powerpc__) || defined(__sparc__) || defined(__mips__) || defined(__arm__) || defined(__sh__) || defined(__ia64__) || defined(__hppa__) || defined(__s390__)
-#else
-# ifdef __GNUC__
-#  if defined(__ia64__)
-#   if 0
-	__asm__ __volatile__ (";; rsm psr.i;; srlz.d" ::: "memory");
-#   endif
-#  else
-      __asm__ __volatile__("cli");
-#  endif
-# else
-	asm("cli");
-# endif
-#endif
-#if !defined(__mc68000__) && !defined(__powerpc__) && !defined(__sparc__) && !defined(__mips__) && !defined(__sh__) && !defined(__ia64__) && !defined(__hppa__) && !defined(__arm__) && !defined(__s390__)
-	if (!ExtendedEnabled) {
-	    iopl(0);
-	    ioperm(0, 1024, 0);
-	}
-	
-#endif
 	return (TRUE);
 }
 
 _X_EXPORT void
 xf86EnableInterrupts()
 {
-#if !defined(__mc68000__) && !defined(__powerpc__) && !defined(__sparc__) && !defined(__mips__) && !defined(__ia64__) && !defined(__sh__) && !defined(__hppa__) && !defined(__arm__) && !defined(__s390__)
-	if (!ExtendedEnabled)
-	    if (iopl(3) || ioperm(0, 1024, 1))
-			return;
-#endif
-#if defined(__alpha__) || defined(__mc68000__) || defined(__powerpc__) || defined(__sparc__) || defined(__mips__) || defined(__arm__) || defined(__sh__) || defined(__ia64__) || defined(__hppa__) || defined(__s390__)
-#else
-# ifdef __GNUC__
-#  if defined(__ia64__)
-#   if 0
-	__asm__ __volatile__ (";; ssm psr.i;; srlz.d" ::: "memory");
-#   endif
-#  else
-      __asm__ __volatile__("sti");
-#  endif
-# else
-	asm("sti");
-# endif
-#endif
-#if !defined(__mc68000__) && !defined(__powerpc__) && !defined(__sparc__) && !defined(__mips__) && !defined(__sh__) && !defined(__ia64__) && !defined(__hppa__) && !defined(__arm__) && !defined(__s390__)
-	if (!ExtendedEnabled) {
-	    iopl(0);
-	    ioperm(0, 1024, 0);
-	}
-#endif
 	return;
 }
 

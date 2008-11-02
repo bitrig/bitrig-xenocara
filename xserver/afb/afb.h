@@ -55,11 +55,11 @@ SOFTWARE.
 #include "gc.h"
 #include "colormap.h"
 #include "regionstr.h"
+#include "privates.h"
 #include "mibstore.h"
 #include "mfb.h"
 
 extern int afbInverseAlu[];
-extern int afbScreenPrivateIndex;
 /* warning: PixelType definition duplicated in maskbits.h */
 #ifndef PixelType
 #define PixelType CARD32
@@ -78,27 +78,6 @@ extern void afbDoBitblt(
 	unsigned long /*planemask*/
 );
 
-extern RegionPtr afbBitBlt(
-	DrawablePtr /*pSrc*/,
-	DrawablePtr /*pDst*/,
-	GCPtr /*pGC*/,
-	int /*srcx*/,
-	int /*srcy*/,
-	int /*width*/,
-	int /*height*/,
-	int /*dstx*/,
-	int /*dsty*/,
-	void (*doBitBlt)(
-		DrawablePtr /*pSrc*/,
-		DrawablePtr /*pDst*/,
-		int /*alu*/,
-		RegionPtr /*prgnDst*/,
-		DDXPointPtr /*pptSrc*/,
-		unsigned long /*planemask*/
-        ),
-	unsigned long /*planemask*/
-);
-
 extern RegionPtr afbCopyArea(
 	DrawablePtr /*pSrcDrawable*/,
 	DrawablePtr /*pDstDrawable*/,
@@ -111,27 +90,6 @@ extern RegionPtr afbCopyArea(
 	int /*dsty*/
 );
 
-extern RegionPtr afbCopyPlane(
-	DrawablePtr /*pSrcDrawable*/,
-	DrawablePtr /*pDstDrawable*/,
-	GCPtr/*pGC*/,
-	int /*srcx*/,
-	int /*srcy*/,
-	int /*width*/,
-	int /*height*/,
-	int /*dstx*/,
-	int /*dsty*/,
-	unsigned long /*plane*/
-);
-
-extern void afbCopy1ToN(
-	DrawablePtr /*pSrc*/,
-	DrawablePtr /*pDst*/,
-	int /*alu*/,
-	RegionPtr /*prgnDst*/,
-	DDXPointPtr /*pptSrc*/,
-	unsigned long /*planemask*/
-);
 /* afbbltC.c */
 
 extern void afbDoBitbltCopy(
@@ -224,23 +182,7 @@ extern void afbBresD(
 	unsigned char * /*rrops*/,
 	unsigned char * /*bgrrops*/
 );
-/* afbbstore.c */
 
-extern void afbSaveAreas(
-	PixmapPtr /*pPixmap*/,
-	RegionPtr /*prgnSave*/,
-	int /*xorg*/,
-	int /*yorg*/,
-	WindowPtr /*pWin*/
-);
-
-extern void afbRestoreAreas(
-	PixmapPtr /*pPixmap*/,
-	RegionPtr /*prgnRestore*/,
-	int /*xorg*/,
-	int /*yorg*/,
-	WindowPtr /*pWin*/
-);
 /* afbclip.c */
 
 extern RegionPtr afbPixmapToRegion(
@@ -271,23 +213,6 @@ extern void afbResolveColor(
 
 extern Bool afbInitializeColormap(
 	ColormapPtr /*pmap*/
-);
-
-extern int afbExpandDirectColors(
-	ColormapPtr /*pmap*/,
-	int /*ndefs*/,
-	xColorItem * /*indefs*/,
-	xColorItem * /*outdefs*/
-);
-
-extern Bool afbCreateDefColormap(
-	ScreenPtr /*pScreen*/
-);
-
-extern Bool afbSetVisualTypes(
-	int /*depth*/,
-	int /*visuals*/,
-	int /*bitsPerRGB*/
 );
 
 extern Bool afbInitVisuals(
@@ -410,35 +335,12 @@ extern Bool afbCreateGC(
 	GCPtr /*pGC*/
 );
 
-extern void afbValidateGC(
-	GCPtr /*pGC*/,
-	unsigned long /*changes*/,
-	DrawablePtr /*pDrawable*/
-);
-
-extern void afbDestroyGC(
-	GCPtr /*pGC*/
-);
-
 extern void afbReduceRop(
 	int /*alu*/,
 	Pixel /*src*/,
 	unsigned long /*planemask*/,
 	int /*depth*/,
 	unsigned char * /*rrops*/
-);
-
-extern void afbReduceOpaqueStipple (
-	Pixel /*fg*/,
-	Pixel /*bg*/,
-	unsigned long /*planemask*/,
-	int /*depth*/,
-	unsigned char * /*rrops*/
-);
-
-extern void afbComputeCompositeClip(
-   GCPtr /*pGC*/,
-   DrawablePtr /*pDrawable*/
 );
 
 /* afbgetsp.c */
@@ -581,18 +483,11 @@ extern PixmapPtr afbCreatePixmap(
 	ScreenPtr /*pScreen*/,
 	int /*width*/,
 	int /*height*/,
-	int /*depth*/
+	int /*depth*/,
+	unsigned /*usage_hint*/
 );
 
 extern Bool afbDestroyPixmap(
-	PixmapPtr /*pPixmap*/
-);
-
-extern PixmapPtr afbCopyPixmap(
-	PixmapPtr /*pSrc*/
-);
-
-extern void afbPadPixmap(
 	PixmapPtr /*pPixmap*/
 );
 
@@ -611,11 +506,6 @@ extern void afbCopyRotatePixmap(
 	PixmapPtr * /*ppdstPix*/,
 	int /*xrot*/,
 	int /*yrot*/
-);
-extern void afbPaintWindow(
-	WindowPtr /*pWin*/,
-	RegionPtr /*pRegion*/,
-	int /*what*/
 );
 /* afbpolypnt.c */
 
@@ -637,19 +527,8 @@ extern void afbPushPixels(
 	int /*xOrg*/,
 	int /*yOrg*/
 );
-/* afbscrclse.c */
 
-extern Bool afbCloseScreen(
-	int /*index*/,
-	ScreenPtr /*pScreen*/
-);
 /* afbscrinit.c */
-
-extern Bool afbAllocatePrivates(
-	ScreenPtr /*pScreen*/,
-	int * /*pWinIndex*/,
-	int * /*pGCIndex*/
-);
 
 extern Bool afbScreenInit(
 	ScreenPtr /*pScreen*/,
@@ -659,15 +538,6 @@ extern Bool afbScreenInit(
 	int /*dpix*/,
 	int /*dpiy*/,
 	int /*width*/
-);
-
-extern PixmapPtr afbGetWindowPixmap(
-	WindowPtr /*pWin*/
-);
-
-extern void afbSetWindowPixmap(
-	WindowPtr /*pWin*/,
-	PixmapPtr /*pPix*/
 );
 
 /* afbseg.c */
@@ -686,20 +556,6 @@ extern void afbSegmentSD(
 	xSegment * /*pSeg*/
 );
 /* afbsetsp.c */
-
-extern void afbSetScanline(
-	int /*y*/,
-	int /*xOrigin*/,
-	int /*xStart*/,
-	int /*xEnd*/,
-	PixelType * /*psrc*/,
-	int /*alu*/,
-	PixelType * /*pdstBase*/,
-	int /*widthDst*/,
-	int /*sizeDst*/,
-	int /*depthDst*/,
-	int /*sizeSrc*/
-);
 
 extern void afbSetSpans(
 	DrawablePtr /*pDrawable*/,
@@ -875,30 +731,21 @@ typedef struct {
 } afbPrivGC;
 typedef afbPrivGC *afbPrivGCPtr;
 
-extern int afbGCPrivateIndex;			/* index into GC private array */
-extern int afbWindowPrivateIndex;		/* index into Window private array */
+extern DevPrivateKey afbScreenPrivateKey;
+extern DevPrivateKey afbGCPrivateKey;
+extern DevPrivateKey afbWindowPrivateKey;
 #ifdef PIXMAP_PER_WINDOW
-extern int frameWindowPrivateIndex;		/* index into Window private array */
+extern DevPrivateKey frameWindowPrivateKey;
 #endif
 
 #define afbGetGCPrivate(pGC) \
-	((afbPrivGC *)((pGC)->devPrivates[afbGCPrivateIndex].ptr))
-
-/* private field of window */
-typedef struct {
-	unsigned char fastBorder;	/* non-zero if border tile is 32 bits wide */
-	unsigned char fastBackground;
-	unsigned short unused; /* pad for alignment with Sun compiler */
-	DDXPointRec oldRotate;
-	PixmapPtr pRotatedBackground;
-	PixmapPtr pRotatedBorder;
-} afbPrivWin;
+    ((afbPrivGC *)dixLookupPrivate(&(pGC)->devPrivates, afbGCPrivateKey))
 
 /* Common macros for extracting drawing information */
 
 #define afbGetTypedWidth(pDrawable,wtype)( \
 	(((pDrawable)->type == DRAWABLE_WINDOW) ? \
-	 (int)(((PixmapPtr)((pDrawable)->pScreen->devPrivates[afbScreenPrivateIndex].ptr))->devKind) : \
+	 (int)(((PixmapPtr)dixLookupPrivate(&(pDrawable)->pScreen->devPrivates, afbScreenPrivateKey)->devKind) : \
 	 (int)(((PixmapPtr)pDrawable)->devKind)) / sizeof (wtype))
 
 #define afbGetByteWidth(pDrawable) afbGetTypedWidth(pDrawable, unsigned char)
@@ -908,7 +755,7 @@ typedef struct {
 #define afbGetTypedWidthAndPointer(pDrawable, width, pointer, wtype, ptype) {\
 	PixmapPtr   _pPix; \
 	if ((pDrawable)->type == DRAWABLE_WINDOW) \
-		_pPix = (PixmapPtr)(pDrawable)->pScreen->devPrivates[afbScreenPrivateIndex].ptr; \
+		_pPix = (PixmapPtr)dixLookupPrivate(&(pDrawable)->pScreen->devPrivates, afbScreenPrivateKey); \
 	else \
 		_pPix = (PixmapPtr)(pDrawable); \
 	(pointer) = (ptype *) _pPix->devPrivate.ptr; \
@@ -918,7 +765,7 @@ typedef struct {
 #define afbGetPixelWidthSizeDepthAndPointer(pDrawable, width, size, dep, pointer) {\
 	PixmapPtr _pPix; \
 	if ((pDrawable)->type == DRAWABLE_WINDOW) \
-		_pPix = (PixmapPtr)(pDrawable)->pScreen->devPrivates[afbScreenPrivateIndex].ptr; \
+		_pPix = (PixmapPtr)dixLookupPrivate(&(pDrawable)->pScreen->devPrivates, afbScreenPrivateKey); \
 	else \
 		_pPix = (PixmapPtr)(pDrawable); \
 	(pointer) = (PixelType *)_pPix->devPrivate.ptr; \
@@ -934,7 +781,7 @@ typedef struct {
 	afbGetTypedWidthAndPointer(pDrawable, width, pointer, PixelType, PixelType)
 
 #define afbGetWindowTypedWidthAndPointer(pWin, width, pointer, wtype, ptype) {\
-	PixmapPtr	_pPix = (PixmapPtr)(pWin)->drawable.pScreen->devPrivates[afbScreenPrivateIndex].ptr; \
+	PixmapPtr _pPix = (PixmapPtr)dixLookupPrivate(&(pWin)->drawable.pScreen->devPrivates, afbScreenPrivateKey); \
 	(pointer) = (ptype *) _pPix->devPrivate.ptr; \
 	(width) = ((int) _pPix->devKind) / sizeof (wtype); \
 }

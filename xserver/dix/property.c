@@ -58,18 +58,15 @@ SOFTWARE.
 #include "dixstruct.h"
 #include "dispatch.h"
 #include "swaprep.h"
-#ifdef XACE
 #include "xace.h"
-#endif
 
 /*****************************************************************
  * Property Stuff
  *
- *    ChangeProperty, DeleteProperty, GetProperties,
- *    ListProperties
+ *    dixLookupProperty, dixChangeProperty, DeleteProperty
  *
- *   Properties below to windows.  A allocate slots each time
- *   a property is added.  No fancy searching done.
+ *   Properties belong to windows.  The list of properties should not be
+ *   traversed directly.  Instead, use the three functions listed above.
  *
  *****************************************************************/
 
@@ -78,7 +75,7 @@ static void
 PrintPropertys(WindowPtr pWin)
 {
     PropertyPtr pProp;
-    register int j;
+    int j;
 
     pProp = pWin->userProps;
     while (pProp)
@@ -93,96 +90,108 @@ PrintPropertys(WindowPtr pWin)
 }
 #endif
 
+_X_EXPORT int
+dixLookupProperty(PropertyPtr *result, WindowPtr pWin, Atom propertyName,
+		  ClientPtr client, Mask access_mode)
+{
+    PropertyPtr pProp;
+    int rc = BadMatch;
+    client->errorValue = propertyName;
+
+    for (pProp = wUserProps(pWin); pProp; pProp = pProp->next)
+	if (pProp->propertyName == propertyName)
+	    break;
+
+    if (pProp)
+	rc = XaceHookPropertyAccess(client, pWin, &pProp, access_mode);
+    *result = pProp;
+    return rc;
+}
+
+static void
+deliverPropertyNotifyEvent(WindowPtr pWin, int state, Atom atom)
+{
+    xEvent event;
+
+    event.u.u.type = PropertyNotify;
+    event.u.property.window = pWin->drawable.id;
+    event.u.property.state = state;
+    event.u.property.atom = atom;
+    event.u.property.time = currentTime.milliseconds;
+    DeliverEvents(pWin, &event, 1, (WindowPtr)NULL);
+}
+
 int
 ProcRotateProperties(ClientPtr client)
 {
-    int     i, j, delta;
+    int     i, j, delta, rc;
     REQUEST(xRotatePropertiesReq);
     WindowPtr pWin;
-    register    Atom * atoms;
+    Atom * atoms;
     PropertyPtr * props;               /* array of pointer */
-    PropertyPtr pProp;
-    xEvent event;
+    PropertyPtr pProp, saved;
 
     REQUEST_FIXED_SIZE(xRotatePropertiesReq, stuff->nAtoms << 2);
     UpdateCurrentTime();
-    pWin = (WindowPtr) SecurityLookupWindow(stuff->window, client,
-					    SecurityWriteAccess);
-    if (!pWin)
-        return(BadWindow);
-    if (!stuff->nAtoms)
-	return(Success);
+    rc = dixLookupWindow(&pWin, stuff->window, client, DixSetPropAccess);
+    if (rc != Success || stuff->nAtoms <= 0)
+        return rc;
+
     atoms = (Atom *) & stuff[1];
-    props = (PropertyPtr *)ALLOCATE_LOCAL(stuff->nAtoms * sizeof(PropertyPtr));
-    if (!props)
-	return(BadAlloc);
+    props = (PropertyPtr *)xalloc(stuff->nAtoms * sizeof(PropertyPtr));
+    saved = (PropertyPtr)xalloc(stuff->nAtoms * sizeof(PropertyRec));
+    if (!props || !saved) {
+	rc = BadAlloc;
+	goto out;
+    }
+
     for (i = 0; i < stuff->nAtoms; i++)
     {
-#ifdef XACE
-	char action = XaceHook(XACE_PROPERTY_ACCESS, client, pWin, atoms[i],
-				SecurityReadAccess|SecurityWriteAccess);
-#endif
-        if (!ValidAtom(atoms[i])
-#ifdef XACE
-	    || (SecurityErrorOperation == action)
-#endif
-	   )
-        {
-            DEALLOCATE_LOCAL(props);
+        if (!ValidAtom(atoms[i])) {
+	    rc = BadAtom;
 	    client->errorValue = atoms[i];
-            return BadAtom;
+	    goto out;
         }
-#ifdef XACE
-	if (SecurityIgnoreOperation == action)
-        {
-            DEALLOCATE_LOCAL(props);
-	    return Success;
-	}
-#endif
         for (j = i + 1; j < stuff->nAtoms; j++)
             if (atoms[j] == atoms[i])
             {
-                DEALLOCATE_LOCAL(props);
-                return BadMatch;
+		rc = BadMatch;
+		goto out;
             }
-        pProp = wUserProps (pWin);
-        while (pProp)
-        {
-            if (pProp->propertyName == atoms[i])
-                goto found;
-	    pProp = pProp->next;
-        }
-        DEALLOCATE_LOCAL(props);
-        return BadMatch;
-found: 
+
+	rc = dixLookupProperty(&pProp, pWin, atoms[i], client,
+			       DixReadAccess|DixWriteAccess);
+	if (rc != Success)
+	    goto out;
+
         props[i] = pProp;
+	saved[i] = *pProp;
     }
     delta = stuff->nPositions;
 
     /* If the rotation is a complete 360 degrees, then moving the properties
 	around and generating PropertyNotify events should be skipped. */
 
-    if ( (stuff->nAtoms != 0) && (abs(delta) % stuff->nAtoms) != 0 ) 
+    if (abs(delta) % stuff->nAtoms)
     {
 	while (delta < 0)                  /* faster if abs value is small */
             delta += stuff->nAtoms;
     	for (i = 0; i < stuff->nAtoms; i++)
  	{
-	    /* Generate a PropertyNotify event for each property whose value
-		is changed in the order in which they appear in the request. */
- 
- 	    event.u.u.type = PropertyNotify;
-            event.u.property.window = pWin->drawable.id;
-    	    event.u.property.state = PropertyNewValue;
-	    event.u.property.atom = props[i]->propertyName;	
-	    event.u.property.time = currentTime.milliseconds;
-	    DeliverEvents(pWin, &event, 1, (WindowPtr)NULL);
-	
-            props[i]->propertyName = atoms[(i + delta) % stuff->nAtoms];
+	    j = (i + delta) % stuff->nAtoms;
+	    deliverPropertyNotifyEvent(pWin, PropertyNewValue, atoms[i]);
+
+	    /* Preserve name and devPrivates */
+	    props[j]->type = saved[i].type;
+	    props[j]->format = saved[i].format;
+	    props[j]->size = saved[i].size;
+	    props[j]->data = saved[i].data;
 	}
     }
-    DEALLOCATE_LOCAL(props);
-    return Success;
+out:
+    xfree(saved);
+    xfree(props);
+    return rc;
 }
 
 int 
@@ -191,9 +200,7 @@ ProcChangeProperty(ClientPtr client)
     WindowPtr pWin;
     char format, mode;
     unsigned long len;
-    int sizeInBytes;
-    int totalSize;
-    int err;
+    int sizeInBytes, totalSize, err;
     REQUEST(xChangePropertyReq);
 
     REQUEST_AT_LEAST_SIZE(xChangePropertyReq);
@@ -218,10 +225,9 @@ ProcChangeProperty(ClientPtr client)
     totalSize = len * sizeInBytes;
     REQUEST_FIXED_SIZE(xChangePropertyReq, totalSize);
 
-    pWin = (WindowPtr)SecurityLookupWindow(stuff->window, client,
-					   SecurityWriteAccess);
-    if (!pWin)
-	return(BadWindow);
+    err = dixLookupWindow(&pWin, stuff->window, client, DixSetPropAccess);
+    if (err != Success)
+	return err;
     if (!ValidAtom(stuff->property))
     {
 	client->errorValue = stuff->property;
@@ -233,20 +239,9 @@ ProcChangeProperty(ClientPtr client)
 	return(BadAtom);
     }
 
-#ifdef XACE
-    switch (XaceHook(XACE_PROPERTY_ACCESS, client, pWin, stuff->property,
-					SecurityWriteAccess))
-    {
-	case SecurityErrorOperation:
-	    client->errorValue = stuff->property;
-	    return BadAtom;
-	case SecurityIgnoreOperation:
-	    return Success;
-    }
-#endif
-
-    err = ChangeWindowProperty(pWin, stuff->property, stuff->type, (int)format,
-			       (int)mode, len, (pointer)&stuff[1], TRUE);
+    err = dixChangeWindowProperty(client, pWin, stuff->property, stuff->type,
+				  (int)format, (int)mode, len, &stuff[1],
+				  TRUE);
     if (err != Success)
 	return err;
     else
@@ -254,29 +249,23 @@ ProcChangeProperty(ClientPtr client)
 }
 
 _X_EXPORT int
-ChangeWindowProperty(WindowPtr pWin, Atom property, Atom type, int format, 
-                     int mode, unsigned long len, pointer value, 
-                     Bool sendevent)
+dixChangeWindowProperty(ClientPtr pClient, WindowPtr pWin, Atom property,
+			Atom type, int format, int mode, unsigned long len,
+			pointer value, Bool sendevent)
 {
     PropertyPtr pProp;
-    xEvent event;
-    int sizeInBytes;
-    int totalSize;
+    int sizeInBytes, totalSize, rc;
     pointer data;
+    Mask access_mode;
 
     sizeInBytes = format>>3;
     totalSize = len * sizeInBytes;
+    access_mode = (mode == PropModeReplace) ? DixWriteAccess : DixBlendAccess;
 
     /* first see if property already exists */
+    rc = dixLookupProperty(&pProp, pWin, property, pClient, access_mode);
 
-    pProp = wUserProps (pWin);
-    while (pProp)
-    {
-	if (pProp->propertyName == property)
-	    break;
-	pProp = pProp->next;
-    }
-    if (!pProp)   /* just add to list */
+    if (rc == BadMatch)   /* just add to list */
     {
 	if (!pWin->optional && !MakeWindowOptional (pWin))
 	    return(BadAlloc);
@@ -296,10 +285,19 @@ ChangeWindowProperty(WindowPtr pWin, Atom property, Atom type, int format,
 	if (len)
 	    memmove((char *)data, (char *)value, totalSize);
 	pProp->size = len;
+	pProp->devPrivates = NULL;
+	rc = XaceHookPropertyAccess(pClient, pWin, &pProp,
+				    DixCreateAccess|DixWriteAccess);
+	if (rc != Success) {
+	    xfree(data);
+	    xfree(pProp);
+	    pClient->errorValue = property;
+	    return rc;
+	}
         pProp->next = pWin->optional->userProps;
         pWin->optional->userProps = pProp;
     }
-    else
+    else if (rc == Success)
     {
 	/* To append or prepend to a property the request format and type
 		must match those of the already defined property.  The
@@ -354,73 +352,66 @@ ChangeWindowProperty(WindowPtr pWin, Atom property, Atom type, int format,
             pProp->size += len;
 	}
     }
+    else
+	return rc;
+
     if (sendevent)
-    {
-	event.u.u.type = PropertyNotify;
-	event.u.property.window = pWin->drawable.id;
-	event.u.property.state = PropertyNewValue;
-	event.u.property.atom = pProp->propertyName;
-	event.u.property.time = currentTime.milliseconds;
-	DeliverEvents(pWin, &event, 1, (WindowPtr)NULL);
-    }
+	deliverPropertyNotifyEvent(pWin, PropertyNewValue, pProp->propertyName);
+
     return(Success);
 }
 
+_X_EXPORT int
+ChangeWindowProperty(WindowPtr pWin, Atom property, Atom type, int format, 
+		     int mode, unsigned long len, pointer value, 
+		     Bool sendevent)
+{
+    return dixChangeWindowProperty(serverClient, pWin, property, type, format,
+				   mode, len, value, sendevent);
+}
+
 int
-DeleteProperty(WindowPtr pWin, Atom propName)
+DeleteProperty(ClientPtr client, WindowPtr pWin, Atom propName)
 {
     PropertyPtr pProp, prevProp;
-    xEvent event;
+    int rc;
 
-    if (!(pProp = wUserProps (pWin)))
-	return(Success);
-    prevProp = (PropertyPtr)NULL;
-    while (pProp)
-    {
-	if (pProp->propertyName == propName)
-	    break;
-        prevProp = pProp;
-	pProp = pProp->next;
-    }
-    if (pProp) 
-    {		    
-        if (prevProp == (PropertyPtr)NULL)      /* takes care of head */
-        {
+    rc = dixLookupProperty(&pProp, pWin, propName, client, DixDestroyAccess);
+    if (rc == BadMatch)
+	return Success; /* Succeed if property does not exist */
+
+    if (rc == Success) {
+	if (pWin->optional->userProps == pProp) {
+	    /* Takes care of head */
             if (!(pWin->optional->userProps = pProp->next))
 		CheckWindowOptionalNeed (pWin);
-        }
-	else
-        {
-            prevProp->next = pProp->next;
-        }
-	event.u.u.type = PropertyNotify;
-	event.u.property.window = pWin->drawable.id;
-	event.u.property.state = PropertyDelete;
-        event.u.property.atom = pProp->propertyName;
-	event.u.property.time = currentTime.milliseconds;
-	DeliverEvents(pWin, &event, 1, (WindowPtr)NULL);
+	} else {
+	    /* Need to traverse to find the previous element */
+	    prevProp = pWin->optional->userProps;
+	    while (prevProp->next != pProp)
+		prevProp = prevProp->next;
+	    prevProp->next = pProp->next;
+	}
+
+	deliverPropertyNotifyEvent(pWin, PropertyDelete, pProp->propertyName);
+	dixFreePrivates(pProp->devPrivates);
 	xfree(pProp->data);
         xfree(pProp);
     }
-    return(Success);
+    return rc;
 }
 
 void
 DeleteAllWindowProperties(WindowPtr pWin)
 {
     PropertyPtr pProp, pNextProp;
-    xEvent event;
 
     pProp = wUserProps (pWin);
     while (pProp)
     {
-	event.u.u.type = PropertyNotify;
-	event.u.property.window = pWin->drawable.id;
-	event.u.property.state = PropertyDelete;
-	event.u.property.atom = pProp->propertyName;
-	event.u.property.time = currentTime.milliseconds;
-	DeliverEvents(pWin, &event, 1, (WindowPtr)NULL);
+	deliverPropertyNotifyEvent(pWin, PropertyDelete, pProp->propertyName);
 	pNextProp = pProp->next;
+	dixFreePrivates(pProp->devPrivates);
         xfree(pProp->data);
         xfree(pProp);
 	pProp = pNextProp;
@@ -458,17 +449,21 @@ ProcGetProperty(ClientPtr client)
 {
     PropertyPtr pProp, prevProp;
     unsigned long n, len, ind;
+    int rc;
     WindowPtr pWin;
     xGetPropertyReply reply;
+    Mask win_mode = DixGetPropAccess, prop_mode = DixReadAccess;
     REQUEST(xGetPropertyReq);
 
     REQUEST_SIZE_MATCH(xGetPropertyReq);
-    if (stuff->delete)
+    if (stuff->delete) {
 	UpdateCurrentTime();
-    pWin = (WindowPtr)SecurityLookupWindow(stuff->window, client,
-					   SecurityReadAccess);
-    if (!pWin)
-	return BadWindow;
+	win_mode |= DixSetPropAccess;
+	prop_mode |= DixDestroyAccess;
+    }
+    rc = dixLookupWindow(&pWin, stuff->window, client, win_mode);
+    if (rc != Success)
+	return rc;
 
     if (!ValidAtom(stuff->property))
     {
@@ -486,39 +481,15 @@ ProcGetProperty(ClientPtr client)
 	return(BadAtom);
     }
 
-    pProp = wUserProps (pWin);
-    prevProp = (PropertyPtr)NULL;
-    while (pProp)
-    {
-	if (pProp->propertyName == stuff->property) 
-	    break;
-	prevProp = pProp;
-	pProp = pProp->next;
-    }
-
     reply.type = X_Reply;
     reply.sequenceNumber = client->sequence;
-    if (!pProp) 
+
+    rc = dixLookupProperty(&pProp, pWin, stuff->property, client, prop_mode);
+    if (rc == BadMatch)
 	return NullPropertyReply(client, None, 0, &reply);
+    else if (rc != Success)
+	return rc;
 
-#ifdef XACE
-    {
-	Mask access_mode = SecurityReadAccess;
-
-	if (stuff->delete)
-	    access_mode |= SecurityDestroyAccess;
-	switch(XaceHook(XACE_PROPERTY_ACCESS, client, pWin, stuff->property,
-					   access_mode))
-	{
-	    case SecurityErrorOperation:
-		client->errorValue = stuff->property;
-		return BadAtom;;
-	    case SecurityIgnoreOperation:
-		return NullPropertyReply(client, pProp->type, pProp->format,
-					 &reply);
-	}
-    }
-#endif
     /* If the request type and actual type don't match. Return the
     property information, but not the data. */
 
@@ -559,16 +530,7 @@ ProcGetProperty(ClientPtr client)
     reply.propertyType = pProp->type;
 
     if (stuff->delete && (reply.bytesAfter == 0))
-    { /* send the event */
-	xEvent event;
-
-	event.u.u.type = PropertyNotify;
-	event.u.property.window = pWin->drawable.id;
-	event.u.property.state = PropertyDelete;
-	event.u.property.atom = pProp->propertyName;
-	event.u.property.time = currentTime.milliseconds;
-	DeliverEvents(pWin, &event, 1, (WindowPtr)NULL);
-    }
+	deliverPropertyNotifyEvent(pWin, PropertyDelete, pProp->propertyName);
 
     WriteReplyToClient(client, sizeof(xGenericReply), &reply);
     if (len)
@@ -582,15 +544,21 @@ ProcGetProperty(ClientPtr client)
 				 (char *)pProp->data + ind);
     }
 
-    if (stuff->delete && (reply.bytesAfter == 0))
-    { /* delete the Property */
-	if (prevProp == (PropertyPtr)NULL) /* takes care of head */
-	{
-	    if (!(pWin->optional->userProps = pProp->next))
+    if (stuff->delete && (reply.bytesAfter == 0)) {
+	/* Delete the Property */
+	if (pWin->optional->userProps == pProp) {
+	    /* Takes care of head */
+            if (!(pWin->optional->userProps = pProp->next))
 		CheckWindowOptionalNeed (pWin);
-	}
-	else
+	} else {
+	    /* Need to traverse to find the previous element */
+	    prevProp = pWin->optional->userProps;
+	    while (prevProp->next != pProp)
+		prevProp = prevProp->next;
 	    prevProp->next = pProp->next;
+	}
+
+	dixFreePrivates(pProp->devPrivates);
 	xfree(pProp->data);
 	xfree(pProp);
     }
@@ -602,50 +570,49 @@ ProcListProperties(ClientPtr client)
 {
     Atom *pAtoms = NULL, *temppAtoms;
     xListPropertiesReply xlpr;
-    int	numProps = 0;
+    int	rc, numProps = 0;
     WindowPtr pWin;
-    PropertyPtr pProp;
+    PropertyPtr pProp, realProp;
     REQUEST(xResourceReq);
 
     REQUEST_SIZE_MATCH(xResourceReq);
-    pWin = (WindowPtr)SecurityLookupWindow(stuff->id, client,
-					   SecurityReadAccess);
-    if (!pWin)
-        return(BadWindow);
+    rc = dixLookupWindow(&pWin, stuff->id, client, DixListPropAccess);
+    if (rc != Success)
+        return rc;
 
-    pProp = wUserProps (pWin);
-    while (pProp)
-    {        
-        pProp = pProp->next;
+    for (pProp = wUserProps(pWin); pProp; pProp = pProp->next)
 	numProps++;
+
+    if (numProps && !(pAtoms = (Atom *)xalloc(numProps * sizeof(Atom))))
+	return BadAlloc;
+
+    numProps = 0;
+    temppAtoms = pAtoms;
+    for (pProp = wUserProps(pWin); pProp; pProp = pProp->next) {
+	realProp = pProp;
+	rc = XaceHookPropertyAccess(client, pWin, &realProp, DixGetAttrAccess);
+	if (rc == Success && realProp == pProp) {
+	    *temppAtoms++ = pProp->propertyName;
+	    numProps++;
+	}
     }
-    if (numProps)
-        if(!(pAtoms = (Atom *)ALLOCATE_LOCAL(numProps * sizeof(Atom))))
-            return(BadAlloc);
 
     xlpr.type = X_Reply;
     xlpr.nProperties = numProps;
     xlpr.length = (numProps * sizeof(Atom)) >> 2;
     xlpr.sequenceNumber = client->sequence;
-    pProp = wUserProps (pWin);
-    temppAtoms = pAtoms;
-    while (pProp)
-    {
-	*temppAtoms++ = pProp->propertyName;
-	pProp = pProp->next;
-    }
     WriteReplyToClient(client, sizeof(xGenericReply), &xlpr);
     if (numProps)
     {
         client->pSwapReplyFunc = (ReplySwapPtr)Swap32Write;
         WriteSwappedDataToClient(client, numProps * sizeof(Atom), pAtoms);
-        DEALLOCATE_LOCAL(pAtoms);
     }
+    xfree(pAtoms);
     return(client->noClientException);
 }
 
 int 
-ProcDeleteProperty(register ClientPtr client)
+ProcDeleteProperty(ClientPtr client)
 {
     WindowPtr pWin;
     REQUEST(xDeletePropertyReq);
@@ -653,29 +620,16 @@ ProcDeleteProperty(register ClientPtr client)
               
     REQUEST_SIZE_MATCH(xDeletePropertyReq);
     UpdateCurrentTime();
-    pWin = (WindowPtr)SecurityLookupWindow(stuff->window, client,
-					   SecurityWriteAccess);
-    if (!pWin)
-        return(BadWindow);
+    result = dixLookupWindow(&pWin, stuff->window, client, DixSetPropAccess);
+    if (result != Success)
+        return result;
     if (!ValidAtom(stuff->property))
     {
 	client->errorValue = stuff->property;
 	return (BadAtom);
     }
 
-#ifdef XACE
-    switch(XaceHook(XACE_PROPERTY_ACCESS, client, pWin, stuff->property,
-				       SecurityDestroyAccess))
-    {
-	case SecurityErrorOperation:
-	    client->errorValue = stuff->property;
-	    return BadAtom;;
-	case SecurityIgnoreOperation:
-	    return Success;
-    }
-#endif
-
-    result = DeleteProperty(pWin, stuff->property);
+    result = DeleteProperty(client, pWin, stuff->property);
     if (client->noClientException != Success)
 	return(client->noClientException);
     else

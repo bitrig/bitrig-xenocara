@@ -1,6 +1,4 @@
 /*
- * Id: fballpriv.c,v 1.1 1999/11/02 03:54:45 keithp Exp $
- *
  * Copyright © 1998 Keith Packard
  *
  * Permission to use, copy, modify, distribute, and sell this software and its
@@ -29,55 +27,33 @@
 #include "fb.h"
 
 #ifdef FB_SCREEN_PRIVATE
-int fbScreenPrivateIndex;
-int fbGetScreenPrivateIndex(void)
+static DevPrivateKey fbScreenPrivateKey = &fbScreenPrivateKey;
+DevPrivateKey fbGetScreenPrivateKey(void)
 {
-    return fbScreenPrivateIndex;
+    return fbScreenPrivateKey;
 }
 #endif
-int fbGCPrivateIndex;
-int fbGetGCPrivateIndex(void)
+static DevPrivateKey fbGCPrivateKey = &fbGCPrivateKey;
+DevPrivateKey fbGetGCPrivateKey(void)
 {
-    return fbGCPrivateIndex;
+    return fbGCPrivateKey;
 }
 #ifndef FB_NO_WINDOW_PIXMAPS
-int fbWinPrivateIndex;
-int fbGetWinPrivateIndex(void)
+static DevPrivateKey fbWinPrivateKey = &fbWinPrivateKey;
+DevPrivateKey fbGetWinPrivateKey(void)
 {
-    return fbWinPrivateIndex;
+    return fbWinPrivateKey;
 }
-#endif
-int fbGeneration;
-
-#ifdef FB_OLD_SCREEN
-#define miAllocateGCPrivateIndex()  AllocateGCPrivateIndex()
 #endif
 
 Bool
-fbAllocatePrivates(ScreenPtr pScreen, int *pGCIndex)
+fbAllocatePrivates(ScreenPtr pScreen, DevPrivateKey *pGCKey)
 {
-    if (fbGeneration != serverGeneration)
-    {
-	fbGCPrivateIndex = miAllocateGCPrivateIndex ();
-#ifndef FB_NO_WINDOW_PIXMAPS
-	fbWinPrivateIndex = AllocateWindowPrivateIndex();
-#endif
-#ifdef FB_SCREEN_PRIVATE
-	fbScreenPrivateIndex = AllocateScreenPrivateIndex ();
-	if (fbScreenPrivateIndex == -1)
-	    return FALSE;
-#endif
-	
-	fbGeneration = serverGeneration;
-    }
-    if (pGCIndex)
-	*pGCIndex = fbGCPrivateIndex;
-    if (!AllocateGCPrivate(pScreen, fbGCPrivateIndex, sizeof(FbGCPrivRec)))
+    if (pGCKey)
+	*pGCKey = fbGCPrivateKey;
+    
+    if (!dixRequestPrivate(fbGCPrivateKey, sizeof(FbGCPrivRec)))
 	return FALSE;
-#ifndef FB_NO_WINDOW_PIXMAPS
-    if (!AllocateWindowPrivate(pScreen, fbWinPrivateIndex, 0))
-	return FALSE;
-#endif
 #ifdef FB_SCREEN_PRIVATE
     {
 	FbScreenPrivPtr	pScreenPriv;
@@ -85,8 +61,13 @@ fbAllocatePrivates(ScreenPtr pScreen, int *pGCIndex)
 	pScreenPriv = (FbScreenPrivPtr) xalloc (sizeof (FbScreenPrivRec));
 	if (!pScreenPriv)
 	    return FALSE;
-	pScreen->devPrivates[fbScreenPrivateIndex].ptr = (pointer) pScreenPriv;
+	dixSetPrivate(&pScreen->devPrivates, fbScreenPrivateKey, pScreenPriv);
     }
 #endif
     return TRUE;
 }
+
+#ifdef FB_ACCESS_WRAPPER
+ReadMemoryProcPtr wfbReadMemory;
+WriteMemoryProcPtr wfbWriteMemory;
+#endif

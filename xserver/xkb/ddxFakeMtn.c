@@ -36,7 +36,7 @@ THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include "inputstr.h"
 #include "scrnintstr.h"
 #include "windowstr.h"
-#include <X11/extensions/XKBsrv.h>
+#include <xkbsrv.h>
 #include <X11/extensions/XI.h>
 
 #ifdef PANORAMIX
@@ -107,7 +107,7 @@ ScreenPtr	   pScreen, oldScreen;
 	     oldY=  y;
 	else oldY+= y;
 
-#define GetScreenPrivate(s) ((miPointerScreenPtr) ((s)->devPrivates[miPointerScreenIndex].ptr))	
+#define GetScreenPrivate(s) ((miPointerScreenPtr)dixLookupPrivate(&(s)->devPrivates, miPointerScreenKey))
 	(*(GetScreenPrivate(oldScreen))->screenFuncs->CursorOffScreen)
 	    (&pScreen, &oldX, &oldY);
     }

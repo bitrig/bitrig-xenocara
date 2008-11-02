@@ -1,6 +1,4 @@
 /*
- * Id: fbarc.c,v 1.1 1999/11/02 03:54:45 keithp Exp $
- *
  * Copyright © 1998 Keith Packard
  *
  * Permission to use, copy, modify, distribute, and sell this software and its
@@ -73,9 +71,13 @@ fbPolyArc (DrawablePtr	pDrawable,
 	    BoxRec	box;
 	    int		x2, y2;
 	    RegionPtr	cclip;
+	    int		wrapped = 0;
 	    
 	    cclip = fbGetCompositeClip (pGC);
 	    fbGetDrawable (pDrawable, dst, dstStride, dstBpp, dstXoff, dstYoff);
+#ifdef FB_ACCESS_WRAPPER
+	    wrapped = 1;
+#endif
 	    while (narcs--)
 	    {
 		if (miCanZeroArc (parcs))
@@ -98,17 +100,43 @@ fbPolyArc (DrawablePtr	pDrawable,
 		    y2 = box.y1 + (int)parcs->height + 1;
 		    box.y2 = y2;
 		    if ( (x2 <= SHRT_MAX) && (y2 <= SHRT_MAX) &&
-			(RECT_IN_REGION(pDrawable->pScreen, cclip, &box) == rgnIN) )
+			(RECT_IN_REGION(pDrawable->pScreen, cclip, &box) == rgnIN) ) {
+#ifdef FB_ACCESS_WRAPPER
+			if (!wrapped) {
+			    fbPrepareAccess (pDrawable);
+			    wrapped = 1;
+			}
+#endif
 			(*arc) (dst, dstStride, dstBpp, 
 				parcs, pDrawable->x + dstXoff, pDrawable->y + dstYoff, 
 				pPriv->and, pPriv->xor);
-		    else
+		    } else {
+#ifdef FB_ACCESS_WRAPPER
+		    	if (wrapped) {
+	    			fbFinishAccess (pDrawable);
+				wrapped = 0;
+			}
+#endif
 			miZeroPolyArc(pDrawable, pGC, 1, parcs);
+		    }
 		}
-		else
+		else {
+#ifdef FB_ACCESS_WRAPPER
+		    if (wrapped) {
+	    		fbFinishAccess (pDrawable);
+			wrapped = 0;
+		    }
+#endif
 		    miPolyArc(pDrawable, pGC, 1, parcs);
+		}
 		parcs++;
 	    }
+#ifdef FB_ACCESS_WRAPPER
+	    if (wrapped) {
+		fbFinishAccess (pDrawable);
+		wrapped = 0;
+	    }
+#endif
 	}
 	else
 #endif

@@ -1,4 +1,3 @@
-/* $XFree86$ */
 /*
  * Copyright 2001-2004 Red Hat Inc., Durham, North Carolina.
  *
@@ -67,7 +66,7 @@ static char **dmxGetFontPath(int *npaths)
     char           *newfp;
     int             len, l, i;
 
-    paths = GetFontPath(npaths, &len);
+    GetFontPath(serverClient, npaths, &len, &paths);
 
     newfp = xalloc(*npaths + len);
     c = (unsigned char *)newfp;
@@ -195,7 +194,7 @@ static int dmxProcSetFontPath(ClientPtr client)
     if (total >= 4)
         return BadLength;
 
-    tmpFontPath = GetFontPath(&nOldPaths, &lenOldPaths);
+    GetFontPath(serverClient, &nOldPaths, &lenOldPaths, &tmpFontPath);
     oldFontPath = xalloc(nOldPaths + lenOldPaths);
     memmove(oldFontPath, tmpFontPath, nOldPaths + lenOldPaths);
 
@@ -362,7 +361,8 @@ Bool dmxBELoadFont(ScreenPtr pScreen, FontPtr pFont)
 		}
 	    }
 
-	    if (SetFontPath(NULL, newnpaths, (unsigned char *)newfp, &error)) {
+	    if (SetFontPath(serverClient, newnpaths, (unsigned char *)newfp,
+			    &error)) {
 		/* Note that this should never happen since all of the
 		 * FPEs were previously valid. */
 		dmxLog(dmxError, "Cannot reset the default font path.\n");

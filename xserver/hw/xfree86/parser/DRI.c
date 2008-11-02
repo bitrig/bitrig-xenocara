@@ -48,7 +48,21 @@ static xf86ConfigSymTabRec DRITab[] =
 
 #define CLEANUP xf86freeBuffersList
 
-XF86ConfBuffersPtr
+static void
+xf86freeBuffersList (XF86ConfBuffersPtr ptr)
+{
+    XF86ConfBuffersPtr prev;
+
+    while (ptr) {
+	TestFree (ptr->buf_flags);
+	TestFree (ptr->buf_comment);
+	prev = ptr;
+	ptr  = ptr->list.next;
+	xf86conffree (prev);
+    }
+}
+
+static XF86ConfBuffersPtr
 xf86parseBuffers (void)
 {
     int token;
@@ -103,6 +117,8 @@ xf86parseDRISection (void)
 	    case MODE:
 		if (xf86getSubToken (&(ptr->dri_comment)) != NUMBER)
 		    Error (NUMBER_MSG, "Mode");
+                if (val.numType != PARSE_OCTAL)
+                    Error (MUST_BE_OCTAL_MSG, val.num);
 		ptr->dri_mode = val.num;
 		break;
 	    case BUFFERS:
@@ -169,18 +185,3 @@ xf86freeDRI (XF86ConfDRIPtr ptr)
     TestFree (ptr->dri_comment);
     xf86conffree (ptr);
 }
-
-void
-xf86freeBuffersList (XF86ConfBuffersPtr ptr)
-{
-    XF86ConfBuffersPtr prev;
-
-    while (ptr) {
-	TestFree (ptr->buf_flags);
-	TestFree (ptr->buf_comment);
-	prev = ptr;
-	ptr  = ptr->list.next;
-	xf86conffree (prev);
-    }
-}
-

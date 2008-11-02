@@ -24,8 +24,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- *	Id: fontcache.c,v 1.12 1999/01/31 13:47:45 akiyama Exp $
  */
 
 /* THIS IS NOT AN X CONSORTIUM STANDARD */
@@ -69,10 +67,6 @@ static DISPATCH_PROC(SProcFontCacheGetCacheStatistics);
 static DISPATCH_PROC(SProcFontCacheQueryVersion);
 static DISPATCH_PROC(SProcFontCacheChangeCacheSettings);
 
-#if 0
-static unsigned char FontCacheReqCode = 0;
-#endif
-
 void
 FontCacheExtensionInit(INITARGS)
 {
@@ -86,9 +80,6 @@ FontCacheExtensionInit(INITARGS)
 				SProcFontCacheDispatch,
 				FontCacheResetProc,
 				StandardMinorOpcode))) {
-#if 0
-	FontCacheReqCode = (unsigned char)extEntry->base;
-#endif
 	miscErrorBase = extEntry->errorBase;
     }
 }

@@ -67,7 +67,6 @@ ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
 SOFTWARE.
 
 */
-/* $XConsortium: ppcPolyPnt.c /main/5 1996/02/21 17:58:07 kaleb $ */
 
 #ifdef HAVE_XORG_CONFIG_H
 #include <xorg-config.h>
@@ -103,7 +102,7 @@ if ( pDrawable->type == DRAWABLE_PIXMAP ) {
 	return ;
 }
 
-devPriv = (ppcPrivGC *) ( pGC->devPrivates[mfbGetGCPrivateIndex()].ptr ) ;
+devPriv = (ppcPrivGC *)dixLookupPrivate(&pGC->devPrivates, mfbGetGCPrivateKey());
 if ( ( alu = devPriv->colorRrop.alu ) == GXnoop )
 	return ;
 

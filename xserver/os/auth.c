@@ -35,9 +35,6 @@ from The Open Group.
 #include <dix-config.h>
 #endif
 
-#ifdef K5AUTH
-# include   <krb5/krb5.h>
-#endif
 # include   <X11/X.h>
 # include   <X11/Xauth.h>
 # include   "misc.h"
@@ -45,9 +42,6 @@ from The Open Group.
 # include   "dixstruct.h"
 # include   <sys/types.h>
 # include   <sys/stat.h>
-#ifdef XCSECURITY
-# include   "securitysrv.h"
-#endif
 #ifdef WIN32
 #include    <X11/Xw32defs.h>
 #endif
@@ -90,23 +84,6 @@ static struct protocol   protocols[] = {
 #ifdef XCSECURITY
 		NULL
 #endif
-},
-#endif
-#ifdef K5AUTH
-{   (unsigned short) 14, "MIT-KERBEROS-5",
-		K5Add, K5Check, K5Reset,
-		K5ToID, K5FromID, K5Remove,
-#ifdef XCSECURITY
-		NULL
-#endif
-},
-#endif
-#ifdef XCSECURITY
-{   (unsigned short) XSecurityAuthorizationNameLen,
-	XSecurityAuthorizationName,
-		NULL, AuthSecurityCheck, NULL,
-		NULL, NULL, NULL,
-		NULL
 },
 #endif
 };
@@ -255,26 +232,6 @@ ResetAuthorization (void)
     ShouldLoadAuth = TRUE;
 }
 
-XID
-AuthorizationToID (
-	unsigned short	name_length,
-	char		*name,
-	unsigned short	data_length,
-	char		*data)
-{
-    int	i;
-
-    for (i = 0; i < NUM_AUTHORIZATION; i++) {
-    	if (protocols[i].name_length == name_length &&
-	    memcmp (protocols[i].name, name, (int) name_length) == 0 &&
-	    protocols[i].ToID)
-    	{
-	    return (*protocols[i].ToID) (data_length, data);
-    	}
-    }
-    return (XID) ~0L;
-}
-
 int
 AuthorizationFromID (
 	XID 		id,
@@ -357,6 +314,20 @@ GenerateAuthorization(
     return -1;
 }
 
+#ifdef HAVE_URANDOM
+
+void
+GenerateRandomData (int len, char *buf)
+{
+    int fd;
+
+    fd = open("/dev/urandom", O_RDONLY);
+    read(fd, buf, len);
+    close(fd);
+}
+
+#else /* !HAVE_URANDOM */
+
 /* A random number generator that is more unpredictable
    than that shipped with some systems.
    This code is taken from the C standard. */
@@ -393,5 +364,7 @@ GenerateRandomData (int len, char *buf)
 
     /* XXX add getrusage, popen("ps -ale") */
 }
+
+#endif /* HAVE_URANDOM */
 
 #endif /* XCSECURITY */

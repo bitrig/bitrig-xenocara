@@ -72,8 +72,34 @@ dealings in this Software without prior written authorization from Digital
 Equipment Corporation.
 
 ******************************************************************/
-
-/* $TOG: resource.c /main/41 1998/02/09 14:20:31 kaleb $ */
+/* XSERVER_DTRACE additions:
+ * Copyright 2005-2006 Sun Microsystems, Inc.  All rights reserved.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, and/or sell copies of the Software, and to permit persons
+ * to whom the Software is furnished to do so, provided that the above
+ * copyright notice(s) and this permission notice appear in all copies of
+ * the Software and that both the above copyright notice(s) and this
+ * permission notice appear in supporting documentation.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+ * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT
+ * OF THIRD PARTY RIGHTS. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+ * HOLDERS INCLUDED IN THIS NOTICE BE LIABLE FOR ANY CLAIM, OR ANY SPECIAL
+ * INDIRECT OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES WHATSOEVER RESULTING
+ * FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
+ * NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION
+ * WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ * 
+ * Except as contained in this notice, the name of a copyright holder
+ * shall not be used in advertising or otherwise to promote the sale, use
+ * or other dealings in this Software without prior written authorization
+ * of the copyright holder.
+ */
 
 /*	Routines to manage various kinds of resources:
  *
@@ -120,10 +146,17 @@ Equipment Corporation.
 #include "panoramiX.h"
 #include "panoramiXsrv.h"
 #endif
-#ifdef XACE
 #include "xace.h"
-#endif
 #include <assert.h>
+
+#ifdef XSERVER_DTRACE
+#include <sys/types.h>
+#include "registry.h"
+typedef const char *string;
+#include "Xserver-dtrace.h"
+
+#define TypeNameString(t) LookupResourceName(t)
+#endif
 
 static void RebuildTable(
     int /*client*/
@@ -159,16 +192,16 @@ _X_EXPORT RESTYPE TypeMask;
 
 static DeleteType *DeleteFuncs = (DeleteType *)NULL;
 
-#ifdef XResExtension
+_X_EXPORT CallbackListPtr ResourceStateCallback;
 
-_X_EXPORT Atom * ResourceNames = NULL;
-
-_X_EXPORT void RegisterResourceName (RESTYPE type, char *name)
+static _X_INLINE void
+CallResourceStateCallback(ResourceState state, ResourceRec *res)
 {
-    ResourceNames[type & TypeMask] =  MakeAtom(name, strlen(name), TRUE);
+    if (ResourceStateCallback) {
+	ResourceStateInfoRec rsi = { state, res->id, res->type, res->value };
+	CallCallbacks(&ResourceStateCallback, &rsi);
+    }
 }
-
-#endif
 
 _X_EXPORT RESTYPE
 CreateNewResourceType(DeleteType deleteFunc)
@@ -182,17 +215,8 @@ CreateNewResourceType(DeleteType deleteFunc)
 				   (next + 1) * sizeof(DeleteType));
     if (!funcs)
 	return 0;
-
-#ifdef XResExtension
-    {
-       Atom *newnames;
-       newnames = xrealloc(ResourceNames, (next + 1) * sizeof(Atom));
-       if(!newnames)
-           return 0;
-       ResourceNames = newnames;
-       ResourceNames[next] = 0;
-    }
-#endif
+    if (!dixRegisterPrivateOffset(next, -1))
+	return 0;
 
     lastResourceType = next;
     DeleteFuncs = funcs;
@@ -201,7 +225,7 @@ CreateNewResourceType(DeleteType deleteFunc)
 }
 
 _X_EXPORT RESTYPE
-CreateNewResourceClass()
+CreateNewResourceClass(void)
 {
     RESTYPE next = lastResourceClass >> 1;
 
@@ -212,7 +236,7 @@ CreateNewResourceClass()
     return next;
 }
 
-ClientResourceRec clientTable[MAXCLIENTS];
+static ClientResourceRec clientTable[MAXCLIENTS];
 
 /*****************
  * InitClientResources
@@ -223,7 +247,7 @@ ClientResourceRec clientTable[MAXCLIENTS];
 Bool
 InitClientResources(ClientPtr client)
 {
-    register int i, j;
+    int i, j;
  
     if (client == serverClient)
     {
@@ -246,14 +270,6 @@ InitClientResources(ClientPtr client)
 	DeleteFuncs[RT_CMAPENTRY & TypeMask] = FreeClientPixels;
 	DeleteFuncs[RT_OTHERCLIENT & TypeMask] = OtherClientGone;
 	DeleteFuncs[RT_PASSIVEGRAB & TypeMask] = DeletePassiveGrab;
-
-#ifdef XResExtension
-        if(ResourceNames)
-            xfree(ResourceNames);
-        ResourceNames = xalloc((lastResourceType + 1) * sizeof(Atom));
-        if(!ResourceNames)
-           return FALSE;
-#endif
     }
     clientTable[i = client->index].resources =
 	(ResourcePtr *)xalloc(INITBUCKETS*sizeof(ResourcePtr));
@@ -280,7 +296,7 @@ InitClientResources(ClientPtr client)
 
 
 static int
-Hash(int client, register XID id)
+Hash(int client, XID id)
 {
     id &= RESOURCE_ID_MASK;
     switch (clientTable[client].hashsize)
@@ -303,12 +319,12 @@ Hash(int client, register XID id)
 
 static XID
 AvailableID(
-    register int client,
-    register XID id,
-    register XID maxid,
-    register XID goodid)
+    int client,
+    XID id,
+    XID maxid,
+    XID goodid)
 {
-    register ResourcePtr res;
+    ResourcePtr res;
 
     if ((goodid >= id) && (goodid <= maxid))
 	return goodid;
@@ -326,10 +342,10 @@ AvailableID(
 _X_EXPORT void
 GetXIDRange(int client, Bool server, XID *minp, XID *maxp)
 {
-    register XID id, maxid;
-    register ResourcePtr *resp;
-    register ResourcePtr res;
-    register int i;
+    XID id, maxid;
+    ResourcePtr *resp;
+    ResourcePtr res;
+    int i;
     XID goodid;
 
     id = (Mask)client << CLIENTOFFSET;
@@ -402,7 +418,7 @@ GetXIDList(ClientPtr pClient, unsigned count, XID *pids)
  */
 
 _X_EXPORT XID
-FakeClientID(register int client)
+FakeClientID(int client)
 {
     XID id, maxid;
 
@@ -426,9 +442,12 @@ _X_EXPORT Bool
 AddResource(XID id, RESTYPE type, pointer value)
 {
     int client;
-    register ClientResourceRec *rrec;
-    register ResourcePtr res, *head;
+    ClientResourceRec *rrec;
+    ResourcePtr res, *head;
     	
+#ifdef XSERVER_DTRACE
+    XSERVER_RESOURCE_ALLOC(id, type, value, TypeNameString(type));
+#endif
     client = CLIENT_ID(id);
     rrec = &clientTable[client];
     if (!rrec->buckets)
@@ -455,16 +474,17 @@ AddResource(XID id, RESTYPE type, pointer value)
     rrec->elements++;
     if (!(id & SERVER_BIT) && (id >= rrec->expectID))
 	rrec->expectID = id + 1;
+    CallResourceStateCallback(ResourceStateAdding, res);
     return TRUE;
 }
 
 static void
 RebuildTable(int client)
 {
-    register int j;
-    register ResourcePtr res, next;
+    int j;
+    ResourcePtr res, next;
     ResourcePtr **tails, *resources;
-    register ResourcePtr **tptr, *rptr;
+    ResourcePtr **tptr, *rptr;
 
     /*
      * For now, preserve insertion order, since some ddx layers depend
@@ -472,13 +492,13 @@ RebuildTable(int client)
      */
 
     j = 2 * clientTable[client].buckets;
-    tails = (ResourcePtr **)ALLOCATE_LOCAL(j * sizeof(ResourcePtr *));
+    tails = (ResourcePtr **)xalloc(j * sizeof(ResourcePtr *));
     if (!tails)
 	return;
     resources = (ResourcePtr *)xalloc(j * sizeof(ResourcePtr));
     if (!resources)
     {
-	DEALLOCATE_LOCAL(tails);
+	xfree(tails);
 	return;
     }
     for (rptr = resources, tptr = tails; --j >= 0; rptr++, tptr++)
@@ -501,7 +521,7 @@ RebuildTable(int client)
 	    *tptr = &res->next;
 	}
     }
-    DEALLOCATE_LOCAL(tails);
+    xfree(tails);
     clientTable[client].buckets *= 2;
     xfree(clientTable[client].resources);
     clientTable[client].resources = resources;
@@ -511,11 +531,10 @@ _X_EXPORT void
 FreeResource(XID id, RESTYPE skipDeleteFuncType)
 {
     int		cid;
-    register    ResourcePtr res;
-    register	ResourcePtr *prev, *head;
-    register	int *eltptr;
+    ResourcePtr res;
+    ResourcePtr *prev, *head;
+    int *eltptr;
     int		elements;
-    Bool	gotOne = FALSE;
 
     if (((cid = CLIENT_ID(id)) < MAXCLIENTS) && clientTable[cid].buckets)
     {
@@ -528,29 +547,26 @@ FreeResource(XID id, RESTYPE skipDeleteFuncType)
 	    if (res->id == id)
 	    {
 		RESTYPE rtype = res->type;
+
+#ifdef XSERVER_DTRACE
+		XSERVER_RESOURCE_FREE(res->id, res->type,
+			      res->value, TypeNameString(res->type));
+#endif		    
 		*prev = res->next;
 		elements = --*eltptr;
-		if (rtype & RC_CACHED)
-		    FlushClientCaches(res->id);
+
+		CallResourceStateCallback(ResourceStateFreeing, res);
+
 		if (rtype != skipDeleteFuncType)
 		    (*DeleteFuncs[rtype & TypeMask])(res->value, res->id);
 		xfree(res);
 		if (*eltptr != elements)
 		    prev = head; /* prev may no longer be valid */
-		gotOne = TRUE;
 	    }
 	    else
 		prev = &res->next;
         }
-	if(clients[cid] && (id == clients[cid]->lastDrawableID))
-	{
-	    clients[cid]->lastDrawable = (DrawablePtr)WindowTable[0];
-	    clients[cid]->lastDrawableID = WindowTable[0]->drawable.id;
-	}
     }
-    if (!gotOne)
-	ErrorF("Freeing resource id=%lX which isn't there.\n",
-		   (unsigned long)id);
 }
 
 
@@ -558,8 +574,8 @@ _X_EXPORT void
 FreeResourceByType(XID id, RESTYPE type, Bool skipFree)
 {
     int		cid;
-    register    ResourcePtr res;
-    register	ResourcePtr *prev, *head;
+    ResourcePtr res;
+    ResourcePtr *prev, *head;
     if (((cid = CLIENT_ID(id)) < MAXCLIENTS) && clientTable[cid].buckets)
     {
 	head = &clientTable[cid].resources[Hash(cid, id)];
@@ -569,9 +585,14 @@ FreeResourceByType(XID id, RESTYPE type, Bool skipFree)
 	{
 	    if (res->id == id && res->type == type)
 	    {
+#ifdef XSERVER_DTRACE
+		XSERVER_RESOURCE_FREE(res->id, res->type,
+			      res->value, TypeNameString(res->type));
+#endif		    		    
 		*prev = res->next;
-		if (type & RC_CACHED)
-		    FlushClientCaches(res->id);
+
+		CallResourceStateCallback(ResourceStateFreeing, res);
+
 		if (!skipFree)
 		    (*DeleteFuncs[type & TypeMask])(res->value, res->id);
 		xfree(res);
@@ -580,11 +601,6 @@ FreeResourceByType(XID id, RESTYPE type, Bool skipFree)
 	    else
 		prev = &res->next;
         }
-	if(clients[cid] && (id == clients[cid]->lastDrawableID))
-	{
-	    clients[cid]->lastDrawable = (DrawablePtr)WindowTable[0];
-	    clients[cid]->lastDrawableID = WindowTable[0]->drawable.id;
-	}
     }
 }
 
@@ -598,7 +614,7 @@ _X_EXPORT Bool
 ChangeResourceValue (XID id, RESTYPE rtype, pointer value)
 {
     int    cid;
-    register    ResourcePtr res;
+    ResourcePtr res;
 
     if (((cid = CLIENT_ID(id)) < MAXCLIENTS) && clientTable[cid].buckets)
     {
@@ -607,8 +623,6 @@ ChangeResourceValue (XID id, RESTYPE rtype, pointer value)
 	for (; res; res = res->next)
 	    if ((res->id == id) && (res->type == rtype))
 	    {
-		if (rtype & RC_CACHED)
-		    FlushClientCaches(res->id);
 		res->value = value;
 		return TRUE;
 	    }
@@ -629,10 +643,10 @@ FindClientResourcesByType(
     FindResType func,
     pointer cdata
 ){
-    register ResourcePtr *resources;
-    register ResourcePtr this, next;
+    ResourcePtr *resources;
+    ResourcePtr this, next;
     int i, elements;
-    register int *eltptr;
+    int *eltptr;
 
     if (!client)
 	client = serverClient;
@@ -660,10 +674,10 @@ FindAllClientResources(
     FindAllRes func,
     pointer cdata
 ){
-    register ResourcePtr *resources;
-    register ResourcePtr this, next;
+    ResourcePtr *resources;
+    ResourcePtr this, next;
     int i, elements;
-    register int *eltptr;
+    int *eltptr;
 
     if (!client)
         client = serverClient;
@@ -731,11 +745,16 @@ FreeClientNeverRetainResources(ClientPtr client)
 	    RESTYPE rtype = this->type;
 	    if (rtype & RC_NEVERRETAIN)
 	    {
+#ifdef XSERVER_DTRACE
+		XSERVER_RESOURCE_FREE(this->id, this->type,
+			      this->value, TypeNameString(this->type));
+#endif		    
 		*prev = this->next;
-		if (rtype & RC_CACHED)
-		    FlushClientCaches(this->id);
+
+		CallResourceStateCallback(ResourceStateFreeing, this);
+
 		(*DeleteFuncs[rtype & TypeMask])(this->value, this->id);
-		xfree(this);	    
+		xfree(this);
 	    }
 	    else
 		prev = &this->next;
@@ -746,8 +765,8 @@ FreeClientNeverRetainResources(ClientPtr client)
 void
 FreeClientResources(ClientPtr client)
 {
-    register ResourcePtr *resources;
-    register ResourcePtr this;
+    ResourcePtr *resources;
+    ResourcePtr this;
     int j;
 
     /* This routine shouldn't be called with a null client, but just in
@@ -777,11 +796,16 @@ FreeClientResources(ClientPtr client)
         for (this = *head; this; this = *head)
 	{
 	    RESTYPE rtype = this->type;
+#ifdef XSERVER_DTRACE
+	    XSERVER_RESOURCE_FREE(this->id, this->type,
+			  this->value, TypeNameString(this->type));
+#endif		    
 	    *head = this->next;
-	    if (rtype & RC_CACHED)
-		FlushClientCaches(this->id);
+
+	    CallResourceStateCallback(ResourceStateFreeing, this);
+
 	    (*DeleteFuncs[rtype & TypeMask])(this->value, this->id);
-	    xfree(this);	    
+	    xfree(this);
 	}
     }
     xfree(clientTable[client->index].resources);
@@ -790,7 +814,7 @@ FreeClientResources(ClientPtr client)
 }
 
 void
-FreeAllResources()
+FreeAllResources(void)
 {
     int	i;
 
@@ -802,7 +826,7 @@ FreeAllResources()
 }
 
 _X_EXPORT Bool
-LegalNewID(XID id, register ClientPtr client)
+LegalNewID(XID id, ClientPtr client)
 {
 
 #ifdef PANORAMIX
@@ -821,83 +845,35 @@ LegalNewID(XID id, register ClientPtr client)
 	     !LookupIDByClass(id, RC_ANY)));
 }
 
-/* SecurityLookupIDByType and SecurityLookupIDByClass:
- * These are the heart of the resource ID security system.  They take
- * two additional arguments compared to the old LookupID functions:
- * the client doing the lookup, and the access mode (see resource.h).
- * The resource is returned if it exists and the client is allowed access,
- * else NULL is returned.
- */
-
-_X_EXPORT pointer
-SecurityLookupIDByType(ClientPtr client, XID id, RESTYPE rtype, Mask mode)
+_X_EXPORT int
+dixLookupResource(pointer *result, XID id, RESTYPE rtype,
+		  ClientPtr client, Mask mode)
 {
-    int    cid;
-    register    ResourcePtr res;
-    pointer retval = NULL;
+    int cid = CLIENT_ID(id);
+    int istype = (rtype & TypeMask) && (rtype != RC_ANY);
+    ResourcePtr res = NULL;
 
-    if (((cid = CLIENT_ID(id)) < MAXCLIENTS) &&
-	clientTable[cid].buckets)
-    {
+    *result = NULL;
+
+    if ((cid < MAXCLIENTS) && clientTable[cid].buckets) {
 	res = clientTable[cid].resources[Hash(cid, id)];
 
 	for (; res; res = res->next)
-	    if ((res->id == id) && (res->type == rtype))
-	    {
-		retval = res->value;
+	    if ((res->id == id) && ((istype && res->type == rtype) ||
+				    (!istype && res->type & rtype)))
 		break;
-	    }
     }
-#ifdef XACE
-    if (retval && client && 
-	!XaceHook(XACE_RESOURCE_ACCESS, client, id, rtype, mode, retval))
-	retval = NULL;
-#endif
-    return retval;
-}
+    if (!res)
+	return BadValue;
 
-
-_X_EXPORT pointer
-SecurityLookupIDByClass(ClientPtr client, XID id, RESTYPE classes, Mask mode)
-{
-    int    cid;
-    register ResourcePtr res = NULL;
-    pointer retval = NULL;
-
-    if (((cid = CLIENT_ID(id)) < MAXCLIENTS) &&
-	clientTable[cid].buckets)
-    {
-	res = clientTable[cid].resources[Hash(cid, id)];
-
-	for (; res; res = res->next)
-	    if ((res->id == id) && (res->type & classes))
-	    {
-		retval = res->value;
-		break;
-	    }
+    if (client) {
+	client->errorValue = id;
+	cid = XaceHook(XACE_RESOURCE_ACCESS, client, id, res->type,
+		       res->value, RT_NONE, NULL, mode);
+	if (cid != Success)
+	    return cid;
     }
-#ifdef XACE
-    if (retval && client &&
-	!XaceHook(XACE_RESOURCE_ACCESS, client, id, res->type, mode, retval))
-	retval = NULL;
-#endif
-    return retval;
-}
 
-/* We can't replace the LookupIDByType and LookupIDByClass functions with
- * macros because of compatibility with loadable servers.
- */
-
-_X_EXPORT pointer
-LookupIDByType(XID id, RESTYPE rtype)
-{
-    return SecurityLookupIDByType(NullClient, id, rtype,
-				  SecurityUnknownAccess);
-}
-
-_X_EXPORT pointer
-LookupIDByClass(XID id, RESTYPE classes)
-{
-    return SecurityLookupIDByClass(NullClient, id, classes,
-				   SecurityUnknownAccess);
+    *result = res->value;
+    return Success;
 }

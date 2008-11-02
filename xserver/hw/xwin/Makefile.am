@@ -45,7 +45,6 @@ SRCS_NATIVEGDI = \
 	wingetsp.c \
 	winnativegdi.c \
 	winpixmap.c \
-	winpntwin.c \
 	winpolyline.c \
 	winpushpxl.c \
 	winrop.c \
@@ -146,10 +145,12 @@ XWin_SOURCES = $(SRCS)
 INCLUDES = -I$(top_srcdir)/miext/rootless \
            -I$(top_srcdir)/miext/rootless/safeAlpha
 
-XWin_LDADD = $(XORG_CORE_LIBS) \
-	     $(top_builddir)/fb/libfb.la \
-             $(XWIN_LIBS) \
-             $(XWINMODULES_LIBS)
+XWIN_LIBS = \
+	$(top_builddir)/fb/libfb.la \
+	$(XSERVER_LIBS)
+
+XWin_DEPENDENCIES = $(XWIN_LIBS)
+XWin_LDADD = $(XWIN_LIBS) $(XSERVER_SYS_LIBS) $(XWIN_SYS_LIBS)
 
 XWin_LDFLAGS = -mwindows -static
 
@@ -161,7 +162,7 @@ CLEANFILES = $(BUILT_SOURCES)
 
 AM_YFLAGS = -d
 AM_LFLAGS = -i
-AM_CFLAGS = -DHAVE_XWIN_CONFIG_H \
+AM_CFLAGS = -DHAVE_XWIN_CONFIG_H $(DIX_CFLAGS) \
             $(XWINMODULES_CFLAGS)
 
 dist_man1_MANS = XWin.man XWinrc.man

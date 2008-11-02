@@ -68,8 +68,6 @@ SOFTWARE.
 
 */
 
-/* $XConsortium: ppcGC.c /main/6 1996/02/21 17:57:38 kaleb $ */
-
 #ifdef HAVE_XORG_CONFIG_H
 #include <xorg-config.h>
 #endif
@@ -90,10 +88,9 @@ SOFTWARE.
 | GCFunction | GCPlaneMask | GCFillStyle | GC_CALL_VALIDATE_BIT         \
 | GCClipXOrigin | GCClipYOrigin | GCClipMask | GCSubwindowMode )
 
+static void xf4bppValidateGC(GCPtr, unsigned long, DrawablePtr);
+static void xf4bppDestroyGC(GC *);
 
-/* GJA -- we modified the following function to get rid of
- * the records in file vgaData.c
- */
 static GCFuncs vgaGCFuncs = {
 	xf4bppValidateGC,
 	(void (*)(GCPtr, unsigned long))NoopDDA,
@@ -179,14 +176,13 @@ register GCPtr pGC ;
 
 	pGC->fExpose = TRUE;
 	pGC->freeCompClip = FALSE;
-	pGC->pRotatedPixmap = NullPixmap;
-	
+
 	/* GJA: I don't like this code:
          * they allocated a mfbPrivGC, ignore the allocated data and place
          * a pointer to a ppcPrivGC in its slot.
          */
 	*pPriv = vgaPrototypeGCPriv;
-	(pGC->devPrivates[mfbGetGCPrivateIndex()].ptr) = (pointer) pPriv;
+	dixSetPrivate(&pGC->devPrivates, mfbGetGCPrivateKey(), pPriv);
 
 	/* Set the vgaGCOps */
 	*pOps = vgaGCOps;
@@ -196,23 +192,17 @@ register GCPtr pGC ;
 	return TRUE ;
 }
 
-void
+static void
 xf4bppDestroyGC( pGC )
     register GC	*pGC ;
 
 {
     TRACE( ( "xf4bppDestroyGC(pGC=0x%x)\n", pGC ) ) ;
 
-    /* (ef) 11/9/87 -- ppc doesn't use rotated tile or stipple, but */
-    /*		*does* call mfbValidateGC under some conditions.    */
-    /*		mfbValidateGC *does* use rotated tile and stipple   */
-    if ( pGC->pRotatedPixmap )
-	mfbDestroyPixmap( pGC->pRotatedPixmap ) ;
-
     if ( pGC->freeCompClip && pGC->pCompositeClip )
 	REGION_DESTROY(pGC->pScreen, pGC->pCompositeClip);
     if(pGC->ops->devPrivate.val) xfree( pGC->ops );
-    xfree( pGC->devPrivates[mfbGetGCPrivateIndex()].ptr ) ;
+    xfree(dixLookupPrivate(&pGC->devPrivates, mfbGetGCPrivateKey()));
     return ;
 }
 
@@ -223,7 +213,7 @@ ppcChangePixmapGC
 	register Mask changes
 )
 {
-register ppcPrivGCPtr devPriv = (ppcPrivGCPtr) (pGC->devPrivates[mfbGetGCPrivateIndex()].ptr ) ;
+register ppcPrivGCPtr devPriv = (ppcPrivGCPtr)dixLookupPrivate(&pGC->devPrivates, mfbGetGCPrivateKey());
 register unsigned long int idx ; /* used for stepping through bitfields */
 
 #define LOWBIT( x ) ( x & - x ) /* Two's complement */
@@ -292,7 +282,7 @@ return 0 ;
 	    CT_other ==> pCompositeClip is the pixmap bounding box
 */
 
-void
+static void
 xf4bppValidateGC( pGC, changes, pDrawable )
     GCPtr         pGC;
     unsigned long changes;
@@ -301,8 +291,8 @@ xf4bppValidateGC( pGC, changes, pDrawable )
     register ppcPrivGCPtr devPriv ;
     WindowPtr pWin ;
 
-    devPriv = (ppcPrivGCPtr) (pGC->devPrivates[mfbGetGCPrivateIndex()].ptr ) ;
-
+    devPriv = (ppcPrivGCPtr)dixLookupPrivate(&pGC->devPrivates,
+					     mfbGetGCPrivateKey());
     if ( pDrawable->type != devPriv->lastDrawableType ) {
 	devPriv->lastDrawableType = pDrawable->type ;
 	xf4bppChangeGCtype( pGC, devPriv ) ;

@@ -58,8 +58,6 @@ SOFTWARE.
 #include <dix-config.h>
 #endif
 
-#include <X11/X.h>
-#include <X11/Xproto.h>
 #include "inputstr.h"
 #include "gcstruct.h"	/* pointer for extnsionst.h */
 #include "extnsionst.h"	/* extension entry   */
@@ -71,6 +69,7 @@ SOFTWARE.
 #include "extinit.h"
 #include "exglobals.h"
 #include "swaprep.h"
+#include "registry.h"
 
 /* modules local to Xi */
 #include "allowev.h"
@@ -116,7 +115,7 @@ int ExtEventIndex;
 Mask ExtValidMasks[EMASKSIZE];
 Mask ExtExclusiveMasks[EMASKSIZE];
 
-struct dev_type
+static struct dev_type
 {
     Atom type;
     char *name;
@@ -152,7 +151,7 @@ XExtEventInfo EventInfo[32];
 
 int IReqCode = 0;
 int BadDevice = 0;
-int BadEvent = 1;
+static int BadEvent = 1;
 int BadMode = 2;
 int DeviceBusy = 3;
 int BadClass = 4;
@@ -161,11 +160,12 @@ Mask DevicePointerMotionMask;
 Mask DevicePointerMotionHintMask;
 Mask DeviceFocusChangeMask;
 Mask DeviceStateNotifyMask;
-Mask ChangeDeviceNotifyMask;
+static Mask ChangeDeviceNotifyMask;
 Mask DeviceMappingNotifyMask;
 Mask DeviceOwnerGrabButtonMask;
 Mask DeviceButtonGrabMask;
 Mask DeviceButtonMotionMask;
+Mask DevicePresenceNotifyMask;
 
 int DeviceValuator;
 int DeviceKeyPress;
@@ -182,6 +182,7 @@ int DeviceKeyStateNotify;
 int DeviceButtonStateNotify;
 int DeviceMappingNotify;
 int ChangeDeviceNotify;
+int DevicePresenceNotify;
 
 int RT_INPUTCLIENT;
 
@@ -202,54 +203,9 @@ Mask PropagateMask[MAX_DEVICES];
  */
 
 static XExtensionVersion thisversion = { XI_Present,
-    XI_Add_XChangeDeviceControl_Major,
-    XI_Add_XChangeDeviceControl_Minor
+    XI_Add_DevicePresenceNotify_Major,
+    XI_Add_DevicePresenceNotify_Minor
 };
-
-/**********************************************************************
- *
- * IExtensionInit - initialize the input extension.
- *
- * Called from InitExtensions in main() or from QueryExtension() if the
- * extension is dynamically loaded.
- *
- * This extension has several events and errors.
- *
- */
-
-void
-XInputExtensionInit(void)
-{
-    ExtensionEntry *extEntry;
-
-    extEntry = AddExtension(INAME, IEVENTS, IERRORS, ProcIDispatch,
-			    SProcIDispatch, IResetProc, StandardMinorOpcode);
-    if (extEntry) {
-	IReqCode = extEntry->base;
-	AllExtensionVersions[IReqCode - 128] = thisversion;
-	MakeDeviceTypeAtoms();
-	RT_INPUTCLIENT = CreateNewResourceType((DeleteType) InputClientGone);
-	FixExtensionEvents(extEntry);
-	ReplySwapVector[IReqCode] = (ReplySwapPtr) SReplyIDispatch;
-	EventSwapVector[DeviceValuator] = SEventIDispatch;
-	EventSwapVector[DeviceKeyPress] = SEventIDispatch;
-	EventSwapVector[DeviceKeyRelease] = SEventIDispatch;
-	EventSwapVector[DeviceButtonPress] = SEventIDispatch;
-	EventSwapVector[DeviceButtonRelease] = SEventIDispatch;
-	EventSwapVector[DeviceMotionNotify] = SEventIDispatch;
-	EventSwapVector[DeviceFocusIn] = SEventIDispatch;
-	EventSwapVector[DeviceFocusOut] = SEventIDispatch;
-	EventSwapVector[ProximityIn] = SEventIDispatch;
-	EventSwapVector[ProximityOut] = SEventIDispatch;
-	EventSwapVector[DeviceStateNotify] = SEventIDispatch;
-	EventSwapVector[DeviceKeyStateNotify] = SEventIDispatch;
-	EventSwapVector[DeviceButtonStateNotify] = SEventIDispatch;
-	EventSwapVector[DeviceMappingNotify] = SEventIDispatch;
-	EventSwapVector[ChangeDeviceNotify] = SEventIDispatch;
-    } else {
-	FatalError("IExtensionInit: AddExtensions failed\n");
-    }
-}
 
 /*************************************************************************
  *
@@ -258,8 +214,8 @@ XInputExtensionInit(void)
  *
  */
 
-int
-ProcIDispatch(register ClientPtr client)
+static int
+ProcIDispatch(ClientPtr client)
 {
     REQUEST(xReq);
     if (stuff->data == X_GetExtensionVersion)
@@ -332,9 +288,7 @@ ProcIDispatch(register ClientPtr client)
 	return (ProcXGetDeviceControl(client));
     else if (stuff->data == X_ChangeDeviceControl)
 	return (ProcXChangeDeviceControl(client));
-    else {
-	SendErrorToClient(client, IReqCode, stuff->data, 0, BadRequest);
-    }
+
     return (BadRequest);
 }
 
@@ -347,8 +301,8 @@ ProcIDispatch(register ClientPtr client)
  *
  */
 
-int
-SProcIDispatch(register ClientPtr client)
+static int
+SProcIDispatch(ClientPtr client)
 {
     REQUEST(xReq);
     if (stuff->data == X_GetExtensionVersion)
@@ -421,9 +375,7 @@ SProcIDispatch(register ClientPtr client)
 	return (SProcXGetDeviceControl(client));
     else if (stuff->data == X_ChangeDeviceControl)
 	return (SProcXChangeDeviceControl(client));
-    else {
-	SendErrorToClient(client, IReqCode, stuff->data, 0, BadRequest);
-    }
+
     return (BadRequest);
 }
 
@@ -439,7 +391,7 @@ SProcIDispatch(register ClientPtr client)
     if (rep->RepType == X_##code) \
 	SRepX##code (client, len, (x##code##Reply *) rep)
 
-void
+static void
 SReplyIDispatch(ClientPtr client, int len, xGrabDeviceReply * rep)
 					/* All we look at is the type field */
 {	/* This is common to all replies    */
@@ -463,12 +415,6 @@ SReplyIDispatch(ClientPtr client, int len, xGrabDeviceReply * rep)
     else if (rep->RepType == X_GetDeviceMotionEvents)
 	SRepXGetDeviceMotionEvents(client, len,
 				   (xGetDeviceMotionEventsReply *) rep);
-    else if (rep->RepType == X_ChangeKeyboardDevice)
-	SRepXChangeKeyboardDevice(client, len,
-				  (xChangeKeyboardDeviceReply *) rep);
-    else if (rep->RepType == X_ChangePointerDevice)
-	SRepXChangePointerDevice(client, len,
-				 (xChangePointerDeviceReply *) rep);
     else if (rep->RepType == X_GrabDevice)
 	SRepXGrabDevice(client, len, (xGrabDeviceReply *) rep);
     else if (rep->RepType == X_GetDeviceFocus)
@@ -504,72 +450,17 @@ SReplyIDispatch(ClientPtr client, int len, xGrabDeviceReply * rep)
     }
 }
 
-/*****************************************************************************
- *
- *	SEventIDispatch
- *
- *	Swap any events defined in this extension.
- */
-#define DO_SWAP(func,type) func ((type *)from, (type *)to)
-
-void
-SEventIDispatch(xEvent * from, xEvent * to)
-{
-    int type = from->u.u.type & 0177;
-
-    if (type == DeviceValuator)
-	DO_SWAP(SEventDeviceValuator, deviceValuator);
-    else if (type == DeviceKeyPress) {
-	SKeyButtonPtrEvent(from, to);
-	to->u.keyButtonPointer.pad1 = from->u.keyButtonPointer.pad1;
-    } else if (type == DeviceKeyRelease) {
-	SKeyButtonPtrEvent(from, to);
-	to->u.keyButtonPointer.pad1 = from->u.keyButtonPointer.pad1;
-    } else if (type == DeviceButtonPress) {
-	SKeyButtonPtrEvent(from, to);
-	to->u.keyButtonPointer.pad1 = from->u.keyButtonPointer.pad1;
-    } else if (type == DeviceButtonRelease) {
-	SKeyButtonPtrEvent(from, to);
-	to->u.keyButtonPointer.pad1 = from->u.keyButtonPointer.pad1;
-    } else if (type == DeviceMotionNotify) {
-	SKeyButtonPtrEvent(from, to);
-	to->u.keyButtonPointer.pad1 = from->u.keyButtonPointer.pad1;
-    } else if (type == DeviceFocusIn)
-	DO_SWAP(SEventFocus, deviceFocus);
-    else if (type == DeviceFocusOut)
-	DO_SWAP(SEventFocus, deviceFocus);
-    else if (type == ProximityIn) {
-	SKeyButtonPtrEvent(from, to);
-	to->u.keyButtonPointer.pad1 = from->u.keyButtonPointer.pad1;
-    } else if (type == ProximityOut) {
-	SKeyButtonPtrEvent(from, to);
-	to->u.keyButtonPointer.pad1 = from->u.keyButtonPointer.pad1;
-    } else if (type == DeviceStateNotify)
-	DO_SWAP(SDeviceStateNotifyEvent, deviceStateNotify);
-    else if (type == DeviceKeyStateNotify)
-	DO_SWAP(SDeviceKeyStateNotifyEvent, deviceKeyStateNotify);
-    else if (type == DeviceButtonStateNotify)
-	DO_SWAP(SDeviceButtonStateNotifyEvent, deviceButtonStateNotify);
-    else if (type == DeviceMappingNotify)
-	DO_SWAP(SDeviceMappingNotifyEvent, deviceMappingNotify);
-    else if (type == ChangeDeviceNotify)
-	DO_SWAP(SChangeDeviceNotifyEvent, changeDeviceNotify);
-    else {
-	FatalError("XInputExtension: Impossible event!\n");
-    }
-}
-
 /************************************************************************
  *
  * This function swaps the DeviceValuator event.
  *
  */
 
-void
+static void
 SEventDeviceValuator(deviceValuator * from, deviceValuator * to)
 {
-    register char n;
-    register int i;
+    char n;
+    int i;
     INT32 *ip B32;
 
     *to = *from;
@@ -581,10 +472,10 @@ SEventDeviceValuator(deviceValuator * from, deviceValuator * to)
     }
 }
 
-void
+static void
 SEventFocus(deviceFocus * from, deviceFocus * to)
 {
-    register char n;
+    char n;
 
     *to = *from;
     swaps(&to->sequenceNumber, n);
@@ -592,11 +483,11 @@ SEventFocus(deviceFocus * from, deviceFocus * to)
     swapl(&to->window, n);
 }
 
-void
+static void
 SDeviceStateNotifyEvent(deviceStateNotify * from, deviceStateNotify * to)
 {
-    register int i;
-    register char n;
+    int i;
+    char n;
     INT32 *ip B32;
 
     *to = *from;
@@ -608,44 +499,148 @@ SDeviceStateNotifyEvent(deviceStateNotify * from, deviceStateNotify * to)
     }
 }
 
-void
+static void
 SDeviceKeyStateNotifyEvent(deviceKeyStateNotify * from,
 			   deviceKeyStateNotify * to)
 {
-    register char n;
+    char n;
 
     *to = *from;
     swaps(&to->sequenceNumber, n);
 }
 
-void
+static void
 SDeviceButtonStateNotifyEvent(deviceButtonStateNotify * from,
 			      deviceButtonStateNotify * to)
 {
-    register char n;
+    char n;
 
     *to = *from;
     swaps(&to->sequenceNumber, n);
 }
 
-void
+static void
 SChangeDeviceNotifyEvent(changeDeviceNotify * from, changeDeviceNotify * to)
 {
-    register char n;
+    char n;
 
     *to = *from;
     swaps(&to->sequenceNumber, n);
     swapl(&to->time, n);
 }
 
-void
+static void
 SDeviceMappingNotifyEvent(deviceMappingNotify * from, deviceMappingNotify * to)
 {
-    register char n;
+    char n;
 
     *to = *from;
     swaps(&to->sequenceNumber, n);
     swapl(&to->time, n);
+}
+
+static void
+SDevicePresenceNotifyEvent (devicePresenceNotify *from, devicePresenceNotify *to)
+{
+    char n;
+
+    *to = *from;
+    swaps(&to->sequenceNumber,n);
+    swapl(&to->time, n);
+    swaps(&to->control, n);
+}
+
+/**************************************************************************
+ *
+ * Allow the specified event to have its propagation suppressed.
+ * The default is to not allow suppression of propagation.
+ *
+ */
+
+static void
+AllowPropagateSuppress(Mask mask)
+{
+    int i;
+
+    for (i = 0; i < MAX_DEVICES; i++)
+	PropagateMask[i] |= mask;
+}
+
+/**************************************************************************
+ *
+ * Return the next available extension event mask.
+ *
+ */
+
+static Mask
+GetNextExtEventMask(void)
+{
+    int i;
+    Mask mask = lastExtEventMask;
+
+    if (lastExtEventMask == 0) {
+	FatalError("GetNextExtEventMask: no more events are available.");
+    }
+    lastExtEventMask <<= 1;
+
+    for (i = 0; i < MAX_DEVICES; i++)
+	ExtValidMasks[i] |= mask;
+    return mask;
+}
+
+/**************************************************************************
+ *
+ * Record an event mask where there is no unique corresponding event type.
+ * We can't call SetMaskForEvent, since that would clobber the existing
+ * mask for that event.  MotionHint and ButtonMotion are examples.
+ *
+ * Since extension event types will never be less than 64, we can use
+ * 0-63 in the EventInfo array as the "type" to be used to look up this
+ * mask.  This means that the corresponding macros such as 
+ * DevicePointerMotionHint must have access to the same constants.
+ *
+ */
+
+static void
+SetEventInfo(Mask mask, int constant)
+{
+    EventInfo[ExtEventIndex].mask = mask;
+    EventInfo[ExtEventIndex++].type = constant;
+}
+
+/**************************************************************************
+ *
+ * Allow the specified event to be restricted to being selected by one
+ * client at a time.
+ * The default is to allow more than one client to select the event.
+ *
+ */
+
+static void
+SetExclusiveAccess(Mask mask)
+{
+    int i;
+
+    for (i = 0; i < MAX_DEVICES; i++)
+	ExtExclusiveMasks[i] |= mask;
+}
+
+/**************************************************************************
+ *
+ * Assign the specified mask to the specified event.
+ *
+ */
+
+static void
+SetMaskForExtEvent(Mask mask, int event)
+{
+
+    EventInfo[ExtEventIndex].mask = mask;
+    EventInfo[ExtEventIndex++].type = event;
+
+    if ((event < LASTEvent) || (event >= 128))
+	FatalError("MaskForExtensionEvent: bogus event number");
+    SetMaskForEvent(mask, event);
 }
 
 /************************************************************************
@@ -654,7 +649,7 @@ SDeviceMappingNotifyEvent(deviceMappingNotify * from, deviceMappingNotify * to)
  *
  */
 
-void
+static void
 FixExtensionEvents(ExtensionEntry * extEntry)
 {
     Mask mask;
@@ -674,6 +669,7 @@ FixExtensionEvents(ExtensionEntry * extEntry)
     ChangeDeviceNotify = DeviceMappingNotify + 1;
     DeviceKeyStateNotify = ChangeDeviceNotify + 1;
     DeviceButtonStateNotify = DeviceKeyStateNotify + 1;
+    DevicePresenceNotify = DeviceButtonStateNotify + 1;
 
     event_base[KeyClass] = DeviceKeyPress;
     event_base[ButtonClass] = DeviceButtonPress;
@@ -746,6 +742,9 @@ FixExtensionEvents(ExtensionEntry * extEntry)
 
     DeviceOwnerGrabButtonMask = GetNextExtEventMask();
     SetEventInfo(DeviceOwnerGrabButtonMask, _deviceOwnerGrabButton);
+
+    DevicePresenceNotifyMask = GetNextExtEventMask();
+    SetEventInfo(DevicePresenceNotifyMask, _devicePresence);
     SetEventInfo(0, _noExtensionEvent);
 }
 
@@ -756,7 +755,7 @@ FixExtensionEvents(ExtensionEntry * extEntry)
  *
  */
 
-void
+static void
 RestoreExtensionEvents(void)
 {
     int i;
@@ -786,6 +785,7 @@ RestoreExtensionEvents(void)
     ChangeDeviceNotify = 12;
     DeviceKeyStateNotify = 13;
     DeviceButtonStateNotify = 13;
+    DevicePresenceNotify = 14;
 
     BadDevice = 0;
     BadEvent = 1;
@@ -803,7 +803,7 @@ RestoreExtensionEvents(void)
  *
  */
 
-void
+static void
 IResetProc(ExtensionEntry * unused)
 {
 
@@ -823,6 +823,7 @@ IResetProc(ExtensionEntry * unused)
     EventSwapVector[DeviceButtonStateNotify] = NotImplemented;
     EventSwapVector[DeviceMappingNotify] = NotImplemented;
     EventSwapVector[ChangeDeviceNotify] = NotImplemented;
+    EventSwapVector[DevicePresenceNotify] = NotImplemented;
     RestoreExtensionEvents();
 }
 
@@ -846,7 +847,7 @@ AssignTypeAndName(DeviceIntPtr dev, Atom type, char *name)
  *
  */
 
-void
+static void
 MakeDeviceTypeAtoms(void)
 {
     int i;
@@ -856,117 +857,106 @@ MakeDeviceTypeAtoms(void)
 	    MakeAtom(dev_type[i].name, strlen(dev_type[i].name), 1);
 }
 
-/**************************************************************************
+/*****************************************************************************
  *
- * Return a DeviceIntPtr corresponding to a specified device id.
- * This will not return the pointer or keyboard, or devices that are not on.
+ *	SEventIDispatch
  *
+ *	Swap any events defined in this extension.
  */
+#define DO_SWAP(func,type) func ((type *)from, (type *)to)
 
-DeviceIntPtr
-LookupDeviceIntRec(CARD8 id)
+static void
+SEventIDispatch(xEvent * from, xEvent * to)
 {
-    DeviceIntPtr dev;
+    int type = from->u.u.type & 0177;
 
-    for (dev = inputInfo.devices; dev; dev = dev->next) {
-	if (dev->id == id) {
-	    if (id == inputInfo.pointer->id || id == inputInfo.keyboard->id)
-		return (NULL);
-	    return (dev);
-	}
+    if (type == DeviceValuator)
+	DO_SWAP(SEventDeviceValuator, deviceValuator);
+    else if (type == DeviceKeyPress) {
+	SKeyButtonPtrEvent(from, to);
+	to->u.keyButtonPointer.pad1 = from->u.keyButtonPointer.pad1;
+    } else if (type == DeviceKeyRelease) {
+	SKeyButtonPtrEvent(from, to);
+	to->u.keyButtonPointer.pad1 = from->u.keyButtonPointer.pad1;
+    } else if (type == DeviceButtonPress) {
+	SKeyButtonPtrEvent(from, to);
+	to->u.keyButtonPointer.pad1 = from->u.keyButtonPointer.pad1;
+    } else if (type == DeviceButtonRelease) {
+	SKeyButtonPtrEvent(from, to);
+	to->u.keyButtonPointer.pad1 = from->u.keyButtonPointer.pad1;
+    } else if (type == DeviceMotionNotify) {
+	SKeyButtonPtrEvent(from, to);
+	to->u.keyButtonPointer.pad1 = from->u.keyButtonPointer.pad1;
+    } else if (type == DeviceFocusIn)
+	DO_SWAP(SEventFocus, deviceFocus);
+    else if (type == DeviceFocusOut)
+	DO_SWAP(SEventFocus, deviceFocus);
+    else if (type == ProximityIn) {
+	SKeyButtonPtrEvent(from, to);
+	to->u.keyButtonPointer.pad1 = from->u.keyButtonPointer.pad1;
+    } else if (type == ProximityOut) {
+	SKeyButtonPtrEvent(from, to);
+	to->u.keyButtonPointer.pad1 = from->u.keyButtonPointer.pad1;
+    } else if (type == DeviceStateNotify)
+	DO_SWAP(SDeviceStateNotifyEvent, deviceStateNotify);
+    else if (type == DeviceKeyStateNotify)
+	DO_SWAP(SDeviceKeyStateNotifyEvent, deviceKeyStateNotify);
+    else if (type == DeviceButtonStateNotify)
+	DO_SWAP(SDeviceButtonStateNotifyEvent, deviceButtonStateNotify);
+    else if (type == DeviceMappingNotify)
+	DO_SWAP(SDeviceMappingNotifyEvent, deviceMappingNotify);
+    else if (type == ChangeDeviceNotify)
+	DO_SWAP(SChangeDeviceNotifyEvent, changeDeviceNotify);
+    else if (type == DevicePresenceNotify)
+	DO_SWAP(SDevicePresenceNotifyEvent, devicePresenceNotify);
+    else {
+	FatalError("XInputExtension: Impossible event!\n");
     }
-    return (NULL);
 }
 
-/**************************************************************************
+/**********************************************************************
  *
- * Allow the specified event to be restricted to being selected by one
- * client at a time.
- * The default is to allow more than one client to select the event.
+ * IExtensionInit - initialize the input extension.
+ *
+ * Called from InitExtensions in main() or from QueryExtension() if the
+ * extension is dynamically loaded.
+ *
+ * This extension has several events and errors.
  *
  */
 
 void
-SetExclusiveAccess(Mask mask)
+XInputExtensionInit(void)
 {
-    int i;
+    ExtensionEntry *extEntry;
 
-    for (i = 0; i < MAX_DEVICES; i++)
-	ExtExclusiveMasks[i] |= mask;
-}
-
-/**************************************************************************
- *
- * Allow the specified event to have its propagation suppressed.
- * The default is to not allow suppression of propagation.
- *
- */
-
-void
-AllowPropagateSuppress(Mask mask)
-{
-    int i;
-
-    for (i = 0; i < MAX_DEVICES; i++)
-	PropagateMask[i] |= mask;
-}
-
-/**************************************************************************
- *
- * Return the next available extension event mask.
- *
- */
-
-Mask
-GetNextExtEventMask(void)
-{
-    int i;
-    Mask mask = lastExtEventMask;
-
-    if (lastExtEventMask == 0) {
-	FatalError("GetNextExtEventMask: no more events are available.");
+    extEntry = AddExtension(INAME, IEVENTS, IERRORS, ProcIDispatch,
+			    SProcIDispatch, IResetProc, StandardMinorOpcode);
+    if (extEntry) {
+	IReqCode = extEntry->base;
+	AllExtensionVersions[IReqCode - 128] = thisversion;
+	MakeDeviceTypeAtoms();
+	RT_INPUTCLIENT = CreateNewResourceType((DeleteType) InputClientGone);
+	RegisterResourceName(RT_INPUTCLIENT, "INPUTCLIENT");
+	FixExtensionEvents(extEntry);
+	ReplySwapVector[IReqCode] = (ReplySwapPtr) SReplyIDispatch;
+	EventSwapVector[DeviceValuator] = SEventIDispatch;
+	EventSwapVector[DeviceKeyPress] = SEventIDispatch;
+	EventSwapVector[DeviceKeyRelease] = SEventIDispatch;
+	EventSwapVector[DeviceButtonPress] = SEventIDispatch;
+	EventSwapVector[DeviceButtonRelease] = SEventIDispatch;
+	EventSwapVector[DeviceMotionNotify] = SEventIDispatch;
+	EventSwapVector[DeviceFocusIn] = SEventIDispatch;
+	EventSwapVector[DeviceFocusOut] = SEventIDispatch;
+	EventSwapVector[ProximityIn] = SEventIDispatch;
+	EventSwapVector[ProximityOut] = SEventIDispatch;
+	EventSwapVector[DeviceStateNotify] = SEventIDispatch;
+	EventSwapVector[DeviceKeyStateNotify] = SEventIDispatch;
+	EventSwapVector[DeviceButtonStateNotify] = SEventIDispatch;
+	EventSwapVector[DeviceMappingNotify] = SEventIDispatch;
+	EventSwapVector[ChangeDeviceNotify] = SEventIDispatch;
+	EventSwapVector[DevicePresenceNotify] = SEventIDispatch;
+    } else {
+	FatalError("IExtensionInit: AddExtensions failed\n");
     }
-    lastExtEventMask <<= 1;
-
-    for (i = 0; i < MAX_DEVICES; i++)
-	ExtValidMasks[i] |= mask;
-    return mask;
-}
-
-/**************************************************************************
- *
- * Assign the specified mask to the specified event.
- *
- */
-
-void
-SetMaskForExtEvent(Mask mask, int event)
-{
-
-    EventInfo[ExtEventIndex].mask = mask;
-    EventInfo[ExtEventIndex++].type = event;
-
-    if ((event < LASTEvent) || (event >= 128))
-	FatalError("MaskForExtensionEvent: bogus event number");
-    SetMaskForEvent(mask, event);
-}
-
-/**************************************************************************
- *
- * Record an event mask where there is no unique corresponding event type.
- * We can't call SetMaskForEvent, since that would clobber the existing
- * mask for that event.  MotionHint and ButtonMotion are examples.
- *
- * Since extension event types will never be less than 64, we can use
- * 0-63 in the EventInfo array as the "type" to be used to look up this
- * mask.  This means that the corresponding macros such as 
- * DevicePointerMotionHint must have access to the same constants.
- *
- */
-
-void
-SetEventInfo(Mask mask, int constant)
-{
-    EventInfo[ExtEventIndex].mask = mask;
-    EventInfo[ExtEventIndex++].type = constant;
 }

@@ -20,7 +20,6 @@
  * PERFORMANCE OF THIS SOFTWARE.
  *
  */
-/* $XConsortium: vgaCmap.c /main/15 1996/10/28 05:13:44 kaleb $ */
 
 
 #ifdef HAVE_XORG_CONFIG_H
@@ -237,9 +236,9 @@ vgaInstallColormap(pmap)
   else
     entries = pmap->pVisual->ColormapEntries;
 
-  ppix = (Pixel *)ALLOCATE_LOCAL( entries * sizeof(Pixel));
-  prgb = (xrgb *)ALLOCATE_LOCAL( entries * sizeof(xrgb));
-  defs = (xColorItem *)ALLOCATE_LOCAL(entries * sizeof(xColorItem));
+  ppix = (Pixel *)xalloc( entries * sizeof(Pixel));
+  prgb = (xrgb *)xalloc( entries * sizeof(xrgb));
+  defs = (xColorItem *)xalloc(entries * sizeof(xColorItem));
 
   if ( oldmap != NOMAPYET)
     WalkTree( pmap->pScreen, TellLostMap, &oldmap->mid);
@@ -262,9 +261,9 @@ vgaInstallColormap(pmap)
 
   WalkTree(pmap->pScreen, TellGainedMap, &pmap->mid);
   
-  DEALLOCATE_LOCAL(ppix);
-  DEALLOCATE_LOCAL(prgb);
-  DEALLOCATE_LOCAL(defs);
+  xfree(ppix);
+  xfree(prgb);
+  xfree(defs);
 }
 
 

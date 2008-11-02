@@ -115,7 +115,9 @@ extern GCPtr CreateGC(
     DrawablePtr /*pDrawable*/,
     BITS32 /*mask*/,
     XID* /*pval*/,
-    int* /*pStatus*/);
+    int* /*pStatus*/,
+    XID /*gcid*/,
+    ClientPtr /*client*/);
 
 extern int CopyGC(
     GCPtr/*pgcSrc*/,
@@ -125,11 +127,6 @@ extern int CopyGC(
 extern int FreeGC(
     pointer /*pGC*/,
     XID /*gid*/);
-
-extern void SetGCMask(
-    GCPtr /*pGC*/,
-    Mask /*selectMask*/,
-    Mask /*newDataMask*/);
 
 extern GCPtr CreateScratchGC(
     ScreenPtr /*pScreen*/,

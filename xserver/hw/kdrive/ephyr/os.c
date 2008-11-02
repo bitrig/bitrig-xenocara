@@ -28,40 +28,24 @@
 #endif
 #include "ephyr.h"
 
+extern void processScreenArg (char *screen_size, char *parent_id) ;
+
 static int
 EphyrInit (void)
 {
+  /*
+   * make sure at least one screen
+   * has been added to the system.
+   */
+  if (!KdCardInfoLast ())
+    {
+        processScreenArg ("640x480", NULL) ;
+    }
   return hostx_init();
 }
 
-static void
-EphyrEnable (void)
-{
-  EPHYR_DBG("mark");
-}
-
-static Bool
-EphyrSpecialKey (KeySym sym)
-{
-    return FALSE;
-}
-
-static void
-EphyrDisable (void)
-{
-}
-
-static void
-EphyrFini (void)
-{
-}
-
 KdOsFuncs   EphyrOsFuncs = {
-    EphyrInit,
-    EphyrEnable,
-    EphyrSpecialKey,
-    EphyrDisable,
-    EphyrFini,
-    ephyrPoll
+    .Init = EphyrInit,
+    .pollEvents = ephyrPoll,
 };
 

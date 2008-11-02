@@ -1,4 +1,3 @@
-/* $XFree86$ */
 /*
  * Copyright 2003 Red Hat Inc., Durham, North Carolina.
  *
@@ -38,7 +37,7 @@
 #include <X11/Xlib.h>
 #include <X11/XKBlib.h>
 #include <X11/extensions/XKB.h>
-#include <X11/extensions/XKBstr.h>
+#include "xkbstr.h"
 #include <sys/time.h>
 
 int main(int argc, char **argv)

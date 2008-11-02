@@ -1,6 +1,4 @@
 /*
- * $TOG: cfb8cppl.c /main/16 1998/02/09 14:04:13 kaleb $
- *
 Copyright 1990, 1998  The Open Group
 
 Permission to use, copy, modify, distribute, and sell this software and its
@@ -44,9 +42,7 @@ in this Software without prior written authorization from The Open Group.
 #include "maskbits.h"
 #define PSZ 8
 #include "mergerop.h"
-#else /* PSZ==8 */
-#include "cfbtab.h" /* provides starttab, endttab, partmasks */
-#endif /* PSZ==8 */
+#endif
 
 
 void

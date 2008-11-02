@@ -29,7 +29,7 @@
 #include "xf86.h"
 #include "xf86Priv.h"
 #include "xf86_OSlib.h"
-#if defined(__i386) || defined(__x86)
+#if defined(__i386__) || defined(__i386) || defined(__x86)
 # include <sys/kd.h>
 #endif
 
@@ -40,7 +40,7 @@ static int VTnum = -1;
 static int xf86StartVT = -1;
 #endif
 
-#if defined(__SOL8__) || !defined(__i386)
+#if defined(__SOL8__) || (!defined(__i386__) && !defined(__i386))
 static char fb_dev[PATH_MAX] = "/dev/fb";
 #else
 static char fb_dev[PATH_MAX] = "/dev/console";
@@ -209,11 +209,8 @@ xf86CloseConsole(void)
 #ifdef HAS_USL_VTS
     struct vt_mode VT;
 #endif
-#if defined(__SOL8__) || !defined(i386)
-    int tmp;
-#endif
 
-#if !defined(i386) && !defined(__x86)
+#if !defined(__i386__) && !defined(__i386) && !defined(__x86)
 
     if (!xf86DoProbe && !xf86DoConfigure) {
 	int fd;
@@ -291,23 +288,6 @@ xf86CloseConsole(void)
 #endif /* HAS_USL_VTS */
 
     close(xf86Info.consoleFd);
-
-#if defined(__SOL8__) || !defined(i386)
-
-    /*
-     * This probably shouldn't be here.  However, there is no corresponding
-     * xf86CloseKbd() routine - DWH
-     */
-
-    /* Set the keyboard into "indirect" mode and turn off even translation */
-    tmp = 0;
-    (void) ioctl(xf86Info.kbdFd, KIOCSDIRECT, &tmp);
-    tmp = TR_ASCII;
-    (void) ioctl(xf86Info.kbdFd, KIOCTRANS, &tmp);
-
-    close(xf86Info.kbdFd);
-
-#endif
 }
 
 int
@@ -349,22 +329,12 @@ xf86ProcessArgument(int argc, char **argv, int i)
 
 #endif /* HAS_USL_VTS */
 
-#if defined(__SOL8__) || !defined(i386)
+#if defined(__SOL8__) || (!defined(__i386__) && !defined(__i386))
 
     if ((i + 1) < argc) {
 	if (!strcmp(argv[i], "-dev")) {
 	    strncpy(fb_dev, argv[i+1], PATH_MAX);
 	    fb_dev[PATH_MAX - 1] = '\0';
-	    return 2;
-	}
-
-	if (!strcmp(argv[i], "-ar1")) {
-	    xf86Info.kbdDelay = atoi(argv[i + 1]) * 1000;
-	    return 2;
-	}
-
-	if (!strcmp(argv[i], "-ar2")) {
-	    xf86Info.kbdRate = atoi(argv[i + 1]) * 1000;
 	    return 2;
 	}
     }
@@ -379,12 +349,8 @@ void xf86UseMsg()
 #ifdef HAS_USL_VTS
     ErrorF("vtXX                   Use the specified VT number\n");
 #endif
-#if defined(__SOL8__) || !defined(i386)
+#if defined(__SOL8__) || !defined(__i386__)
     ErrorF("-dev <fb>              Framebuffer device\n");
-    ErrorF("-ar1 <float>           Set autorepeat initiate time (sec)\n");
-    ErrorF("                       (if not using XKB)\n");
-    ErrorF("-ar2 <float>           Set autorepeat interval time (sec)\n");
-    ErrorF("                       (if not using XKB)\n");
 #endif
     ErrorF("-keeptty               Don't detach controlling tty\n");
     ErrorF("                       (for debugging only)\n");

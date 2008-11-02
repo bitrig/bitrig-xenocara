@@ -74,8 +74,6 @@ Equipment Corporation.
 
 ******************************************************************/
 
-/* $TOG: main.c /main/86 1998/02/09 14:20:03 kaleb $ */
-
 #define NEED_EVENTS
 #ifdef HAVE_DIX_CONFIG_H
 #include <dix-config.h>
@@ -95,12 +93,16 @@ Equipment Corporation.
 #include "colormap.h"
 #include "colormapst.h"
 #include "cursorstr.h"
+#include "selection.h"
 #include <X11/fonts/font.h>
 #include "opaque.h"
 #include "servermd.h"
+#include "hotplug.h"
 #include "site.h"
 #include "dixfont.h"
 #include "extnsionst.h"
+#include "privates.h"
+#include "registry.h"
 #ifdef XPRINT
 #include "DiPrint.h"
 #endif
@@ -117,15 +119,12 @@ Equipment Corporation.
 #include "dpmsproc.h"
 #endif
 
-extern int InitClientPrivates(ClientPtr client);
-
 extern void Dispatch(void);
 
 char *ConnectionInfo;
 xConnSetupPrefix connSetupPrefix;
 
 extern FontPtr defaultFont;
-extern int screenPrivateCount;
 
 extern void InitProcVectors(void);
 extern Bool CreateGCperDepthArray(void);
@@ -135,13 +134,9 @@ static
 #endif
 Bool CreateConnectionBlock(void);
 
-static void FreeScreen(ScreenPtr);
-
 _X_EXPORT PaddingInfo PixmapWidthPaddingInfo[33];
 
 int connBlockScreenStart;
-
-static int restart = 0;
 
 _X_EXPORT void
 NotImplemented(xEvent *from, xEvent *to)
@@ -242,6 +237,10 @@ static int indexForScanlinePad[ 65 ] = {
 #define MIN(a,b) (((a) < (b)) ? (a) : (b))
 #endif
 
+#ifdef __APPLE__
+void DarwinHandleGUI(int argc, char **argv, char **envp);
+#endif
+
 int
 main(int argc, char *argv[], char *envp[])
 {
@@ -252,23 +251,17 @@ main(int argc, char *argv[], char *envp[])
     display = "0";
 
     InitGlobals();
+    InitRegions();
 #ifdef XPRINT
     PrinterInitGlobals();
 #endif
 
+#ifdef XQUARTZ
     /* Quartz support on Mac OS X requires that the Cocoa event loop be in
      * the main thread. This allows the X server main to be called again
      * from another thread. */
-#if defined(__DARWIN__) && defined(DARWIN_WITH_QUARTZ)
     DarwinHandleGUI(argc, argv, envp);
 #endif
-
-    /* Notice if we're restarted.  Probably this is because we jumped through
-     * an uninitialized pointer */
-    if (restart)
-	FatalError("server restarted. Jumped through uninitialized pointer?\n");
-    else
-	restart = 1;
 
     CheckUserParameters(argc, argv, envp);
 
@@ -309,7 +302,8 @@ main(int argc, char *argv[], char *envp[])
 #endif
 	InitBlockAndWakeupHandlers();
 	/* Perform any operating system dependent initializations you'd like */
-	OsInit();		
+	OsInit();
+        config_init();
 	if(serverGeneration == 1)
 	{
 	    CreateWellKnownSockets();
@@ -353,18 +347,12 @@ main(int argc, char *argv[], char *envp[])
 
 	InitAtoms();
 	InitEvents();
+	InitSelections();
 	InitGlyphCaching();
-	ResetExtensionPrivates();
-	ResetClientPrivates();
-	ResetScreenPrivates();
-	ResetWindowPrivates();
-	ResetGCPrivates();
-#ifdef PIXPRIV
-	ResetPixmapPrivates();
-#endif
-	ResetColormapPrivates();
+	if (!dixResetPrivates())
+	    FatalError("couldn't init private data storage");
+	dixResetRegistry();
 	ResetFontPrivateIndex();
-	ResetDevicePrivateIndex();
 	InitCallbackManager();
 	InitVisualWrap();
 	InitOutput(&screenInfo, argc, argv);
@@ -377,8 +365,6 @@ main(int argc, char *argv[], char *envp[])
 	if (screenInfo.numVideoScreens < 0)
 	    screenInfo.numVideoScreens = screenInfo.numScreens;
 	InitExtensions(argc, argv);
-	if (!InitClientPrivates(serverClient))
-	    FatalError("failed to allocate serverClient devprivates");
 	for (i = 0; i < screenInfo.numScreens; i++)
 	{
 	    ScreenPtr pScreen = screenInfo.screens[i];
@@ -394,23 +380,29 @@ main(int argc, char *argv[], char *envp[])
 	    if (!CreateRootWindow(pScreen))
 		FatalError("failed to create root window");
 	}
+        InitCoreDevices();
 	InitInput(argc, argv);
 	if (InitAndStartDevices() != Success)
 	    FatalError("failed to initialize core devices");
 
 	InitFonts();
-	if (loadableFonts) {
-	    SetFontPath(0, 0, (unsigned char *)defaultFontPath, &error);
-	} else {
+	if (loadableFonts)
+	    SetFontPath(serverClient, 0, (unsigned char *)defaultFontPath,
+			&error);
+        else {
 	    if (SetDefaultFontPath(defaultFontPath) != Success)
 		ErrorF("failed to set default font path '%s'",
 			defaultFontPath);
 	}
-	if (!SetDefaultFont(defaultTextFont))
+	if (!SetDefaultFont(defaultTextFont)) {
 	    FatalError("could not open default font '%s'", defaultTextFont);
-	if (!(rootCursor = CreateRootCursor(defaultCursorFont, 0)))
+	}
+
+	if (!(rootCursor = CreateRootCursor(NULL, 0))) {
 	    FatalError("could not open default cursor font '%s'",
 		       defaultCursorFont);
+	}
+
 #ifdef DPMSExtension
  	/* check all screens, looking for DPMS Capabilities */
  	DPMSCapableFlag = DPMSSupported();
@@ -429,24 +421,28 @@ main(int argc, char *argv[], char *envp[])
 	for (i = 0; i < screenInfo.numScreens; i++)
 	    InitRootWindow(WindowTable[i]);
 	DefineInitialRootWindow(WindowTable[0]);
-	SaveScreens(SCREEN_SAVER_FORCER, ScreenSaverReset);
+	dixSaveScreens(serverClient, SCREEN_SAVER_FORCER, ScreenSaverReset);
 
 #ifdef PANORAMIX
 	if (!noPanoramiXExtension) {
-	    if (!PanoramiXCreateConnectionBlock())
+	    if (!PanoramiXCreateConnectionBlock()) {
 		FatalError("could not create connection block info");
+	    }
 	} else
 #endif
 	{
-	    if (!CreateConnectionBlock())
+	    if (!CreateConnectionBlock()) {
 	    	FatalError("could not create connection block info");
+	    }
 	}
+
+	NotifyParentProcess();
 
 	Dispatch();
 
 	/* Now free up whatever must be freed */
 	if (screenIsSaved == SCREEN_SAVER_ON)
-	    SaveScreens(SCREEN_SAVER_OFF, ScreenSaverReset);
+	    dixSaveScreens(serverClient, SCREEN_SAVER_OFF, ScreenSaverReset);
 	FreeScreenSaverTimer();
 	CloseDownExtensions();
 
@@ -461,14 +457,19 @@ main(int argc, char *argv[], char *envp[])
 	FreeAllResources();
 #endif
 
+        config_fini();
+
+        memset(WindowTable, 0, MAXSCREENS * sizeof(WindowPtr));
 	CloseDownDevices();
+
 	for (i = screenInfo.numScreens - 1; i >= 0; i--)
 	{
 	    FreeScratchPixmapsForScreen(i);
 	    FreeGCperDepth(i);
 	    FreeDefaultStipple(i);
 	    (* screenInfo.screens[i]->CloseScreen)(i, screenInfo.screens[i]);
-	    FreeScreen(screenInfo.screens[i]);
+	    dixFreePrivates(screenInfo.screens[i]->devPrivates);
+	    xfree(screenInfo.screens[i]);
 	    screenInfo.numScreens = i;
 	}
   	CloseDownEvents();
@@ -478,7 +479,7 @@ main(int argc, char *argv[], char *envp[])
 
 	FreeAuditTimer();
 
-	xfree(serverClient->devPrivates);
+	dixFreePrivates(serverClient->devPrivates);
 	serverClient->devPrivates = NULL;
 
 	if (dispatchException & DE_TERMINATE)
@@ -501,7 +502,7 @@ main(int argc, char *argv[], char *envp[])
 }
 
 static int  VendorRelease = VENDOR_RELEASE;
-static char *VendorString = VENDOR_STRING;
+static char *VendorString = VENDOR_NAME;
 
 void
 SetVendorRelease(int release)
@@ -521,7 +522,7 @@ static int padlength[4] = {0, 3, 2, 1};
 static
 #endif
 Bool
-CreateConnectionBlock()
+CreateConnectionBlock(void)
 {
     xConnSetup setup;
     xWindowRoot root;
@@ -681,9 +682,6 @@ AddScreen(
     int i;
     int scanlinepad, format, depth, bitsPerPixel, j, k;
     ScreenPtr pScreen;
-#ifdef DEBUG
-    void	(**jNI) ();
-#endif /* DEBUG */
 
     i = screenInfo.numScreens;
     if (i == MAXSCREENS)
@@ -693,37 +691,12 @@ AddScreen(
     if (!pScreen)
 	return -1;
 
-    pScreen->devPrivates = (DevUnion *)xcalloc(sizeof(DevUnion),
-						screenPrivateCount);
-    if (!pScreen->devPrivates && screenPrivateCount)
-    {
-	xfree(pScreen);
-	return -1;
-    }
+    pScreen->devPrivates = NULL;
     pScreen->myNum = i;
-    pScreen->WindowPrivateLen = 0;
-    pScreen->WindowPrivateSizes = (unsigned *)NULL;
-    pScreen->totalWindowSize =
-        ((sizeof(WindowRec) + sizeof(long) - 1) / sizeof(long)) * sizeof(long);
-    pScreen->GCPrivateLen = 0;
-    pScreen->GCPrivateSizes = (unsigned *)NULL;
-    pScreen->totalGCSize =
-        ((sizeof(GC) + sizeof(long) - 1) / sizeof(long)) * sizeof(long);
-#ifdef PIXPRIV
-    pScreen->PixmapPrivateLen = 0;
-    pScreen->PixmapPrivateSizes = (unsigned *)NULL;
     pScreen->totalPixmapSize = BitmapBytePad(sizeof(PixmapRec)*8);
-#endif
     pScreen->ClipNotify = 0;	/* for R4 ddx compatibility */
     pScreen->CreateScreenResources = 0;
     
-#ifdef DEBUG
-    for (jNI = &pScreen->QueryBestSize; 
-	 jNI < (void (**) ()) &pScreen->SendGraphicsExpose;
-	 jNI++)
-	*jNI = NotImplemented;
-#endif /* DEBUG */
-
     /*
      * This loop gets run once for every Screen that gets added,
      * but thats ok.  If the ddx layer initializes the formats
@@ -772,21 +745,10 @@ AddScreen(
     screenInfo.numScreens++;
     if (!(*pfnInit)(i, pScreen, argc, argv))
     {
-	FreeScreen(pScreen);
+	dixFreePrivates(pScreen->devPrivates);
+	xfree(pScreen);
 	screenInfo.numScreens--;
 	return -1;
     }
     return i;
-}
-
-static void
-FreeScreen(ScreenPtr pScreen)
-{
-    xfree(pScreen->WindowPrivateSizes);
-    xfree(pScreen->GCPrivateSizes);
-#ifdef PIXPRIV
-    xfree(pScreen->PixmapPrivateSizes);
-#endif
-    xfree(pScreen->devPrivates);
-    xfree(pScreen);
 }

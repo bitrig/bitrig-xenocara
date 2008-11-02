@@ -45,14 +45,6 @@ is" without express or implied warranty.
 Window xnestDefaultWindows[MAXSCREENS];
 Window xnestScreenSaverWindows[MAXSCREENS];
 
-#ifdef GLXEXT
-extern void GlxWrapInitVisuals(miInitVisualsProcPtr *);
-#endif
-
-#ifdef PIXPRIV
-int xnestScreenGeneration = -1;
-#endif
-
 ScreenPtr
 xnestScreen(Window window)
 {
@@ -148,23 +140,13 @@ xnestOpenScreen(int index, ScreenPtr pScreen, int argc, char *argv[])
   VisualID defaultVisual;
   int rootDepth;
 
-  if (!(AllocateWindowPrivate(pScreen, xnestWindowPrivateIndex,
-			    sizeof(xnestPrivWin))  &&
-	  AllocateGCPrivate(pScreen, xnestGCPrivateIndex, 
-			    sizeof(xnestPrivGC)))) 
-    return False;
-
-#ifdef PIXPRIV
-  if (xnestScreenGeneration != serverGeneration) {
-      if ((xnestPixmapPrivateIndex = AllocatePixmapPrivateIndex()) < 0)
-	  return False;
-      xnestScreenGeneration = serverGeneration;
-  }
-  
-  if (!AllocatePixmapPrivate(pScreen,xnestPixmapPrivateIndex,
-			     sizeof (xnestPrivPixmap)))
+  if (!dixRequestPrivate(xnestWindowPrivateKey, sizeof(xnestPrivWin)))
       return False;
-#endif
+  if (!dixRequestPrivate(xnestGCPrivateKey, sizeof(xnestPrivGC)))
+    return False;
+  if (!dixRequestPrivate(xnestPixmapPrivateKey, sizeof (xnestPrivPixmap)))
+      return False;
+
   visuals = (VisualPtr)xalloc(xnestNumVisuals * sizeof(VisualRec));
   numVisuals = 0;
 
@@ -234,17 +216,6 @@ xnestOpenScreen(int index, ScreenPtr pScreen, int argc, char *argv[])
   defaultVisual = visuals[xnestDefaultVisualIndex].vid;
   rootDepth = visuals[xnestDefaultVisualIndex].nplanes;
 
-#ifdef GLXEXT
-  {
-    miInitVisualsProcPtr proc = NULL;
-
-    GlxWrapInitVisuals(&proc);
-    /* GlxInitVisuals ignores the last three arguments. */
-    proc(&visuals, &depths, &numVisuals, &numDepths,
-	 &rootDepth, &defaultVisual, 0, 0, 0);
-  }
-#endif
-
   if (xnestParentWindow != 0) {
     XGetWindowAttributes(xnestDisplay, xnestParentWindow, &gattributes);
     xnestWidth = gattributes.width;
@@ -298,8 +269,6 @@ xnestOpenScreen(int index, ScreenPtr pScreen, int argc, char *argv[])
   pScreen->UnrealizeWindow = xnestUnrealizeWindow;
   pScreen->PostValidateTree = NULL;
   pScreen->WindowExposures = xnestWindowExposures;
-  pScreen->PaintWindowBackground = xnestPaintWindowBackground;
-  pScreen->PaintWindowBorder = xnestPaintWindowBorder;
   pScreen->CopyWindow = xnestCopyWindow;
   pScreen->ClipNotify = xnestClipNotify;
 
@@ -307,15 +276,6 @@ xnestOpenScreen(int index, ScreenPtr pScreen, int argc, char *argv[])
 
   pScreen->CreatePixmap = xnestCreatePixmap;
   pScreen->DestroyPixmap = xnestDestroyPixmap;
-
-  /* Backing store procedures */
-  
-  pScreen->SaveDoomedAreas = NULL;
-  pScreen->RestoreAreas = NULL;
-  pScreen->ExposeCopy = NULL;
-  pScreen->TranslateBackingStore = NULL;
-  pScreen->ClearBackingStore = NULL;
-  pScreen->DrawGuarantee = NULL;
 
   /* Font procedures */
 

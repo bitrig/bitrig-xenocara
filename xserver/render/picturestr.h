@@ -1,6 +1,4 @@
 /*
- * $Id: picturestr.h,v 1.1 2006/11/26 18:16:24 matthieu Exp $
- *
  * Copyright © 2000 SuSE, Inc.
  *
  * Permission to use, copy, modify, distribute, and sell this software and its
@@ -26,9 +24,10 @@
 #ifndef _PICTURESTR_H_
 #define _PICTURESTR_H_
 
-#include "glyphstr.h"
 #include "scrnintstr.h"
+#include "glyphstr.h"
 #include "resource.h"
+#include "privates.h"
 
 typedef struct _DirectFormat {
     CARD16	    red, redMask;
@@ -54,13 +53,8 @@ typedef struct _PictFormat {
     IndexFormatRec  index;
 } PictFormatRec;
 
-typedef struct _PictVector {
-    xFixed	    vector[3];
-} PictVector, *PictVectorPtr;
-
-typedef struct _PictTransform {
-    xFixed	    matrix[3][3];
-} PictTransform, *PictTransformPtr;
+typedef struct pixman_vector PictVector, *PictVectorPtr;
+typedef struct pixman_transform PictTransform, *PictTransformPtr;
 
 #define PICT_GRADIENT_STOPTABLE_SIZE 1024
 #define SourcePictTypeSolidFill 0
@@ -68,8 +62,13 @@ typedef struct _PictTransform {
 #define SourcePictTypeRadial 2
 #define SourcePictTypeConical 3
 
+#define SourcePictClassUnknown    0
+#define SourcePictClassHorizontal 1
+#define SourcePictClassVertical   2
+
 typedef struct _PictSolidFill {
     unsigned int type;
+    unsigned int class;
     CARD32 color;
 } PictSolidFill, *PictSolidFillPtr;
 
@@ -80,39 +79,56 @@ typedef struct _PictGradientStop {
 
 typedef struct _PictGradient {
     unsigned int type;
+    unsigned int class;
     int nstops;
     PictGradientStopPtr stops;
-    CARD32 colorTable[PICT_GRADIENT_STOPTABLE_SIZE];
+    int stopRange;
+    CARD32 *colorTable;
+    int colorTableSize;
 } PictGradient, *PictGradientPtr;
 
 typedef struct _PictLinearGradient {
     unsigned int type;
+    unsigned int class;
     int nstops;
     PictGradientStopPtr stops;
-    CARD32 colorTable[PICT_GRADIENT_STOPTABLE_SIZE];
+    int stopRange;
+    CARD32 *colorTable;
+    int colorTableSize;
     xPointFixed p1;
     xPointFixed p2;
 } PictLinearGradient, *PictLinearGradientPtr;
 
+typedef struct _PictCircle {
+    xFixed x;
+    xFixed y;
+    xFixed radius;
+} PictCircle, *PictCirclePtr;
+
 typedef struct _PictRadialGradient {
     unsigned int type;
+    unsigned int class;
     int nstops;
     PictGradientStopPtr stops;
-    CARD32 colorTable[PICT_GRADIENT_STOPTABLE_SIZE];
-    double fx;
-    double fy;
-    double dx;
-    double dy;
-    double a;
-    double m;
-    double b;
+    int stopRange;
+    CARD32 *colorTable;
+    int colorTableSize;
+    PictCircle c1;
+    PictCircle c2;
+    double cdx;
+    double cdy;
+    double dr;
+    double A;
 } PictRadialGradient, *PictRadialGradientPtr;
 
 typedef struct _PictConicalGradient {
     unsigned int type;
+    unsigned int class;
     int nstops;
     PictGradientStopPtr stops;
-    CARD32 colorTable[PICT_GRADIENT_STOPTABLE_SIZE];
+    int stopRange;
+    CARD32 *colorTable;
+    int colorTableSize;
     xPointFixed center;
     xFixed angle;
 } PictConicalGradient, *PictConicalGradientPtr;
@@ -158,7 +174,7 @@ typedef struct _Picture {
 
     RegionPtr	    pCompositeClip;
 
-    DevUnion	    *devPrivates;
+    PrivateRec	    *devPrivates;
 
     PictTransform   *transform;
 
@@ -313,10 +329,6 @@ typedef void	(*UnrealizeGlyphProcPtr)    (ScreenPtr	    pScreen,
 					     GlyphPtr	    glyph);
 
 typedef struct _PictureScreen {
-    int				totalPictureSize;
-    unsigned int		*PicturePrivateSizes;
-    int				PicturePrivateLen;
-
     PictFormatPtr		formats;
     PictFormatPtr		fallback;
     int				nformats;
@@ -330,7 +342,7 @@ typedef struct _PictureScreen {
     ValidatePictureProcPtr	ValidatePicture;
 
     CompositeProcPtr		Composite;
-    GlyphsProcPtr		Glyphs;
+    GlyphsProcPtr		Glyphs; /* unused */
     CompositeRectsProcPtr	CompositeRects;
 
     DestroyWindowProcPtr	DestroyWindow;
@@ -374,30 +386,25 @@ typedef struct _PictureScreen {
 
     AddTrapsProcPtr		AddTraps;
 
-    int			  	totalGlyphPrivateSize;
-    unsigned int	  	*glyphPrivateSizes;
-    int			  	glyphPrivateLen;
-    int			  	glyphPrivateOffset;
-
     RealizeGlyphProcPtr   	RealizeGlyph;
     UnrealizeGlyphProcPtr 	UnrealizeGlyph;
 
 } PictureScreenRec, *PictureScreenPtr;
 
-extern int		PictureScreenPrivateIndex;
-extern int		PictureWindowPrivateIndex;
+extern DevPrivateKey	PictureScreenPrivateKey;
+extern DevPrivateKey	PictureWindowPrivateKey;
 extern RESTYPE		PictureType;
 extern RESTYPE		PictFormatType;
 extern RESTYPE		GlyphSetType;
 
-#define GetPictureScreen(s) ((PictureScreenPtr) ((s)->devPrivates[PictureScreenPrivateIndex].ptr))
-#define GetPictureScreenIfSet(s) ((PictureScreenPrivateIndex != -1) ? GetPictureScreen(s) : NULL)
-#define SetPictureScreen(s,p) ((s)->devPrivates[PictureScreenPrivateIndex].ptr = (pointer) (p))
-#define GetPictureWindow(w) ((PicturePtr) ((w)->devPrivates[PictureWindowPrivateIndex].ptr))
-#define SetPictureWindow(w,p) ((w)->devPrivates[PictureWindowPrivateIndex].ptr = (pointer) (p))
+#define GetPictureScreen(s) ((PictureScreenPtr)dixLookupPrivate(&(s)->devPrivates, PictureScreenPrivateKey))
+#define GetPictureScreenIfSet(s) GetPictureScreen(s)
+#define SetPictureScreen(s,p) dixSetPrivate(&(s)->devPrivates, PictureScreenPrivateKey, p)
+#define GetPictureWindow(w) ((PicturePtr)dixLookupPrivate(&(w)->devPrivates, PictureWindowPrivateKey))
+#define SetPictureWindow(w,p) dixSetPrivate(&(w)->devPrivates, PictureWindowPrivateKey, p)
 
-#define GetGlyphPrivatesForScreen(glyph, s)				\
-    ((glyph)->devPrivates + (GetPictureScreen (s))->glyphPrivateOffset)
+#define GetGlyphPrivatesForScreen(glyph, s) \
+    ((PrivateRec **)dixLookupPrivateAddr(&(glyph)->devPrivates, s))
 
 #define VERIFY_PICTURE(pPicture, pid, client, mode, err) {\
     pPicture = SecurityLookupIDByType(client, pid, PictureType, mode);\
@@ -415,15 +422,6 @@ extern RESTYPE		GlyphSetType;
     } \
 } \
 
-void
-ResetPicturePrivateIndex (void);
-
-int
-AllocatePicturePrivateIndex (void);
-
-Bool
-AllocatePicturePrivate (ScreenPtr pScreen, int index2, unsigned int amount);
-
 Bool
 PictureDestroyWindow (WindowPtr pWindow);
 
@@ -434,7 +432,7 @@ void
 PictureStoreColors (ColormapPtr pColormap, int ndef, xColorItem *pdef);
 
 Bool
-PictureInitIndexedFormats (ScreenPtr pScreen);
+PictureInitIndexedFormat (ScreenPtr pScreen, PictFormatPtr format);
 
 Bool
 PictureSetSubpixelOrder (ScreenPtr pScreen, int subpixel);
@@ -485,15 +483,6 @@ PictureFinishInit (void);
 
 void
 SetPictureToDefaults (PicturePtr pPicture);
-
-PicturePtr
-AllocatePicture (ScreenPtr  pScreen);
-
-#if 0
-Bool
-miPictureInit (ScreenPtr pScreen, PictFormatPtr formats, int nformats);
-#endif
-
 
 PicturePtr
 CreatePicture (Picture		pid,
@@ -624,13 +613,18 @@ Bool
 PictureTransformPoint3d (PictTransformPtr transform,
                          PictVectorPtr	vector);
 
+CARD32
+PictureGradientColor (PictGradientStopPtr stop1,
+		      PictGradientStopPtr stop2,
+		      CARD32	          x);
+
 void RenderExtensionInit (void);
 
 Bool
 AnimCurInit (ScreenPtr pScreen);
 
 int
-AnimCursorCreate (CursorPtr *cursors, CARD32 *deltas, int ncursor, CursorPtr *ppCursor);
+AnimCursorCreate (CursorPtr *cursors, CARD32 *deltas, int ncursor, CursorPtr *ppCursor, ClientPtr client, XID cid);
 
 void
 AddTraps (PicturePtr	pPicture,
@@ -638,6 +632,10 @@ AddTraps (PicturePtr	pPicture,
 	  INT16		yOff,
 	  int		ntraps,
 	  xTrap		*traps);
+
+pixman_image_t *
+PixmanImageFromPicture (PicturePtr pPict,
+			Bool hasClip);
 
 PicturePtr
 CreateSolidPicture (Picture pid,

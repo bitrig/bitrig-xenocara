@@ -1,6 +1,4 @@
 /*
- * $Id: xcalibrate.c,v 1.1 2006/11/26 18:14:51 matthieu Exp $
- *
  * Copyright © 2003 Philip Blundell
  *
  * Permission to use, copy, modify, distribute, and sell this software and its
@@ -166,7 +164,6 @@ ProcXCalibrateSetRawMode (ClientPtr client)
   return (client->noClientException);
 }
 
-
 static int
 SProcXCalibrateSetRawMode (ClientPtr client)
 {
@@ -178,6 +175,47 @@ SProcXCalibrateSetRawMode (ClientPtr client)
   swaps(&stuff->on, n);
 
   return ProcXCalibrateSetRawMode(client);
+}
+
+static int
+ProcXCalibrateScreenToCoord (ClientPtr client)
+{
+  REQUEST(xXCalibrateScreenToCoordReq);
+  xXCalibrateScreenToCoordReply rep;
+
+  REQUEST_SIZE_MATCH (xXCalibrateScreenToCoordReq);
+
+  memset (&rep, 0, sizeof (rep));
+  rep.type = X_Reply;
+  rep.sequenceNumber = client->sequence;
+  rep.x = stuff->x;
+  rep.y = stuff->y;
+
+  KdScreenToPointerCoords(&rep.x, &rep.y);
+
+  if (client->swapped)
+    {
+      int n;
+
+      swaps (&rep.x, n);
+      swaps (&rep.y, n);
+    }
+  WriteToClient(client, sizeof (rep), (char *) &rep);
+  return (client->noClientException);
+}
+
+static int
+SProcXCalibrateScreenToCoord (ClientPtr client)
+{
+  REQUEST(xXCalibrateScreenToCoordReq);
+  int n;
+
+  REQUEST_SIZE_MATCH (xXCalibrateScreenToCoordReq);
+
+  swaps(&stuff->x, n);
+  swaps(&stuff->y, n);
+
+  return ProcXCalibrateScreenToCoord(client);
 }
 
 static void
@@ -194,6 +232,9 @@ ProcXCalibrateDispatch (ClientPtr client)
         return ProcXCalibrateQueryVersion(client);
     case X_XCalibrateRawMode:
         return ProcXCalibrateSetRawMode(client);
+    case X_XCalibrateScreenToCoord:
+        return ProcXCalibrateScreenToCoord(client);
+
     default: break;
     }
 
@@ -213,6 +254,8 @@ SProcXCalibrateDispatch (ClientPtr client)
         return SProcXCalibrateQueryVersion(client);
     case X_XCalibrateRawMode:
         return SProcXCalibrateSetRawMode(client);
+    case X_XCalibrateScreenToCoord:
+        return SProcXCalibrateScreenToCoord(client);
 
     default: break;
     }

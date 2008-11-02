@@ -40,7 +40,7 @@
 #define _XF86_BUS_H
 
 #include "xf86pciBus.h"
-#ifdef __sparc__
+#if defined(__sparc__) || defined(__sparc)
 #include "xf86sbusBus.h"
 #endif
 
@@ -91,7 +91,6 @@ typedef struct {
 #define NEED_SHARED (NEED_MEM_SHARED | NEED_IO_SHARED)
 
 #define busType bus.type
-#define pciBusId bus.id.pci
 #define isaBusId bus.id.isa
 #define sbusBusId bus.id.sbus
 
@@ -114,7 +113,7 @@ typedef struct x_BusAccRec {
 	struct {
 	    int bus;
 	    int primary_bus;
-	    PCITAG acc;
+	    struct pci_device * dev;
 	    pciBridgesSave save;
 	} pci;
     } busdep;
@@ -133,7 +132,6 @@ extern int xf86NumEntities;
 extern xf86AccessRec AccessNULL;
 extern BusRec primaryBus;
 extern resPtr Acc;
-extern resPtr osRes;
 extern resPtr ResRange;
 extern BusAccPtr xf86BusAccInfo;
 
@@ -141,12 +139,9 @@ int xf86AllocateEntity(void);
 BusType StringToBusType(const char* busID, const char **retID);
 memType ChkConflict(resRange *rgp, resPtr res, xf86State state);
 Bool xf86IsSubsetOf(resRange range, resPtr list);
-Bool xf86IsListSubsetOf(resPtr list, resPtr BaseList);
 resPtr xf86ExtractTypeFromList(resPtr list, unsigned long type);
-resPtr findIntersect(resRange Range, resPtr list);
 resPtr xf86FindIntersect(resRange Range, resPtr list);
 void RemoveOverlaps(resPtr target, resPtr list, Bool pow2Alignment,
 		    Bool useEstimated);
-void xf86ConvertListToHost(int entityIndex, resPtr list);
 
 #endif /* _XF86_BUS_H */

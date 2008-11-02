@@ -40,9 +40,8 @@
  * or for non-video devices unless they're needed by a driver or elsewhere.
  * A comprehensive set of PCI vendor, device and subsystem data is
  * auto-generated from the ../etc/pci.ids file using the pciids2c.pl script,
- * and is used in both the scanpci module and the scanpci utility.  Don't
- * modify the pci.ids file.  If new/corrected entries are required, add them
- * to ../etc/extrapci.ids.
+ * and is used in scanpci utility.  Don't modify the pci.ids file.  If 
+ * new/corrected entries are required, add them to ../etc/extrapci.ids.
  */
 
 #ifndef _XF86_PCIINFO_H
@@ -92,6 +91,7 @@
 #define PCI_VENDOR_TRITECH		0x1292
 #define PCI_VENDOR_NVIDIA_SGS		0x12D2
 #define PCI_VENDOR_VMWARE		0x15AD
+#define PCI_VENDOR_AST			0x1A03
 #define PCI_VENDOR_3DLABS		0x3D3D
 #define PCI_VENDOR_AVANCE_2		0x4005
 #define PCI_VENDOR_HERCULES		0x4843
@@ -357,6 +357,9 @@
 #define PCI_CHIP_RV410_5E4F             0x5E4F
 #define PCI_CHIP_RS350_7834             0x7834
 #define PCI_CHIP_RS350_7835             0x7835
+
+/* ASPEED Technology (AST) */
+#define PCI_CHIP_AST2000		0x2000
 
 /* Avance Logic */
 #define PCI_CHIP_ALG2064		0x2064

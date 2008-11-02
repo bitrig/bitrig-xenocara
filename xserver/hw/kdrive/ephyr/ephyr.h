@@ -28,10 +28,10 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <signal.h>
+#include <libgen.h>
 
 #include "os.h"  		/* for OsSignal() */
 #include "kdrive.h"
-#include "kkeymap.h"
 #include "hostx.h"
 #include "exa.h"
 
@@ -68,7 +68,11 @@ typedef struct _ephyrScrPriv {
     EphyrFakexaPriv *fakexa;
 } EphyrScrPriv;
 
-extern KdCardFuncs  ephyrFuncs;
+extern KdCardFuncs ephyrFuncs;
+extern KdKeyboardInfo *ephyrKbd;
+extern KdPointerInfo *ephyrMouse;
+
+extern miPointerScreenFuncRec ephyrPointerScreenFuncs;
 
 Bool
 ephyrInitialize (KdCardInfo *card, EphyrPriv *priv);
@@ -167,9 +171,9 @@ ephyrShadowUpdate (ScreenPtr pScreen, shadowBufPtr pBuf);
 void
 ephyrUpdateModifierState(unsigned int state);
 
-extern KdMouseFuncs EphyrMouseFuncs;
+extern KdPointerDriver EphyrMouseDriver;
 
-extern KdKeyboardFuncs	EphyrKeyboardFuncs;
+extern KdKeyboardDriver	EphyrKeyboardDriver;
 
 extern KdOsFuncs   EphyrOsFuncs;
 
@@ -190,5 +194,9 @@ ephyrDrawDisable(ScreenPtr pScreen);
 
 void
 ephyrDrawFini(ScreenPtr pScreen);
+
+/*ephyvideo.c*/
+
+Bool ephyrInitVideo(ScreenPtr pScreen) ;
 
 #endif

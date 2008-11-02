@@ -206,11 +206,17 @@ extern Bool noXkbExtension;
 #ifdef PANORAMIX
 extern Bool noPanoramiXExtension;
 #endif
+#ifdef INXQUARTZ
+extern Bool noPseudoramiXExtension;
+#endif
 #ifdef XINPUT
 extern Bool noXInputExtension;
 #endif
 #ifdef XIDLE
 extern Bool noXIdleExtension;
+#endif
+#ifdef XSELINUX
+extern Bool noSELinuxExtension;
 #endif
 #ifdef XV
 extern Bool noXvExtension;
@@ -241,12 +247,12 @@ typedef void (*InitExtension)(INITARGS);
 #define _XAG_SERVER_
 #include <X11/extensions/Xagstr.h>
 #endif
-#ifdef XACE
-#include "xace.h"
-#endif
 #ifdef XCSECURITY
 #include "securitysrv.h"
 #include <X11/extensions/securstr.h>
+#endif
+#ifdef XSELINUX
+#include "xselinux.h"
 #endif
 #ifdef PANORAMIX
 #include <X11/extensions/panoramiXproto.h>
@@ -270,6 +276,9 @@ extern void MultibufferExtensionInit(INITARGS);
 #endif
 #ifdef PANORAMIX
 extern void PanoramiXExtensionInit(INITARGS);
+#endif
+#ifdef INXQUARTZ
+extern void PseudoramiXExtensionInit(INITARGS);
 #endif
 #ifdef XINPUT
 extern void XInputExtensionInit(INITARGS);
@@ -314,12 +323,11 @@ extern void DbeExtensionInit(INITARGS);
 #ifdef XAPPGROUP
 extern void XagExtensionInit(INITARGS);
 #endif
-#ifdef XACE
-extern void XaceExtensionInit(INITARGS);
-#endif
 #ifdef XCSECURITY
-extern void SecurityExtensionSetup(INITARGS);
 extern void SecurityExtensionInit(INITARGS);
+#endif
+#ifdef XSELINUX
+extern void SELinuxExtensionInit(INITARGS);
 #endif
 #ifdef XPRINT
 extern void XpExtensionInit(INITARGS);
@@ -338,15 +346,9 @@ extern void XFree86DGAExtensionInit(INITARGS);
 #endif
 #ifdef GLXEXT
 typedef struct __GLXprovider __GLXprovider;
-extern __GLXprovider __glXMesaProvider;
+extern __GLXprovider __glXDRISWRastProvider;
 extern void GlxPushProvider(__GLXprovider *impl);
-#ifndef __DARWIN__
 extern void GlxExtensionInit(INITARGS);
-extern void GlxWrapInitVisuals(miInitVisualsProcPtr *);
-#else
-extern void DarwinGlxExtensionInit(INITARGS);
-extern void DarwinGlxWrapInitVisuals(miInitVisualsProcPtr *);
-#endif
 #endif
 #ifdef XF86DRI
 extern void XFree86DRIExtensionInit(INITARGS);
@@ -489,6 +491,9 @@ static ExtensionToggle ExtensionToggleList[] =
 #ifdef XKB
     { "XKEYBOARD", &noXkbExtension },
 #endif
+#ifdef XSELINUX
+    { "SELinux", &noSELinuxExtension },
+#endif
     { "XTEST", &noTestExtensions },
 #ifdef XV
     { "XVideo", &noXvExtension },
@@ -529,13 +534,13 @@ InitExtensions(argc, argv)
     int		argc;
     char	*argv[];
 {
-#ifdef XCSECURITY
-    SecurityExtensionSetup();
-#endif
 #ifdef PANORAMIX
 # if !defined(PRINT_ONLY_SERVER) && !defined(NO_PANORAMIX)
   if (!noPanoramiXExtension) PanoramiXExtensionInit();
 # endif
+#endif
+#ifdef INXQUARTZ
+    if(!noPseudoramiXExtension) PseudoramiXExtensionInit();
 #endif
 #ifdef SHAPE
     if (!noShapeExtension) ShapeExtensionInit();
@@ -549,7 +554,7 @@ InitExtensions(argc, argv)
 #ifdef MULTIBUFFER
     if (!noMultibufferExtension) MultibufferExtensionInit();
 #endif
-#if defined(XINPUT) && !defined(NO_HW_ONLY_EXTS)
+#if defined(XINPUT)
     if (!noXInputExtension) XInputExtensionInit();
 #endif
 #ifdef XTEST
@@ -579,7 +584,7 @@ InitExtensions(argc, argv)
 #ifdef XSYNC
     if (!noSyncExtension) SyncExtensionInit();
 #endif
-#if defined(XKB) && !defined(PRINT_ONLY_SERVER) && !defined(NO_HW_ONLY_EXTS)
+#if defined(XKB) && !defined(PRINT_ONLY_SERVER)
     if (!noXkbExtension) XkbExtensionInit();
 #endif
 #ifdef XCMISC
@@ -594,11 +599,11 @@ InitExtensions(argc, argv)
 #ifdef XAPPGROUP
     if (!noXagExtension) XagExtensionInit();
 #endif
-#ifdef XACE
-    XaceExtensionInit();
-#endif
 #ifdef XCSECURITY
     if (!noSecurityExtension) SecurityExtensionInit();
+#endif
+#ifdef XSELINUX
+    if (!noSELinuxExtension) SELinuxExtensionInit();
 #endif
 #ifdef XPRINT
     XpExtensionInit(); /* server-specific extension, cannot be disabled */
@@ -629,15 +634,6 @@ InitExtensions(argc, argv)
     if (!noXFree86DRIExtension) XFree86DRIExtensionInit();
 #endif
 #endif
-#ifdef GLXEXT
-
-    GlxPushProvider(&__glXMesaProvider);
-#ifndef __DARWIN__
-    if (!noGlxExtension) GlxExtensionInit();
-#else
-    if (!noGlxExtension) DarwinGlxExtensionInit();
-#endif
-#endif
 #ifdef XFIXES
     /* must be before Render to layer DisplayCursor correctly */
     if (!noXFixesExtension) XFixesExtensionInit();
@@ -663,19 +659,17 @@ InitExtensions(argc, argv)
 #ifdef DAMAGE
     if (!noDamageExtension) DamageExtensionInit();
 #endif
+
+#ifdef GLXEXT
+    GlxPushProvider(&__glXDRISWRastProvider);
+    if (!noGlxExtension) GlxExtensionInit();
+#endif
 }
 
 void
 InitVisualWrap()
 {
     miResetInitVisuals();
-#ifdef GLXEXT
-#ifndef __DARWIN__
-    GlxWrapInitVisuals(&miInitVisualsProc);
-#else
-    DarwinGlxWrapInitVisuals(&miInitVisualsProc);
-#endif
-#endif
 }
 
 #else /* XFree86LOADER */
@@ -699,11 +693,8 @@ static ExtensionModule staticExtensions[] = {
 #ifdef XAPPGROUP
     { XagExtensionInit, XAGNAME, &noXagExtension, NULL, NULL },
 #endif
-#ifdef XACE
-    { XaceExtensionInit, XACE_EXTENSION_NAME, NULL, NULL, NULL },
-#endif
 #ifdef XCSECURITY
-    { SecurityExtensionInit, SECURITY_EXTENSION_NAME, &noSecurityExtension, SecurityExtensionSetup, NULL },
+    { SecurityExtensionInit, SECURITY_EXTENSION_NAME, &noSecurityExtension, NULL, NULL },
 #endif
 #ifdef XPRINT
     { XpExtensionInit, XP_PRINTNAME, NULL, NULL, NULL },
@@ -754,16 +745,6 @@ InitExtensions(argc, argv)
 	/* Sort the extensions according the init dependencies. */
 	LoaderSortExtensions();
 	listInitialised = TRUE;
-    } else {
-	/* Call the setup functions on subsequent server resets as well */
-	for (i = 0; ExtensionModuleList[i].name != NULL; i++) {
-	    ext = &ExtensionModuleList[i];
-	    if (ext->setupFunc != NULL &&
-		(ext->disablePtr == NULL ||
-		 (ext->disablePtr != NULL && !*ext->disablePtr))) {
-		(ext->setupFunc)();
-	    }
-	}
     }
 
     for (i = 0; ExtensionModuleList[i].name != NULL; i++) {

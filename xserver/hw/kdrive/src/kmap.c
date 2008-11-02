@@ -1,6 +1,4 @@
 /*
- * Id: kmap.c,v 1.1 1999/11/02 03:54:46 keithp Exp $
- *
  * Copyright © 1999 Keith Packard
  *
  * Permission to use, copy, modify, distribute, and sell this software and its
@@ -21,7 +19,6 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-/* $RCSId: xc/programs/Xserver/hw/kdrive/kmap.c,v 1.10 2001/07/24 21:26:17 keithp Exp $ */
 
 #include <kdrive-config.h>
 #include "kdrive.h"
@@ -135,8 +132,8 @@ KdSetMappedMode (CARD32 addr, CARD32 size, int mode)
 	sentry.type = type;
 	
 	if (ioctl (mtrr, MTRRIOC_ADD_ENTRY, &sentry) < 0)
-	    ErrorF ("MTRRIOC_ADD_ENTRY failed 0x%x 0x%x %d (errno %d)\n",
-		    base, bound - base, type, errno);
+	    ErrorF ("MTRRIOC_ADD_ENTRY failed 0x%x 0x%x %d (%s)\n",
+		    base, bound - base, type, strerror(errno));
     }
 #endif
 }
@@ -174,8 +171,8 @@ KdResetMappedMode (CARD32 addr, CARD32 size, int mode)
 	sentry.type = type;
 	
 	if (ioctl (mtrr, MTRRIOC_DEL_ENTRY, &sentry) < 0)
-	    ErrorF ("MTRRIOC_DEL_ENTRY failed 0x%x 0x%x %d (errno %d)\n",
-		    base, bound - base, type, errno);
+	    ErrorF ("MTRRIOC_DEL_ENTRY failed 0x%x 0x%x %d (%s)\n",
+		    base, bound - base, type, strerror(errno));
     }
 #endif
 }

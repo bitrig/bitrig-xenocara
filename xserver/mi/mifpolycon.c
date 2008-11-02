@@ -55,12 +55,8 @@ SOFTWARE.
 #include "pixmapstr.h"
 #include "mifpoly.h"
 
-static int GetFPolyYBounds(register SppPointPtr pts, int n, double yFtrans,
+static int GetFPolyYBounds(SppPointPtr pts, int n, double yFtrans,
 			   int *by, int *ty);
-
-#ifdef ICEILTEMPDECL
-ICEILTEMPDECL
-#endif
 
 /*
  *	Written by Todd Newman; April. 1987.
@@ -101,7 +97,7 @@ miFillSppPoly(dst, pgc, count, ptsIn, xTrans, yTrans, xFtrans, yFtrans)
     			*width,
     			*FirstWidth,    /* output buffer */
     	 		*Marked;	/* set if this vertex has been used */
-    register int	left, right,	/* indices to first endpoints */
+    int			left, right,	/* indices to first endpoints */
     			nextleft,
                  	nextright;	/* indices to second endpoints */
     DDXPointPtr 	ptsOut,
@@ -118,15 +114,15 @@ miFillSppPoly(dst, pgc, count, ptsIn, xTrans, yTrans, xFtrans, yFtrans)
     y = ymax - ymin + 1;
     if ((count < 3) || (y <= 0))
 	return;
-    ptsOut = FirstPoint = (DDXPointPtr)ALLOCATE_LOCAL(sizeof(DDXPointRec) * y);
-    width = FirstWidth = (int *) ALLOCATE_LOCAL(sizeof(int) * y);
-    Marked = (int *) ALLOCATE_LOCAL(sizeof(int) * count);
+    ptsOut = FirstPoint = (DDXPointPtr)xalloc(sizeof(DDXPointRec) * y);
+    width = FirstWidth = (int *) xalloc(sizeof(int) * y);
+    Marked = (int *) xalloc(sizeof(int) * count);
 
     if(!ptsOut || !width || !Marked)
     {
-	if (Marked) DEALLOCATE_LOCAL(Marked);
-	if (width) DEALLOCATE_LOCAL(width);
-	if (ptsOut) DEALLOCATE_LOCAL(ptsOut);
+	if (Marked) xfree(Marked);
+	if (width) xfree(width);
+	if (ptsOut) xfree(ptsOut);
 	return;
     }
 
@@ -240,9 +236,9 @@ miFillSppPoly(dst, pgc, count, ptsIn, xTrans, yTrans, xFtrans, yFtrans)
     /* Finally, fill the spans we've collected */
     (*pgc->ops->FillSpans)(dst, pgc, 
 		      ptsOut-FirstPoint, FirstPoint, FirstWidth, 1);
-    DEALLOCATE_LOCAL(Marked);
-    DEALLOCATE_LOCAL(FirstWidth);
-    DEALLOCATE_LOCAL(FirstPoint);
+    xfree(Marked);
+    xfree(FirstWidth);
+    xfree(FirstPoint);
 }
 
 
@@ -251,13 +247,13 @@ miFillSppPoly(dst, pgc, count, ptsIn, xTrans, yTrans, xFtrans, yFtrans)
 static
 int
 GetFPolyYBounds(
-    register SppPointPtr	pts,
+    SppPointPtr			pts,
     int 			n,
     double			yFtrans,
     int 			*by,
     int				*ty)
 {
-    register SppPointPtr	ptMin;
+    SppPointPtr			ptMin;
     double 			ymin, ymax;
     SppPointPtr			ptsStart = pts;
 

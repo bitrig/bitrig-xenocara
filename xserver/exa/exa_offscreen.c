@@ -21,11 +21,9 @@
  */
 
 /** @file
- * This allocator allocates blocks of memory by maintaining a list of areas
- * and a score for each area.  As an area is marked used, its score is
- * incremented, and periodically all of the areas have their scores decayed by
- * a fraction.  When allocating, the contiguous block of areas with the minimum
- * score is found and evicted in order to make room for the new allocation.
+ * This allocator allocates blocks of memory by maintaining a list of areas.
+ * When allocating, the contiguous block of areas with the minimum eviction
+ * cost is found and evicted in order to make room for the new allocation.
  */
 
 #include "exa_priv.h"
@@ -54,7 +52,7 @@ ExaOffscreenValidate (ScreenPtr pScreen)
 	assert (area->offset >= area->base_offset &&
 		area->offset < (area->base_offset + area->size));
 	if (prev)
-	    assert (prev->base_offset + prev->area.size == area->base_offset);
+	    assert (prev->base_offset + prev->size == area->base_offset);
 	prev = area;
     }
     assert (prev->base_offset + prev->size == pExaScr->info->memorySize);
@@ -71,6 +69,82 @@ ExaOffscreenKickOut (ScreenPtr pScreen, ExaOffscreenArea *area)
     return exaOffscreenFree (pScreen, area);
 }
 
+static void
+exaUpdateEvictionCost(ExaOffscreenArea *area, unsigned offScreenCounter)
+{
+    unsigned age;
+
+    if (area->state == ExaOffscreenAvail)
+	return;
+
+    age = offScreenCounter - area->last_use;
+
+    /* This is unlikely to happen, but could result in a division by zero... */
+    if (age > (UINT_MAX / 2)) {
+	age = UINT_MAX / 2;
+	area->last_use = offScreenCounter - age;
+    }
+
+    area->eviction_cost = area->size / age;
+}
+
+static ExaOffscreenArea *
+exaFindAreaToEvict(ExaScreenPrivPtr pExaScr, int size, int align)
+{
+    ExaOffscreenArea *begin, *end, *best;
+    unsigned cost, best_cost;
+    int avail, real_size, tmp;
+
+    best_cost = UINT_MAX;
+    begin = end = pExaScr->info->offScreenAreas;
+    avail = 0;
+    cost = 0;
+    best = 0;
+
+    while (end != NULL)
+    {
+	restart:
+	while (begin != NULL && begin->state == ExaOffscreenLocked)
+	    begin = end = begin->next;
+
+	if (begin == NULL)
+	    break;
+
+	/* adjust size needed to account for alignment loss for this area */
+	real_size = size;
+	tmp = begin->base_offset % align;
+	if (tmp)
+	    real_size += (align - tmp);
+
+	while (avail < real_size && end != NULL)
+	{
+	    if (end->state == ExaOffscreenLocked) {
+		/* Can't more room here, restart after this locked area */
+		avail = 0;
+		cost = 0;
+		begin = end;
+		goto restart;
+	    }
+	    avail += end->size;
+	    exaUpdateEvictionCost(end, pExaScr->offScreenCounter);
+	    cost += end->eviction_cost;
+	    end = end->next;
+	}
+
+	/* Check the cost, update best */
+	if (avail >= real_size && cost < best_cost) {
+	    best = begin;
+	    best_cost = cost;
+	}
+
+	avail -= begin->size;
+	cost -= begin->eviction_cost;
+	begin = begin->next;
+    }
+
+    return best;
+}
+
 /**
  * exaOffscreenAlloc allocates offscreen memory
  *
@@ -81,15 +155,14 @@ ExaOffscreenKickOut (ScreenPtr pScreen, ExaOffscreenArea *area)
  * @param save callback for when the area is evicted from memory
  * @param privdata private data for the save callback.
  *
- * Allocates offscreen memory from the device associated with pScreen.  size and
- * align deteremine where and how large the allocated area is, and locked will
- * mark whether it should be held in card memory.  privdata may be any pointer
- * for the save callback when the area is removed.
+ * Allocates offscreen memory from the device associated with pScreen.  size
+ * and align deteremine where and how large the allocated area is, and locked
+ * will mark whether it should be held in card memory.  privdata may be any
+ * pointer for the save callback when the area is removed.
  *
- * Note that locked areas do get evicted on VT switch, because during that time
- * all offscreen memory becomes inaccessible.  This may change in the future,
- * but drivers should be aware of this and provide a callback to mark that their
- * locked allocation was evicted, and then restore it if necessary on EnterVT.
+ * Note that locked areas do get evicted on VT switch unless the driver
+ * requested version 2.1 or newer behavior.  In that case, the save callback is
+ * still called.
  */
 ExaOffscreenArea *
 exaOffscreenAlloc (ScreenPtr pScreen, int size, int align,
@@ -97,9 +170,9 @@ exaOffscreenAlloc (ScreenPtr pScreen, int size, int align,
                    ExaOffscreenSaveProc save,
                    pointer privData)
 {
-    ExaOffscreenArea *area, *begin, *best;
+    ExaOffscreenArea *area;
     ExaScreenPriv (pScreen);
-    int tmp, real_size = 0, best_score;
+    int tmp, real_size = 0;
 #if DEBUG_OFFSCREEN
     static int number = 0;
     ErrorF("================= ============ allocating a new pixmap %d\n", ++number);
@@ -144,53 +217,8 @@ exaOffscreenAlloc (ScreenPtr pScreen, int size, int align,
 
     if (!area)
     {
-	/*
-	 * Kick out existing users to make space.
-	 *
-	 * First, locate a region which can hold the desired object.
-	 */
+	area = exaFindAreaToEvict(pExaScr, size, align);
 
-	/* prev points at the first object to boot */
-	best = NULL;
-	best_score = INT_MAX;
-	for (begin = pExaScr->info->offScreenAreas; begin != NULL;
-	     begin = begin->next)
-	{
-	    int avail, score;
-	    ExaOffscreenArea *scan;
-
-	    if (begin->state == ExaOffscreenLocked)
-		continue;
-
-	    /* adjust size needed to account for alignment loss for this area */
-	    real_size = size;
-	    tmp = begin->base_offset % align;
-	    if (tmp)
-		real_size += (align - tmp);
-
-	    avail = 0;
-	    score = 0;
-	    /* now see if we can make room here, and how "costly" it'll be. */
-	    for (scan = begin; scan != NULL; scan = scan->next)
-	    {
-		if (scan->state == ExaOffscreenLocked) {
-		    /* Can't make room here, start after this locked area. */
-		    begin = scan;
-		    break;
-		}
-		/* Score should only be non-zero for ExaOffscreenRemovable */
-		score += scan->score;
-		avail += scan->size;
-		if (avail >= real_size)
-		    break;
-	    }
-	    /* Is it the best option we've found so far? */
-	    if (avail >= real_size && score < best_score) {
-		best = begin;
-		best_score = score;
-	    }
-	}
-	area = best;
 	if (!area)
 	{
 	    DBG_OFFSCREEN (("Alloc 0x%x -> NOSPACE\n", size));
@@ -231,7 +259,8 @@ exaOffscreenAlloc (ScreenPtr pScreen, int size, int align,
 	new_area->size = area->size - real_size;
 	new_area->state = ExaOffscreenAvail;
 	new_area->save = NULL;
-	new_area->score = 0;
+	new_area->last_use = 0;
+	new_area->eviction_cost = 0;
 	new_area->next = area->next;
 	area->next = new_area;
 	area->size = real_size;
@@ -245,7 +274,7 @@ exaOffscreenAlloc (ScreenPtr pScreen, int size, int align,
 	area->state = ExaOffscreenRemovable;
     area->privData = privData;
     area->save = save;
-    area->score = 0;
+    area->last_use = pExaScr->offScreenCounter++;
     area->offset = (area->base_offset + align - 1);
     area->offset -= area->offset % align;
 
@@ -256,6 +285,9 @@ exaOffscreenAlloc (ScreenPtr pScreen, int size, int align,
     return area;
 }
 
+/**
+ * Ejects all offscreen areas, and uninitializes the offscreen memory manager.
+ */
 void
 ExaOffscreenSwapOut (ScreenPtr pScreen)
 {
@@ -283,23 +315,73 @@ ExaOffscreenSwapOut (ScreenPtr pScreen)
     ExaOffscreenFini (pScreen);
 }
 
+/** Ejects all pixmaps managed by EXA. */
+static void
+ExaOffscreenEjectPixmaps (ScreenPtr pScreen)
+{
+    ExaScreenPriv (pScreen);
+
+    ExaOffscreenValidate (pScreen);
+    /* loop until a single free area spans the space */
+    for (;;)
+    {
+	ExaOffscreenArea *area;
+
+	for (area = pExaScr->info->offScreenAreas; area != NULL;
+	     area = area->next)
+	{
+	    if (area->state == ExaOffscreenRemovable &&
+		area->save == exaPixmapSave)
+	    {
+		(void) ExaOffscreenKickOut (pScreen, area);
+		ExaOffscreenValidate (pScreen);
+		break;
+	    }
+	}
+	if (area == NULL)
+	    break;
+    }
+    ExaOffscreenValidate (pScreen);
+}
+
 void
 ExaOffscreenSwapIn (ScreenPtr pScreen)
 {
     exaOffscreenInit (pScreen);
 }
 
+/**
+ * Prepares EXA for disabling of FB access, or restoring it.
+ *
+ * In version 2.1, the disabling results in pixmaps being ejected, while other
+ * allocations remain.  With this plus the prevention of migration while
+ * swappedOut is set, EXA by itself should not cause any access of the
+ * framebuffer to occur while swapped out.  Any remaining issues are the
+ * responsibility of the driver.
+ *
+ * Prior to version 2.1, all allocations, including locked ones, are ejected
+ * when access is disabled, and the allocator is torn down while swappedOut
+ * is set.  This is more drastic, and caused implementation difficulties for
+ * many drivers that could otherwise handle the lack of FB access while
+ * swapped out.
+ */
 void
 exaEnableDisableFBAccess (int index, Bool enable)
 {
     ScreenPtr pScreen = screenInfo.screens[index];
     ExaScreenPriv (pScreen);
 
-    if (!enable) {
-	ExaOffscreenSwapOut (pScreen);
+    if (!enable && pExaScr->disableFbCount++ == 0) {
+	if (pExaScr->info->exa_minor < 1)
+	    ExaOffscreenSwapOut (pScreen);
+	else
+	    ExaOffscreenEjectPixmaps (pScreen);
 	pExaScr->swappedOut = TRUE;
-    } else {
-	ExaOffscreenSwapIn (pScreen);
+    }
+    
+    if (enable && --pExaScr->disableFbCount == 0) {
+	if (pExaScr->info->exa_minor < 1)
+	    ExaOffscreenSwapIn (pScreen);
 	pExaScr->swappedOut = FALSE;
     }
 }
@@ -343,7 +425,8 @@ exaOffscreenFree (ScreenPtr pScreen, ExaOffscreenArea *area)
 
     area->state = ExaOffscreenAvail;
     area->save = NULL;
-    area->score = 0;
+    area->last_use = 0;
+    area->eviction_cost = 0;
     /*
      * Find previous area
      */
@@ -375,22 +458,11 @@ ExaOffscreenMarkUsed (PixmapPtr pPixmap)
 {
     ExaPixmapPriv (pPixmap);
     ExaScreenPriv (pPixmap->drawable.pScreen);
-    static int iter = 0;
 
-    if (!pExaPixmap->area)
+    if (!pExaPixmap || !pExaPixmap->area)
 	return;
 
-    /* The numbers here are arbitrary.  We may want to tune these. */
-    pExaPixmap->area->score += 100;
-    if (++iter == 10) {
-	ExaOffscreenArea *area;
-	for (area = pExaScr->info->offScreenAreas; area != NULL;
-	     area = area->next)
-	{
-	    if (area->state == ExaOffscreenRemovable)
-		area->score = (area->score * 7) / 8;
-	}
-    }
+    pExaPixmap->area->last_use = pExaScr->offScreenCounter++;
 }
 
 /**
@@ -419,10 +491,12 @@ exaOffscreenInit (ScreenPtr pScreen)
     area->size = pExaScr->info->memorySize - area->base_offset;
     area->save = NULL;
     area->next = NULL;
-    area->score = 0;
+    area->last_use = 0;
+    area->eviction_cost = 0;
 
     /* Add it to the free areas */
     pExaScr->info->offScreenAreas = area;
+    pExaScr->offScreenCounter = 1;
 
     ExaOffscreenValidate (pScreen);
 

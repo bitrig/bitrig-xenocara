@@ -116,8 +116,7 @@ int XagAppGroupFree(
     return Success;
 }
 
-/* static */
-void XagClientStateChange(
+static void XagClientStateChange(
     CallbackListPtr* pcbl,
     pointer nulldata,
     pointer calldata)
@@ -169,21 +168,6 @@ void XagClientStateChange(
 	}
 	pClient->appgroup = NULL; /* redundant, pClient will be freed */
 	break;
-    }
-}
-
-void
-XagExtensionInit(INITARGS)
-{
-    if (AddExtension (XAGNAME,
-		      0,
-		      XagNumberErrors,
-		      ProcXagDispatch,
-		      SProcXagDispatch,
-		      XagResetProc,
-		      StandardMinorOpcode)) {
-	RT_APPGROUP = CreateNewResourceType (XagAppGroupFree);
-	XaceRegisterCallback(XACE_AUTH_AVAIL, XagCallClientStateChange, NULL);
     }
 }
 
@@ -355,13 +339,15 @@ int AttrValidate(
     AppGroupPtr pAppGrp)
 {
     WindowPtr pWin;
-    int idepth, ivids, found;
+    int idepth, ivids, found, rc;
     ScreenPtr pScreen;
     DepthPtr pDepth;
     ColormapPtr pColormap;
 
-    pWin = LookupWindow (pAppGrp->default_root, client);
-    /* XXX check that pWin is not NULL */
+    rc = dixLookupWindow(&pWin, pAppGrp->default_root, client,
+			 DixGetAttrAccess);
+    if (rc != Success)
+	return rc;
     pScreen = pWin->drawable.pScreen;
     if (WindowTable[pScreen->myNum]->drawable.id != pAppGrp->default_root)
 	return BadWindow;
@@ -381,8 +367,10 @@ int AttrValidate(
     }
     if (pAppGrp->default_colormap) {
 
-	pColormap = (ColormapPtr)LookupIDByType (pAppGrp->default_colormap, RT_COLORMAP);
-	/* XXX check that pColormap is not NULL */
+	rc = dixLookupResource((pointer *)&pColormap, pAppGrp->default_colormap,
+			       RT_COLORMAP, client, DixUseAccess);
+	if (rc != Success)
+	    return rc;
 	if (pColormap->pScreen != pScreen)
 	    return BadColor;
 	if (pColormap->pVisual->vid != (pAppGrp->root_visual ? pAppGrp->root_visual : pScreen->rootVisual))
@@ -391,8 +379,7 @@ int AttrValidate(
     return client->noClientException;
 }
 
-/* static */
-int ProcXagCreate (
+static int ProcXagCreate (
     register ClientPtr client)
 {
     REQUEST (xXagCreateReq);
@@ -423,8 +410,7 @@ int ProcXagCreate (
     return client->noClientException;
 }
 
-/* static */
-int ProcXagDestroy(
+static int ProcXagDestroy(
     register ClientPtr client)
 {
     AppGroupPtr pAppGrp;
@@ -432,7 +418,7 @@ int ProcXagDestroy(
 
     REQUEST_SIZE_MATCH (xXagDestroyReq);
     pAppGrp = (AppGroupPtr)SecurityLookupIDByType (client, 
-		(XID)stuff->app_group, RT_APPGROUP, SecurityReadAccess);
+		(XID)stuff->app_group, RT_APPGROUP, DixReadAccess);
     if (!pAppGrp) return XagBadAppGroup;
     FreeResource ((XID)stuff->app_group, RT_NONE);
     if (--XagCallbackRefCount == 0)
@@ -451,7 +437,7 @@ int ProcXagGetAttr(
 
     REQUEST_SIZE_MATCH (xXagGetAttrReq);
     pAppGrp = (AppGroupPtr)SecurityLookupIDByType (client, 
-		(XID)stuff->app_group, RT_APPGROUP, SecurityReadAccess);
+		(XID)stuff->app_group, RT_APPGROUP, DixReadAccess);
     if (!pAppGrp) return XagBadAppGroup;
     rep.type = X_Reply;
     rep.length = 0;
@@ -483,10 +469,13 @@ int ProcXagQuery(
     ClientPtr pClient;
     AppGroupPtr pAppGrp;
     REQUEST (xXagQueryReq);
-    int n;
+    int n, rc;
 
     REQUEST_SIZE_MATCH (xXagQueryReq);
-    pClient = LookupClient (stuff->resource, client);
+    rc = dixLookupClient(&pClient, stuff->resource, client, DixGetAttrAccess);
+    if (rc != Success)
+	return rc;
+
     for (pAppGrp = appGrpList; pAppGrp != NULL; pAppGrp = pAppGrp->next)
 	for (n = 0; n < pAppGrp->nclients; n++)
 	    if (pAppGrp->clients[n] == pClient) {
@@ -738,18 +727,7 @@ XID XagId(
     return (client->appgroup ? client->appgroup->appgroupId : 0);
 }
 
-void XagGetDeltaInfo(
-    ClientPtr client,
-    CARD32* buf)
-{
-    *buf++ = (CARD32) client->appgroup->default_root;
-    *buf++ = (CARD32) client->appgroup->root_visual;
-    *buf++ = (CARD32) client->appgroup->default_colormap;
-    *buf++ = (CARD32) client->appgroup->black_pixel;
-    *buf = (CARD32) client->appgroup->white_pixel;
-}
-
-void XagCallClientStateChange(
+static void XagCallClientStateChange(
     CallbackListPtr *pcbl,
     pointer nulldata,
     pointer calldata)
@@ -778,5 +756,20 @@ void XagCallClientStateChange(
 
 	clientinfo.client = pClient;
 	XagClientStateChange (NULL, NULL, (pointer)&clientinfo);
+    }
+}
+
+void
+XagExtensionInit(INITARGS)
+{
+    if (AddExtension (XAGNAME,
+		      0,
+		      XagNumberErrors,
+		      ProcXagDispatch,
+		      SProcXagDispatch,
+		      XagResetProc,
+		      StandardMinorOpcode)) {
+	RT_APPGROUP = CreateNewResourceType (XagAppGroupFree);
+	XaceRegisterCallback(XACE_AUTH_AVAIL, XagCallClientStateChange, NULL);
     }
 }

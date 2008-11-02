@@ -44,7 +44,6 @@ ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
 SOFTWARE.
 
 ******************************************************************/
-/* $XFree86$ */
 
 #ifndef WINDOW_H
 #define WINDOW_H
@@ -84,22 +83,11 @@ extern int WalkTree(
     VisitWindowProcPtr /*func*/,
     pointer /*data*/);
 
-extern WindowPtr AllocateWindow(
-    ScreenPtr /*pScreen*/);
-
 extern Bool CreateRootWindow(
     ScreenPtr /*pScreen*/);
 
 extern void InitRootWindow(
     WindowPtr /*pWin*/);
-
-extern void ClippedRegionFromBox(
-    WindowPtr /*pWin*/,
-    RegionPtr /*Rgn*/,
-    int /*x*/,
-    int /*y*/,
-    int /*w*/,
-    int /*h*/);
 
 typedef WindowPtr (* RealChildHeadProc) (WindowPtr pWin);
 
@@ -128,13 +116,13 @@ extern int DeleteWindow(
     pointer /*pWin*/,
     XID /*wid*/);
 
-extern void DestroySubwindows(
+extern int DestroySubwindows(
     WindowPtr /*pWin*/,
     ClientPtr /*client*/);
 
 /* Quartz support on Mac OS X uses the HIToolbox
    framework whose ChangeWindowAttributes function conflicts here. */
-#ifdef __DARWIN__
+#ifdef __APPLE__
 #define ChangeWindowAttributes Darwin_X_ChangeWindowAttributes
 #endif
 extern int ChangeWindowAttributes(
@@ -145,7 +133,7 @@ extern int ChangeWindowAttributes(
 
 /* Quartz support on Mac OS X uses the HIToolbox
    framework whose GetWindowAttributes function conflicts here. */
-#ifdef __DARWIN__
+#ifdef __APPLE__
 #define GetWindowAttributes(w,c,x) Darwin_X_GetWindowAttributes(w,c,x)
 extern void Darwin_X_GetWindowAttributes(
 #else
@@ -205,12 +193,6 @@ extern void UnmapSubwindows(
 extern void HandleSaveSet(
     ClientPtr /*client*/);
 
-extern Bool VisibleBoundingBoxFromPoint(
-    WindowPtr /*pWin*/,
-    int /*x*/,
-    int /*y*/,
-    BoxPtr /*box*/);
-
 extern Bool PointInWindowIsVisible(
     WindowPtr /*pWin*/,
     int /*x*/,
@@ -222,9 +204,14 @@ extern RegionPtr NotClippedByChildren(
 extern void SendVisibilityNotify(
     WindowPtr /*pWin*/);
 
-extern void SaveScreens(
-    int /*on*/,
-    int /*mode*/);
+extern int dixSaveScreens(
+    ClientPtr client,
+    int on,
+    int mode);
+
+extern int SaveScreens(
+    int on,
+    int mode);
 
 extern WindowPtr FindWindowWithOptional(
     WindowPtr /*w*/);
@@ -233,9 +220,6 @@ extern void CheckWindowOptionalNeed(
     WindowPtr /*w*/);
 
 extern Bool MakeWindowOptional(
-    WindowPtr /*pWin*/);
-
-extern void DisposeWindowOptional(
     WindowPtr /*pWin*/);
 
 extern WindowPtr MoveWindowInStack(
@@ -270,8 +254,6 @@ extern RegionPtr CreateClipShape(
 extern void DisableMapUnmapEvents(
     WindowPtr /* pWin */ );
 extern void EnableMapUnmapEvents(
-    WindowPtr /* pWin */ );
-extern Bool MapUnmapEventsEnabled(
     WindowPtr /* pWin */ );
 
 #endif /* WINDOW_H */

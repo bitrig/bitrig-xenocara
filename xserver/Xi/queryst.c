@@ -38,14 +38,10 @@ from The Open Group.
 #include <dix-config.h>
 #endif
 
-#include <X11/X.h>	/* for inputstr.h    */
-#include <X11/Xproto.h>	/* Request macro     */
 #include "inputstr.h"	/* DeviceIntPtr      */
 #include "windowstr.h"	/* window structure  */
 #include <X11/extensions/XI.h>
 #include <X11/extensions/XIproto.h>
-#include "extnsionst.h"
-#include "extinit.h"	/* LookupDeviceIntRec */
 #include "exevents.h"
 #include "exglobals.h"
 
@@ -58,9 +54,9 @@ from The Open Group.
  */
 
 int
-SProcXQueryDeviceState(register ClientPtr client)
+SProcXQueryDeviceState(ClientPtr client)
 {
-    register char n;
+    char n;
 
     REQUEST(xQueryDeviceStateReq);
     swaps(&stuff->length, n);
@@ -74,10 +70,10 @@ SProcXQueryDeviceState(register ClientPtr client)
  */
 
 int
-ProcXQueryDeviceState(register ClientPtr client)
+ProcXQueryDeviceState(ClientPtr client)
 {
-    register char n;
-    int i;
+    char n;
+    int rc, i;
     int num_classes = 0;
     int total_length = 0;
     char *buf, *savbuf;
@@ -99,11 +95,9 @@ ProcXQueryDeviceState(register ClientPtr client)
     rep.length = 0;
     rep.sequenceNumber = client->sequence;
 
-    dev = LookupDeviceIntRec(stuff->deviceid);
-    if (dev == NULL) {
-	SendErrorToClient(client, IReqCode, X_QueryDeviceState, 0, BadDevice);
-	return Success;
-    }
+    rc = dixLookupDevice(&dev, stuff->deviceid, client, DixReadAccess);
+    if (rc != Success)
+	return rc;
 
     v = dev->valuator;
     if (v != NULL && v->motionHintWindow != NULL)
@@ -126,10 +120,8 @@ ProcXQueryDeviceState(register ClientPtr client)
 	num_classes++;
     }
     buf = (char *)xalloc(total_length);
-    if (!buf) {
-	SendErrorToClient(client, IReqCode, X_QueryDeviceState, 0, BadAlloc);
-	return Success;
-    }
+    if (!buf)
+	return BadAlloc;
     savbuf = buf;
 
     if (k != NULL) {
@@ -187,7 +179,7 @@ ProcXQueryDeviceState(register ClientPtr client)
 void
 SRepXQueryDeviceState(ClientPtr client, int size, xQueryDeviceStateReply * rep)
 {
-    register char n;
+    char n;
 
     swaps(&rep->sequenceNumber, n);
     swapl(&rep->length, n);

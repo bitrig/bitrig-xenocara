@@ -1,4 +1,3 @@
-/* $XFree86$ */
 /*
  * Copyright 2001-2003 Red Hat Inc., Durham, North Carolina.
  *
@@ -613,7 +612,8 @@ static Bool dmxCloseConsoleScreen(int idx, ScreenPtr pScreen)
 {
     myPrivate *priv, *last;
 
-    for (last = priv = pScreen->devPrivates[dmxScreenPrivateIndex].ptr;
+    for (last = priv = (myPrivate *)dixLookupPrivate(&pScreen->devPrivates,
+						     dmxScreenPrivateKey);
          priv;
          priv = priv->next) dmxCloseConsole(last = priv);
     
@@ -847,25 +847,32 @@ void dmxConsoleInit(DevicePtr pDev)
 
     dmxConsoleDraw(priv, 1, 1);
 
-    if (screenInfo.screens[0]->devPrivates[dmxScreenPrivateIndex].ptr)
-        priv->next = (screenInfo.screens[0]
-                      ->devPrivates[dmxScreenPrivateIndex].ptr);
+    if (dixLookupPrivate(&screenInfo.screens[0]->devPrivates,
+			 dmxScreenPrivateKey))
+        priv->next = dixLookupPrivate(&screenInfo.screens[0]->devPrivates,
+				      dmxScreenPrivateKey);
     else 
         DMX_WRAP(CloseScreen, dmxCloseConsoleScreen,
                  priv, screenInfo.screens[0]);
-    screenInfo.screens[0]->devPrivates[dmxScreenPrivateIndex].ptr = priv;
+    dixSetPrivate(&screenInfo.screens[0]->devPrivates, dmxScreenPrivateKey,
+		  priv);
 }
 
 /** Fill in the \a info structure for the specified \a pDev.  Only used
  * for pointers. */
 void dmxConsoleMouGetInfo(DevicePtr pDev, DMXLocalInitInfoPtr info)
 {
+    GETPRIVFROMPDEV;
+
     info->buttonClass      = 1;
     dmxCommonMouGetMap(pDev, info->map, &info->numButtons);
     info->valuatorClass    = 1;
     info->numRelAxes       = 2;
-    info->minval[0]        = 0;
-    info->maxval[0]        = 0;
+    info->minval[0] = 0;
+    info->minval[1] = 0;
+    /* max possible console window size: */
+    info->maxval[0] = DisplayWidth(priv->display, DefaultScreen(priv->display));
+    info->maxval[1] = DisplayHeight(priv->display, DefaultScreen(priv->display));
     info->res[0]           = 1;
     info->minres[0]        = 0;
     info->maxres[0]        = 1;

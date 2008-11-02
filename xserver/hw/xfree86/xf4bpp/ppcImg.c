@@ -21,8 +21,6 @@
  *
 */
 
-/* $XConsortium: ppcImg.c /main/4 1996/02/21 17:57:53 kaleb $ */
-
 #ifdef HAVE_XORG_CONFIG_H
 #include <xorg-config.h>
 #endif
@@ -81,13 +79,14 @@ xf4bppGetImage( pDraw, sx, sy, w, h, format, planeMask, pdstLine )
 		 != (unsigned)( 1 << pDraw->depth ) - 1 ) {
 	    pGC = GetScratchGC( depth, pDraw->pScreen ) ;
 	    pPixmap = (PixmapPtr)
-	      (* pDraw->pScreen->CreatePixmap)( pDraw->pScreen, w, h, depth ) ;
+	      (* pDraw->pScreen->CreatePixmap)( pDraw->pScreen, w, h, depth,
+						CREATE_PIXMAP_USAGE_SCRATCH) ;
 	    gcv[0] = GXcopy ;
 	    gcv[1] = planeMask ;
 	    DoChangeGC( pGC, GCPlaneMask | GCFunction, gcv, 0 ) ;
 	    ValidateGC( (DrawablePtr)pPixmap, pGC ) ;
 
-	    pbits = (char *)ALLOCATE_LOCAL(w);
+	    pbits = (char *)xalloc(w);
 
 	    for ( i = 0 ; i < h ; i++ ) {
 		pt.x = sx ;
@@ -103,7 +102,7 @@ xf4bppGetImage( pDraw, sx, sy, w, h, format, planeMask, pdstLine )
 		pDst += linelength ;
 	    }
 
-	    DEALLOCATE_LOCAL(pbits) ;
+	    xfree(pbits) ;
 	    (* pGC->pScreen->DestroyPixmap)( pPixmap ) ;
 	    FreeScratchGC( pGC ) ;
 	    return ;

@@ -81,180 +81,17 @@ SOFTWARE.
         return(BadIDChoice);\
     }
 
-/* XXX if you are using this macro, you are probably not generating Match
- * errors where appropriate */
-#define LOOKUP_DRAWABLE(did, client)\
-    ((client->lastDrawableID == did) ? \
-     client->lastDrawable : (DrawablePtr)LookupDrawable(did, client))
-
-#ifdef XACE
-
-#define SECURITY_VERIFY_DRAWABLE(pDraw, did, client, mode)\
+#define VALIDATE_DRAWABLE_AND_GC(drawID, pDraw, mode)\
     {\
-	pDraw = (DrawablePtr) SecurityLookupIDByClass(client, did, \
-						      RC_DRAWABLE, mode);\
-	if (!pDraw) \
-	{\
-	    client->errorValue = did; \
-	    return BadDrawable;\
-	}\
-	if (pDraw->type == UNDRAWABLE_WINDOW)\
-	    return BadMatch;\
-    }
-
-#define SECURITY_VERIFY_GEOMETRABLE(pDraw, did, client, mode)\
-    {\
-	pDraw = (DrawablePtr) SecurityLookupIDByClass(client, did, \
-						      RC_DRAWABLE, mode);\
-	if (!pDraw) \
-	{\
-	    client->errorValue = did; \
-	    return BadDrawable;\
-	}\
-    }
-
-#define SECURITY_VERIFY_GC(pGC, rid, client, mode)\
-	pGC = (GC *) SecurityLookupIDByType(client, rid, RT_GC, mode);\
-    if (!pGC)\
-    {\
-	client->errorValue = rid;\
-	return (BadGC);\
-    }
-
-#define VERIFY_DRAWABLE(pDraw, did, client)\
-	SECURITY_VERIFY_DRAWABLE(pDraw, did, client, SecurityUnknownAccess)
-
-#define VERIFY_GEOMETRABLE(pDraw, did, client)\
-	SECURITY_VERIFY_GEOMETRABLE(pDraw, did, client, SecurityUnknownAccess)
-
-#define VERIFY_GC(pGC, rid, client)\
-	SECURITY_VERIFY_GC(pGC, rid, client, SecurityUnknownAccess)
-
-#else /* not XACE */
-
-#define VERIFY_DRAWABLE(pDraw, did, client)\
-    if (client->lastDrawableID == did)\
-	pDraw = client->lastDrawable;\
-    else \
-    {\
-	pDraw = (DrawablePtr) LookupIDByClass(did, RC_DRAWABLE);\
-	if (!pDraw) \
-	{\
-	    client->errorValue = did; \
-	    return BadDrawable;\
-	}\
-	if (pDraw->type == UNDRAWABLE_WINDOW)\
-	    return BadMatch;\
-    }
-
-#define VERIFY_GEOMETRABLE(pDraw, did, client)\
-    if (client->lastDrawableID == did)\
-	pDraw = client->lastDrawable;\
-    else \
-    {\
-	pDraw = (DrawablePtr) LookupIDByClass(did, RC_DRAWABLE);\
-	if (!pDraw) \
-	{\
-	    client->errorValue = did; \
-	    return BadDrawable;\
-	}\
-    }
-
-#define VERIFY_GC(pGC, rid, client)\
-    if (client->lastGCID == rid)\
-        pGC = client->lastGC;\
-    else\
-	pGC = (GC *)LookupIDByType(rid, RT_GC);\
-    if (!pGC)\
-    {\
-	client->errorValue = rid;\
-	return (BadGC);\
-    }
-
-#define SECURITY_VERIFY_DRAWABLE(pDraw, did, client, mode)\
-	VERIFY_DRAWABLE(pDraw, did, client)
-
-#define SECURITY_VERIFY_GEOMETRABLE(pDraw, did, client, mode)\
-	VERIFY_GEOMETRABLE(pDraw, did, client)
-
-#define SECURITY_VERIFY_GC(pGC, rid, client, mode)\
-	VERIFY_GC(pGC, rid, client)
-
-#endif /* XACE */
-
-/*
- * We think that most hardware implementations of DBE will want
- * LookupID*(dbe_back_buffer_id) to return the window structure that the
- * id is a back buffer for.  Since both front and back buffers will
- * return the same structure, you need to be able to distinguish
- * somewhere what kind of buffer (front/back) was being asked for, so
- * that ddx can render to the right place.  That's the problem that the
- * following code solves.  Note: we couldn't embed this in the LookupID*
- * functions because the VALIDATE_DRAWABLE_AND_GC macro often circumvents
- * those functions by checking a one-element cache.  That's why we're
- * mucking with VALIDATE_DRAWABLE_AND_GC.
- * 
- * If you put -DNEED_DBE_BUF_BITS into PervasiveDBEDefines, the window
- * structure will have two additional bits defined, srcBuffer and
- * dstBuffer, and their values will be maintained via the macros
- * SET_DBE_DSTBUF and SET_DBE_SRCBUF (below).  If you also
- * put -DNEED_DBE_BUF_VALIDATE into PervasiveDBEDefines, the function
- * DbeValidateBuffer will be called any time the bits change to give you
- * a chance to do some setup.  See the DBE code for more details on this
- * function.  We put in these levels of conditionality so that you can do
- * just what you need to do, and no more.  If neither of these defines
- * are used, the bits won't be there, and VALIDATE_DRAWABLE_AND_GC will
- * be unchanged.	dpw
- */
-
-#if defined(NEED_DBE_BUF_BITS)
-#define SET_DBE_DSTBUF(_pDraw, _drawID) \
-        SET_DBE_BUF(_pDraw, _drawID, dstBuffer, TRUE)
-#define SET_DBE_SRCBUF(_pDraw, _drawID) \
-        SET_DBE_BUF(_pDraw, _drawID, srcBuffer, FALSE)
-#if defined (NEED_DBE_BUF_VALIDATE)
-#define SET_DBE_BUF(_pDraw, _drawID, _whichBuffer, _dstbuf) \
-    if (_pDraw->type == DRAWABLE_WINDOW)\
-    {\
-	int thisbuf = (_pDraw->id == _drawID);\
-	if (thisbuf != ((WindowPtr)_pDraw)->_whichBuffer)\
-	{\
-	     ((WindowPtr)_pDraw)->_whichBuffer = thisbuf;\
-	     DbeValidateBuffer((WindowPtr)_pDraw, _drawID, _dstbuf);\
-	}\
-     }
-#else /* want buffer bits, but don't need to call DbeValidateBuffer */
-#define SET_DBE_BUF(_pDraw, _drawID, _whichBuffer, _dstbuf) \
-    if (_pDraw->type == DRAWABLE_WINDOW)\
-    {\
-	((WindowPtr)_pDraw)->_whichBuffer = (_pDraw->id == _drawID);\
-    }
-#endif /* NEED_DBE_BUF_VALIDATE */
-#else /* don't want buffer bits in window */
-#define SET_DBE_DSTBUF(_pDraw, _drawID) /**/
-#define SET_DBE_SRCBUF(_pDraw, _drawID) /**/
-#endif /* NEED_DBE_BUF_BITS */
-
-#define VALIDATE_DRAWABLE_AND_GC(drawID, pDraw, pGC, client)\
-    if ((stuff->gc == INVALID) || (client->lastGCID != stuff->gc) ||\
-	(client->lastDrawableID != drawID))\
-    {\
-	SECURITY_VERIFY_GEOMETRABLE(pDraw, drawID, client, SecurityWriteAccess);\
-	SECURITY_VERIFY_GC(pGC, stuff->gc, client, SecurityReadAccess);\
-	if ((pGC->depth != pDraw->depth) ||\
-	    (pGC->pScreen != pDraw->pScreen))\
+	int rc = dixLookupDrawable(&(pDraw), drawID, client, M_ANY, mode);\
+	if (rc != Success)\
+	    return rc;\
+	rc = dixLookupGC(&(pGC), stuff->gc, client, DixUseAccess);\
+	if (rc != Success)\
+	    return rc;\
+	if ((pGC->depth != pDraw->depth) || (pGC->pScreen != pDraw->pScreen))\
 	    return (BadMatch);\
-	client->lastDrawable = pDraw;\
-	client->lastDrawableID = drawID;\
-	client->lastGC = pGC;\
-	client->lastGCID = stuff->gc;\
     }\
-    else\
-    {\
-        pGC = client->lastGC;\
-        pDraw = client->lastDrawable;\
-    }\
-    SET_DBE_DSTBUF(pDraw, drawID);\
     if (pGC->serialNumber != pDraw->serialNumber)\
 	ValidateGC(pDraw, pGC);
 
@@ -279,7 +116,9 @@ typedef struct _Client *ClientPtr; /* also in misc.h */
 
 typedef struct _WorkQueue	*WorkQueuePtr;
 
+#ifdef XPRINT
 extern ClientPtr requestingClient;
+#endif
 extern ClientPtr *clients;
 extern ClientPtr serverClient;
 extern int currentMaxClients;
@@ -308,15 +147,9 @@ extern void UpdateCurrentTime(void);
 
 extern void UpdateCurrentTimeIf(void);
 
-extern void InitSelections(void);
-
-extern void FlushClientCaches(XID /*id*/);
-
 extern int dixDestroyPixmap(
     pointer /*value*/,
     XID /*pid*/);
-
-extern void CloseDownRetainedResources(void);
 
 extern void InitClient(
     ClientPtr /*client*/,
@@ -333,30 +166,8 @@ extern void SendErrorToClient(
     XID /*resId*/,
     int /*errorCode*/);
 
-extern void DeleteWindowFromAnySelections(
-    WindowPtr /*pWin*/);
-
 extern void MarkClientException(
     ClientPtr /*client*/);
-
-extern int GetGeometry(
-    ClientPtr /*client*/,
-    xGetGeometryReply* /* wa */);
-
-extern int SendConnSetup(
-    ClientPtr /*client*/,
-    char* /*reason*/);
-
-extern int DoGetImage(
-    ClientPtr	/*client*/,
-    int /*format*/,
-    Drawable /*drawable*/,
-    int /*x*/, 
-    int /*y*/, 
-    int /*width*/, 
-    int /*height*/,
-    Mask /*planemask*/,
-    xGetImageReply ** /*im_return*/);
 
 #if defined(DDXBEFORERESET)
 extern void ddxBeforeReset (void);
@@ -375,47 +186,30 @@ extern int CompareISOLatin1Lowered(
     unsigned char * /*b*/,
     int blen);
 
-#ifdef XACE
+extern int dixLookupWindow(
+    WindowPtr *result,
+    XID id,
+    ClientPtr client,
+    Mask access_mode);
 
-extern WindowPtr SecurityLookupWindow(
-    XID /*rid*/,
-    ClientPtr /*client*/,
-    Mask /*access_mode*/);
+extern int dixLookupDrawable(
+    DrawablePtr *result,
+    XID id,
+    ClientPtr client,
+    Mask type_mask,
+    Mask access_mode);
 
-extern pointer SecurityLookupDrawable(
-    XID /*rid*/,
-    ClientPtr /*client*/,
-    Mask /*access_mode*/);
+extern int dixLookupGC(
+    GCPtr *result,
+    XID id,
+    ClientPtr client,
+    Mask access_mode);
 
-extern WindowPtr LookupWindow(
-    XID /*rid*/,
-    ClientPtr /*client*/);
-
-extern pointer LookupDrawable(
-    XID /*rid*/,
-    ClientPtr /*client*/);
-
-#else
-
-extern WindowPtr LookupWindow(
-    XID /*rid*/,
-    ClientPtr /*client*/);
-
-extern pointer LookupDrawable(
-    XID /*rid*/,
-    ClientPtr /*client*/);
-
-#define SecurityLookupWindow(rid, client, access_mode) \
-	LookupWindow(rid, client)
-
-#define SecurityLookupDrawable(rid, client, access_mode) \
-	LookupDrawable(rid, client)
-
-#endif /* XACE */
-
-extern ClientPtr LookupClient(
-    XID /*rid*/,
-    ClientPtr /*client*/);
+extern int dixLookupClient(
+    ClientPtr *result,
+    XID id,
+    ClientPtr client,
+    Mask access_mode);
 
 extern void NoopDDA(void);
 
@@ -535,13 +329,6 @@ extern void EnqueueEvent(
     DeviceIntPtr /* device */,
     int	/* count */);
 
-extern void ComputeFreezes(void);
-
-extern void CheckGrabForSyncs(
-    DeviceIntPtr /* dev */,
-    Bool /* thisMode */,
-    Bool /* otherMode */);
-
 extern void ActivatePointerGrab(
     DeviceIntPtr /* mouse */,
     GrabPtr /* grab */,
@@ -587,6 +374,9 @@ extern int DeliverDeviceEvents(
 
 extern void DefineInitialRootWindow(
     WindowPtr /* win */);
+
+extern void UpdateSpriteForScreen(
+     ScreenPtr /* pScreen */);
 
 extern void WindowHasNewCursor(
     WindowPtr /* pWin */);
@@ -693,13 +483,7 @@ void
 ScreenRestructured (ScreenPtr pScreen);
 #endif
 
-extern void ResetClientPrivates(void);
-
-extern int AllocateClientPrivateIndex(void);
-
-extern Bool AllocateClientPrivate(
-    int /*index*/,
-    unsigned /*amount*/);
+extern int ffs(int i);
 
 /*
  *  callback manager stuff
@@ -712,29 +496,6 @@ typedef struct _CallbackList *CallbackListPtr; /* also in misc.h */
 
 typedef void (*CallbackProcPtr) (
     CallbackListPtr *, pointer, pointer);
-
-typedef Bool (*AddCallbackProcPtr) (
-    CallbackListPtr *, CallbackProcPtr, pointer);
-
-typedef Bool (*DeleteCallbackProcPtr) (
-    CallbackListPtr *, CallbackProcPtr, pointer);
-
-typedef void (*CallCallbacksProcPtr) (
-    CallbackListPtr *, pointer);
-
-typedef void (*DeleteCallbackListProcPtr) (
-    CallbackListPtr *);
-
-typedef struct _CallbackProcs {
-    AddCallbackProcPtr		AddCallback;
-    DeleteCallbackProcPtr	DeleteCallback;
-    CallCallbacksProcPtr	CallCallbacks;
-    DeleteCallbackListProcPtr	DeleteCallbackList;
-} CallbackFuncsRec, *CallbackFuncsPtr;
-
-extern Bool CreateCallbackList(
-    CallbackListPtr * /*pcbl*/,
-    CallbackFuncsPtr /*cbfuncs*/);
 
 extern Bool AddCallback(
     CallbackListPtr * /*pcbl*/,
@@ -792,27 +553,52 @@ typedef struct {
     int count;
 } DeviceEventInfoRec;
 
-/*
- * SelectionCallback stuff
- */
-
-extern CallbackListPtr SelectionCallback;
-
-typedef enum {
-    SelectionSetOwner,
-    SelectionWindowDestroy,
-    SelectionClientClose
-} SelectionCallbackKind;
-
-typedef struct {
-    struct _Selection	    *selection;
-    SelectionCallbackKind   kind;
-} SelectionInfoRec;
-
 /* strcasecmp.c */
 #if NEED_STRCASECMP
 #define strcasecmp xstrcasecmp
-extern int xstrcasecmp(char *s1, char *s2);
+extern int xstrcasecmp(const char *s1, const char *s2);
 #endif
+
+#if NEED_STRNCASECMP
+#define strncasecmp xstrncasecmp
+extern int xstrncasecmp(const char *s1, const char *s2, size_t n);
+#endif
+
+#if NEED_STRCASESTR
+#define strcasestr xstrcasestr
+extern char *xstrcasestr(const char *s, const char *find);
+#endif
+
+/*
+ * These are deprecated compatibility functions and will be removed soon!
+ * Please use the noted replacements instead.
+ */
+
+/* replaced by dixLookupWindow */
+extern WindowPtr SecurityLookupWindow(
+    XID id,
+    ClientPtr client,
+    Mask access_mode);
+
+/* replaced by dixLookupWindow */
+extern WindowPtr LookupWindow(
+    XID id,
+    ClientPtr client);
+
+/* replaced by dixLookupDrawable */
+extern pointer SecurityLookupDrawable(
+    XID id,
+    ClientPtr client,
+    Mask access_mode);
+
+/* replaced by dixLookupDrawable */
+extern pointer LookupDrawable(
+    XID id,
+    ClientPtr client);
+
+/* replaced by dixLookupClient */
+extern ClientPtr LookupClient(
+    XID id,
+    ClientPtr client);
 
 #endif /* DIX_H */

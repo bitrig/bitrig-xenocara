@@ -78,9 +78,9 @@ miFillConvexPoly(dst, pgc, count, ptsIn)
     int		count;                /* number of points        */
     DDXPointPtr ptsIn;                /* the points              */
 {
-    register int xl = 0, xr = 0; /* x vals of left and right edges */
-    register int dl = 0, dr = 0; /* decision variables             */
-    register int ml = 0, m1l = 0;/* left edge slope and slope+1    */
+    int xl = 0, xr = 0; /* x vals of left and right edges */
+    int dl = 0, dr = 0; /* decision variables             */
+    int ml = 0, m1l = 0;/* left edge slope and slope+1    */
     int mr = 0, m1r = 0;         /* right edge slope and slope+1   */
     int incr1l = 0, incr2l = 0;  /* left edge error increments     */
     int incr1r = 0, incr2r = 0;  /* right edge error increments    */
@@ -104,12 +104,12 @@ miFillConvexPoly(dst, pgc, count, ptsIn)
     dy = ymax - ymin + 1;
     if ((count < 3) || (dy < 0))
 	return(TRUE);
-    ptsOut = FirstPoint = (DDXPointPtr )ALLOCATE_LOCAL(sizeof(DDXPointRec)*dy);
-    width = FirstWidth = (int *)ALLOCATE_LOCAL(sizeof(int) * dy);
+    ptsOut = FirstPoint = (DDXPointPtr )xalloc(sizeof(DDXPointRec)*dy);
+    width = FirstWidth = (int *)xalloc(sizeof(int) * dy);
     if(!FirstPoint || !FirstWidth)
     {
-	if (FirstWidth) DEALLOCATE_LOCAL(FirstWidth);
-	if (FirstPoint) DEALLOCATE_LOCAL(FirstPoint);
+	if (FirstWidth) xfree(FirstWidth);
+	if (FirstPoint) xfree(FirstPoint);
 	return(FALSE);
     }
 
@@ -174,8 +174,8 @@ miFillConvexPoly(dst, pgc, count, ptsIn)
 	/* in case we're called with non-convex polygon */
 	if(i < 0)
         {
-	    DEALLOCATE_LOCAL(FirstWidth);
-	    DEALLOCATE_LOCAL(FirstPoint);
+	    xfree(FirstWidth);
+	    xfree(FirstPoint);
 	    return(TRUE);
 	}
         while (i-- > 0) 
@@ -209,8 +209,8 @@ miFillConvexPoly(dst, pgc, count, ptsIn)
     (*pgc->ops->FillSpans)(dst, pgc, 
 		      ptsOut-FirstPoint,FirstPoint,FirstWidth,
 		      1);
-    DEALLOCATE_LOCAL(FirstWidth);
-    DEALLOCATE_LOCAL(FirstPoint);
+    xfree(FirstWidth);
+    xfree(FirstPoint);
     return(TRUE);
 }
 
@@ -221,7 +221,7 @@ miFillConvexPoly(dst, pgc, count, ptsIn)
 static int
 getPolyYBounds(DDXPointPtr pts, int n, int *by, int *ty)
 {
-    register DDXPointPtr ptMin;
+    DDXPointPtr ptMin;
     int ymin, ymax;
     DDXPointPtr ptsStart = pts;
 

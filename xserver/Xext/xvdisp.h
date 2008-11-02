@@ -1,3 +1,2 @@
-/* $XFree86$ */
-
 extern void XineramifyXv(void);
+extern void XvResetProcVector(void);

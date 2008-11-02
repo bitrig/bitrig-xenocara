@@ -7,9 +7,11 @@ sdk_HEADERS =		\
 	closure.h	\
 	colormap.h	\
 	colormapst.h	\
+	hotplug.h	\
 	cursor.h	\
 	cursorstr.h	\
 	dix.h		\
+	dixaccess.h	\
 	dixevents.h	\
 	dixfont.h	\
 	dixfontstr.h	\
@@ -30,10 +32,12 @@ sdk_HEADERS =		\
 	os.h		\
 	pixmap.h	\
 	pixmapstr.h	\
+	privates.h	\
 	property.h	\
 	propertyst.h	\
 	region.h	\
 	regionstr.h	\
+	registry.h	\
 	resource.h	\
 	rgb.h		\
 	screenint.h	\
@@ -46,9 +50,13 @@ sdk_HEADERS =		\
 	validate.h	\
 	window.h	\
 	windowstr.h	\
+	xkbfile.h	\
+	xkbsrv.h	\
+	xkbstr.h	\
 	xorg-server.h
 endif
 
 AM_CFLAGS = $(DIX_CFLAGS)
 
-EXTRA_DIST = $(sdk_HEADERS) do-not-use-config.h dix-config.h xorg-config.h
+EXTRA_DIST = $(sdk_HEADERS) do-not-use-config.h dix-config.h xorg-config.h \
+	xkb-config.h

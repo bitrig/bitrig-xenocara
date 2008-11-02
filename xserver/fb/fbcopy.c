@@ -1,6 +1,4 @@
 /*
- * Id: fbcopy.c,v 1.1 1999/11/02 03:54:45 keithp Exp $
- *
  * Copyright © 1998 Keith Packard
  *
  * Permission to use, copy, modify, distribute, and sell this software and its
@@ -29,7 +27,6 @@
 #include <stdlib.h>
 
 #include "fb.h"
-#include "fbmmx.h"
 
 void
 fbCopyNtoN (DrawablePtr	pSrcDrawable,
@@ -60,21 +57,17 @@ fbCopyNtoN (DrawablePtr	pSrcDrawable,
 
     while (nbox--)
     {
-#ifdef USE_MMX
+#ifndef FB_ACCESS_WRAPPER /* pixman_blt() doesn't support accessors yet */
 	if (pm == FB_ALLONES && alu == GXcopy && !reverse &&
-	    !upsidedown && fbHaveMMX())
+	    !upsidedown)
 	{
-	    if (!fbCopyAreammx (pSrcDrawable,
-				pDstDrawable,
-				
-				(pbox->x1 + dx),
-				(pbox->y1 + dy),
-				
-				(pbox->x1),
-				(pbox->y1),
-				
-				(pbox->x2 - pbox->x1),
-				(pbox->y2 - pbox->y1)))
+	    if (!pixman_blt ((uint32_t *)src, (uint32_t *)dst, srcStride, dstStride, srcBpp, dstBpp,
+			     (pbox->x1 + dx + srcXoff),
+			     (pbox->y1 + dy + srcYoff),
+			     (pbox->x1 + dstXoff),
+			     (pbox->y1 + dstYoff),
+			     (pbox->x2 - pbox->x1),
+			     (pbox->y2 - pbox->y1)))
 		goto fallback;
 	    else
 		goto next;
@@ -98,11 +91,13 @@ fbCopyNtoN (DrawablePtr	pSrcDrawable,
 	       
 	       reverse,
 	       upsidedown);
-#ifdef USE_MMX
+#ifndef FB_ACCESS_WRAPPER
     next:
 #endif
 	pbox++;
     }    
+    fbFinishAccess (pDstDrawable);
+    fbFinishAccess (pSrcDrawable);
 }
 
 void
@@ -173,6 +168,9 @@ fbCopy1toN (DrawablePtr	pSrcDrawable,
 	}
 	pbox++;
     }
+
+    fbFinishAccess (pDstDrawable);
+    fbFinishAccess (pSrcDrawable);
 }
 
 void
@@ -221,6 +219,8 @@ fbCopyNto1 (DrawablePtr	pSrcDrawable,
 			(FbStip) pPriv->and, (FbStip) pPriv->xor,
 			(FbStip) pPriv->bgand, (FbStip) pPriv->bgxor,
 			bitplane);
+	    fbFinishAccess (pDstDrawable);
+	    fbFinishAccess (pSrcDrawable);
 	}
 	else
 	{
@@ -281,6 +281,9 @@ fbCopyNto1 (DrawablePtr	pSrcDrawable,
 		      pPriv->and, pPriv->xor,
 		      pPriv->bgand, pPriv->bgxor);
 	    xfree (tmp);
+
+	    fbFinishAccess (pDstDrawable);
+	    fbFinishAccess (pSrcDrawable);
 	}
 	pbox++;
     }
@@ -323,7 +326,7 @@ fbCopyRegion (DrawablePtr   pSrcDrawable,
 	if (nbox > 1)
 	{
 	    /* keep ordering in each band, reverse order of bands */
-	    pboxNew1 = (BoxPtr)ALLOCATE_LOCAL(sizeof(BoxRec) * nbox);
+	    pboxNew1 = (BoxPtr)xalloc(sizeof(BoxRec) * nbox);
 	    if(!pboxNew1)
 		return;
 	    pboxBase = pboxNext = pbox+nbox-1;
@@ -360,11 +363,11 @@ fbCopyRegion (DrawablePtr   pSrcDrawable,
 	if (nbox > 1)
 	{
 	    /* reverse order of rects in each band */
-	    pboxNew2 = (BoxPtr)ALLOCATE_LOCAL(sizeof(BoxRec) * nbox);
+	    pboxNew2 = (BoxPtr)xalloc(sizeof(BoxRec) * nbox);
 	    if(!pboxNew2)
 	    {
 		if (pboxNew1)
-		    DEALLOCATE_LOCAL(pboxNew1);
+		    xfree(pboxNew1);
 		return;
 	    }
 	    pboxBase = pboxNext = pbox;
@@ -399,9 +402,9 @@ fbCopyRegion (DrawablePtr   pSrcDrawable,
 		 reverse, upsidedown, bitPlane, closure);
     
     if (pboxNew1)
-	DEALLOCATE_LOCAL (pboxNew1);
+	xfree (pboxNew1);
     if (pboxNew2)
-	DEALLOCATE_LOCAL (pboxNew2);
+	xfree (pboxNew2);
 }
 
 RegionPtr

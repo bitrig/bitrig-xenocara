@@ -124,7 +124,21 @@ static xf86ConfigSymTabRec ModeTab[] =
 
 #define CLEANUP xf86freeModeLineList
 
-XF86ConfModeLinePtr
+static void
+xf86freeModeLineList (XF86ConfModeLinePtr ptr)
+{
+	XF86ConfModeLinePtr prev;
+	while (ptr)
+	{
+		TestFree (ptr->ml_identifier);
+		TestFree (ptr->ml_comment);
+		prev = ptr;
+		ptr = ptr->list.next;
+		xf86conffree (prev);
+	}
+}
+
+static XF86ConfModeLinePtr
 xf86parseModeLine (void)
 {
 	int token;
@@ -253,7 +267,7 @@ xf86parseModeLine (void)
 	return (ptr);
 }
 
-XF86ConfModeLinePtr
+static XF86ConfModeLinePtr
 xf86parseVerboseMode (void)
 {
 	int token, token2;
@@ -674,8 +688,6 @@ xf86printMonitorSection (FILE * cf, XF86ConfMonitorPtr ptr)
 			fprintf (cf, "\tDisplaySize  %d\t%d\n",
 					 ptr->mon_width,
 					 ptr->mon_height);
-		if ( ptr->mon_n_hsync || ptr->mon_n_vrefresh )
-		    fprintf(cf," ### Comment all HorizSync and VertRefresh values to use DDC:\n");
 		for (i = 0; i < ptr->mon_n_hsync; i++)
 		{
 			fprintf (cf, "\tHorizSync    %2.1f - %2.1f\n",
@@ -824,20 +836,6 @@ xf86freeModesList (XF86ConfModesPtr ptr)
 		TestFree (ptr->modes_identifier);
 		TestFree (ptr->modes_comment);
 		xf86freeModeLineList (ptr->mon_modeline_lst);
-		prev = ptr;
-		ptr = ptr->list.next;
-		xf86conffree (prev);
-	}
-}
-
-void
-xf86freeModeLineList (XF86ConfModeLinePtr ptr)
-{
-	XF86ConfModeLinePtr prev;
-	while (ptr)
-	{
-		TestFree (ptr->ml_identifier);
-		TestFree (ptr->ml_comment);
 		prev = ptr;
 		ptr = ptr->list.next;
 		xf86conffree (prev);

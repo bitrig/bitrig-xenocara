@@ -1,4 +1,3 @@
-
 /*
  * Copyright (c) 1997-2003 by The XFree86 Project, Inc.
  *
@@ -83,21 +82,17 @@ typedef enum {
  * changed.  The minor revision mask is 0x0000FFFF and the major revision
  * mask is 0xFFFF0000.
  */
-#define ABI_ANSIC_VERSION	SET_ABI_VERSION(0, 3)
-#define ABI_VIDEODRV_VERSION	SET_ABI_VERSION(1, 0)
-#define ABI_XINPUT_VERSION	SET_ABI_VERSION(0, 6)
-#define ABI_EXTENSION_VERSION	SET_ABI_VERSION(0, 3)
-#define ABI_FONT_VERSION	SET_ABI_VERSION(0, 5)
+#define ABI_ANSIC_VERSION	SET_ABI_VERSION(0, 4)
+#define ABI_VIDEODRV_VERSION	SET_ABI_VERSION(4, 1)
+#define ABI_XINPUT_VERSION	SET_ABI_VERSION(2, 1)
+#define ABI_EXTENSION_VERSION	SET_ABI_VERSION(1, 1)
+#define ABI_FONT_VERSION	SET_ABI_VERSION(0, 6)
 
 #define MODINFOSTRING1	0xef23fdc5
 #define MODINFOSTRING2	0x10dc023a
 
 #ifndef MODULEVENDORSTRING
-#ifndef __OS2ELF__
 #define MODULEVENDORSTRING	"X.Org Foundation"
-#else
-#define MODULEVENDORSTRING	"X.Org Foundation - OS2"
-#endif
 #endif
 
 /* Error return codes for errmaj.  New codes must only be added at the end. */

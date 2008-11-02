@@ -11,7 +11,7 @@ libx86emu_a_SOURCES = debug.c \
 
 INCLUDES = 
 
-AM_CFLAGS = $(XORG_CFLAGS)
+AM_CFLAGS = $(DIX_CFLAGS) $(XORG_CFLAGS)
 
 EXTRA_DIST = validate.c \
              x86emu/debug.h \
@@ -21,6 +21,7 @@ EXTRA_DIST = validate.c \
              x86emu/ops.h \
              x86emu/prim_asm.h \
              x86emu/prim_ops.h \
+	     x86emu/prim_x86_gcc.h \
              x86emu/regs.h \
              x86emu/types.h \
              x86emu/x86emui.h

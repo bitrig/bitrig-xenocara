@@ -56,24 +56,15 @@
 #include "gcstruct.h"
 #include "inputstr.h"
 #include "midbe.h"
+#include "xace.h"
 
 #include <stdio.h>
 
-/* DEFINES */
-
-
-/* TYPEDEFS */
-
-
-/* GLOBALS */
-
-static int	miDbePrivPrivGeneration  =  0;
-static int	miDbeWindowPrivPrivIndex = -1;
-RESTYPE		dbeDrawableResType;
-RESTYPE		dbeWindowPrivResType;
-int		dbeScreenPrivIndex = -1;
-int		dbeWindowPrivIndex = -1;
-
+static DevPrivateKey miDbeWindowPrivPrivKey = &miDbeWindowPrivPrivKey;
+static RESTYPE	dbeDrawableResType;
+static RESTYPE	dbeWindowPrivResType;
+static DevPrivateKey dbeScreenPrivKey = &dbeScreenPrivKey;
+static DevPrivateKey dbeWindowPrivKey = &dbeWindowPrivKey;
 
 
 /******************************************************************************
@@ -163,6 +154,7 @@ miDbeAllocBackBufferName(WindowPtr pWin, XID bufId, int swapAction)
     DbeScreenPrivPtr		pDbeScreenPriv;
     GCPtr			pGC;
     xRectangle			clearRect;
+    int				rc;
 
 
     pScreen = pWin->drawable.pScreen;
@@ -186,7 +178,7 @@ miDbeAllocBackBufferName(WindowPtr pWin, XID bufId, int swapAction)
         if (!(pDbeWindowPrivPriv->pFrontBuffer =
             (*pScreen->CreatePixmap)(pScreen, pDbeWindowPriv->width,
                                      pDbeWindowPriv->height,
-                                     pWin->drawable.depth)))
+                                     pWin->drawable.depth, 0)))
         {
             return(BadAlloc);
         }
@@ -195,26 +187,30 @@ miDbeAllocBackBufferName(WindowPtr pWin, XID bufId, int swapAction)
         if (!(pDbeWindowPrivPriv->pBackBuffer =
             (*pScreen->CreatePixmap)(pScreen, pDbeWindowPriv->width,
                                      pDbeWindowPriv->height,
-                                     pWin->drawable.depth)))
+                                     pWin->drawable.depth, 0)))
         {
             (*pScreen->DestroyPixmap)(pDbeWindowPrivPriv->pFrontBuffer); 
             return(BadAlloc);
         }
 
+	/* Security creation/labeling check. */
+	rc = XaceHook(XACE_RESOURCE_ACCESS, serverClient, bufId,
+		      dbeDrawableResType, pDbeWindowPrivPriv->pBackBuffer,
+		      RT_WINDOW, pWin, DixCreateAccess);
 
         /* Make the back pixmap a DBE drawable resource. */
-        if (!AddResource(bufId, dbeDrawableResType,
-            (pointer)pDbeWindowPrivPriv->pBackBuffer))
+        if (rc != Success || !AddResource(bufId, dbeDrawableResType,
+					  pDbeWindowPrivPriv->pBackBuffer))
         {
             /* free the buffer and the drawable resource */
             FreeResource(bufId, RT_NONE);
-            return(BadAlloc);
+            return (rc == Success) ? BadAlloc : rc;
         }
 
 
         /* Attach the priv priv to the priv. */
-	pDbeWindowPriv->devPrivates[miDbeWindowPrivPrivIndex].ptr =
-            (pointer)pDbeWindowPrivPriv;
+	dixSetPrivate(&pDbeWindowPriv->devPrivates, miDbeWindowPrivPrivKey,
+		      pDbeWindowPrivPriv);
 
 
         /* Clear the back buffer. */
@@ -657,10 +653,10 @@ miDbePositionWindow(WindowPtr pWin, int x, int y)
 
     /* Create DBE buffer pixmaps equal to size of resized window. */
     pFrontBuffer = (*pScreen->CreatePixmap)(pScreen, width, height,
-					    pWin->drawable.depth);
+					    pWin->drawable.depth, 0);
 
     pBackBuffer = (*pScreen->CreatePixmap)(pScreen, width, height,
-					   pWin->drawable.depth);
+					   pWin->drawable.depth, 0);
 
     if (!pFrontBuffer || !pBackBuffer)
     {
@@ -768,11 +764,6 @@ miDbeResetProc(ScreenPtr pScreen)
 
 } /* miDbeResetProc() */
 
-static void
-miDbeNopValidateBuffer(WindowPtr pWin, XID bufId, Bool dstbuffer)
-{
-}
-
 
 /******************************************************************************
  *
@@ -792,30 +783,12 @@ miDbeInit(ScreenPtr pScreen, DbeScreenPrivPtr pDbeScreenPriv)
     dbeWindowPrivResType = pDbeScreenPriv->dbeWindowPrivResType;
 
     /* Copy private indices created by DIX */
-    dbeScreenPrivIndex = pDbeScreenPriv->dbeScreenPrivIndex;
-    dbeWindowPrivIndex = pDbeScreenPriv->dbeWindowPrivIndex;
+    dbeScreenPrivKey = pDbeScreenPriv->dbeScreenPrivKey;
+    dbeWindowPrivKey = pDbeScreenPriv->dbeWindowPrivKey;
 
-    /* Reset the window priv privs if generations do not match. */
-    if (miDbePrivPrivGeneration != serverGeneration)
-    {
-        /*
-         **********************************************************************
-         ** Allocate the window priv priv.
-         **********************************************************************
-         */
-
-        miDbeWindowPrivPrivIndex = (*pDbeScreenPriv->AllocWinPrivPrivIndex)();
-
-        /* Make sure we only do this code once. */
-	miDbePrivPrivGeneration = serverGeneration;
-
-    } /* if -- Reset priv privs. */
-
-    if (!(*pDbeScreenPriv->AllocWinPrivPriv)(pScreen,
-        miDbeWindowPrivPrivIndex, sizeof(MiDbeWindowPrivPrivRec)))
-    {
+    if (!dixRequestPrivate(miDbeWindowPrivPrivKey,
+			   sizeof(MiDbeWindowPrivPrivRec)))
         return(FALSE);
-    }
 
     /* Wrap functions. */
     pDbeScreenPriv->PositionWindow = pScreen->PositionWindow;
@@ -829,9 +802,6 @@ miDbeInit(ScreenPtr pScreen, DbeScreenPrivPtr pDbeScreenPriv)
     pDbeScreenPriv->EndIdiom              = 0;
     pDbeScreenPriv->ResetProc             = miDbeResetProc;
     pDbeScreenPriv->WinPrivDelete         = miDbeWinPrivDelete;
-
-    /* The mi implementation doesn't need buffer validation. */
-    pDbeScreenPriv->ValidateBuffer	  = miDbeNopValidateBuffer;
 
     return(TRUE);
 

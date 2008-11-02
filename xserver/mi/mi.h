@@ -55,6 +55,7 @@ SOFTWARE.
 #include <X11/fonts/font.h>
 #include "input.h"
 #include "cursor.h"
+#include "privates.h"
 
 #define MiBits	CARD32
 
@@ -83,18 +84,6 @@ extern RegionPtr miCopyArea(
     int /*heightSrc*/,
     int /*xOut*/,
     int /*yOut*/
-);
-
-extern void miOpqStipDrawable(
-    DrawablePtr /*pDraw*/,
-    GCPtr /*pGC*/,
-    RegionPtr /*prgnSrc*/,
-    MiBits * /*pbits*/,
-    int /*srcx*/,
-    int /*w*/,
-    int /*h*/,
-    int /*dstx*/,
-    int /*dsty*/
 );
 
 extern RegionPtr miCopyPlane(
@@ -144,15 +133,6 @@ extern void miRecolorCursor(
 
 /* midash.c */
 
-extern miDashPtr miDashLine(
-    int /*npt*/,
-    DDXPointPtr /*ppt*/,
-    unsigned int /*nDash*/,
-    unsigned char * /*pDash*/,
-    unsigned int /*offset*/,
-    int * /*pnseg*/
-);
-
 extern void miStepDash(
     int /*dist*/,
     int * /*pDashIndex*/,
@@ -169,11 +149,11 @@ typedef struct _DeviceRec *DevicePtr;
 #endif
 
 extern Bool mieqInit(
-    DevicePtr /*pKbd*/,
-    DevicePtr /*pPtr*/
+    void
 );
 
 extern void mieqEnqueue(
+    DeviceIntPtr /*pDev*/,
     xEventPtr /*e*/
 );
 
@@ -185,6 +165,9 @@ extern void mieqSwitchScreen(
 extern void mieqProcessInputEvents(
     void
 );
+
+typedef void (*mieqHandler)(int, xEventPtr, DeviceIntPtr, int);
+void mieqSetHandler(int event, mieqHandler handler);
 
 /* miexpose.c */
 
@@ -323,16 +306,6 @@ extern void miPolySegment(
 
 /* mipolytext.c */
 
-extern int miPolyText(
-    DrawablePtr /*pDraw*/,
-    GCPtr /*pGC*/,
-    int /*x*/,
-    int /*y*/,
-    int /*count*/,
-    char * /*chars*/,
-    FontEncoding /*fontEncoding*/
-);
-
 extern int miPolyText8(
     DrawablePtr /*pDraw*/,
     GCPtr /*pGC*/,
@@ -349,16 +322,6 @@ extern int miPolyText16(
     int /*y*/,
     int /*count*/,
     unsigned short * /*chars*/
-);
-
-extern int miImageText(
-    DrawablePtr /*pDraw*/,
-    GCPtr /*pGC*/,
-    int /*x*/,
-    int /*y*/,
-    int /*count*/,
-    char * /*chars*/,
-    FontEncoding /*fontEncoding*/
 );
 
 extern void miImageText8(
@@ -400,10 +363,6 @@ extern Bool miRectAlloc(
     int /*n*/
 );
 
-extern void miSetExtents(
-    RegionPtr /*pReg*/
-);
-
 extern int miFindMaxBand(
     RegionPtr /*prgn*/
 );
@@ -414,7 +373,6 @@ extern Bool miValidRegion(
 );
 #endif
 
-extern Bool miRegionDataCopy(RegionPtr dst, RegionPtr src);
 extern Bool miRegionBroken(RegionPtr pReg);
 
 /* miscrinit.c */
@@ -427,11 +385,6 @@ extern Bool miModifyPixmapHeader(
     int /*bitsPerPixel*/,
     int /*devKind*/,
     pointer /*pPixData*/
-);
-
-extern Bool miCloseScreen(
-    int /*index*/,
-    ScreenPtr /*pScreen*/
 );
 
 extern Bool miCreateScreenResources(
@@ -460,7 +413,7 @@ extern Bool miScreenInit(
     VisualPtr /*visuals*/
 );
 
-extern int miAllocateGCPrivateIndex(
+extern DevPrivateKey miAllocateGCPrivateIndex(
     void
 );
 

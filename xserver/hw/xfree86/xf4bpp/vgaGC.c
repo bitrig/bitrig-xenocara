@@ -68,8 +68,6 @@ SOFTWARE.
 
 */
 
-/* $XConsortium: vgaGC.c /main/6 1996/02/21 17:58:54 kaleb $ */
-
 #ifdef HAVE_XORG_CONFIG_H
 #include <xorg-config.h>
 #endif
@@ -109,7 +107,7 @@ xf4bppChangeWindowGC( pGC, changes )
 register GC *pGC ;
 register Mask changes ;
 {
-register ppcPrivGCPtr devPriv = (ppcPrivGCPtr) (pGC->devPrivates[mfbGetGCPrivateIndex()].ptr) ;
+register ppcPrivGCPtr devPriv = (ppcPrivGCPtr)dixLookupPrivate(&pGC->devPrivates, mfbGetGCPrivateKey());
 register unsigned long int idx ; /* used for stepping through bitfields */
 
 #define LOWBIT( x ) ( x & - x ) /* Two's complement */

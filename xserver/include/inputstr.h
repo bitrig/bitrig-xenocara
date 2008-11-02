@@ -52,6 +52,7 @@ SOFTWARE.
 #include "input.h"
 #include "window.h"
 #include "dixstruct.h"
+#include "privates.h"
 
 #define BitIsOn(ptr, bit) (((BYTE *) (ptr))[(bit)>>3] & (1 << ((bit) & 7)))
 
@@ -61,6 +62,8 @@ SOFTWARE.
 #define MAX_DEVICES	20
 
 #define EMASKSIZE	MAX_DEVICES
+
+extern DevPrivateKey CoreDevicePrivateKey;
 
 /* Kludge: OtherClients and InputClients must be compatible, see code */
 
@@ -91,15 +94,15 @@ typedef struct _OtherInputMasks {
  */
 
 #define MasksPerDetailMask 8		/* 256 keycodes and 256 possible
-						modifier combinations, but only	
-						3 buttons. */
+                                           modifier combinations, but only	
+                                           3 buttons. */
 
-  typedef struct _DetailRec {		/* Grab details may be bit masks */
-	unsigned short exact;
-	Mask *pMask;
-  } DetailRec;
+typedef struct _DetailRec {		/* Grab details may be bit masks */
+    unsigned short      exact;
+    Mask                *pMask;
+} DetailRec;
 
-  typedef struct _GrabRec {
+typedef struct _GrabRec {
     GrabPtr		next;		/* for chain of passive grabs */
     XID			resource;
     DeviceIntPtr	device;
@@ -120,6 +123,7 @@ typedef struct _OtherInputMasks {
 
 typedef struct _KeyClassRec {
     CARD8		down[DOWN_LENGTH];
+    CARD8		postdown[DOWN_LENGTH];
     KeyCode 		*modifierKeyMap;
     KeySymsRec		curKeySyms;
     int			modifierKeyCount[8];
@@ -129,6 +133,8 @@ typedef struct _KeyClassRec {
     unsigned short	prev_state;
 #ifdef XKB
     struct _XkbSrvInfo *xkbInfo;
+#else
+    void               *pad0;
 #endif
 } KeyClassRec, *KeyClassPtr;
 
@@ -142,12 +148,20 @@ typedef struct _AxisInfo {
 
 typedef struct _ValuatorClassRec {
     ValuatorMotionProcPtr GetMotionProc;
-    int		 	numMotionEvents;
-    WindowPtr    	motionHintWindow;
-    AxisInfoPtr 	axes;
-    unsigned short	numAxes;
-    int			*axisVal;
-    CARD8	 	mode;
+    int		 	  numMotionEvents;
+    int                   first_motion;
+    int                   last_motion;
+    void                  *motion;
+
+    WindowPtr    	  motionHintWindow;
+
+    AxisInfoPtr 	  axes;
+    unsigned short	  numAxes;
+    int			  *axisVal;
+    int                   lastx, lasty; /* last event recorded, not posted to
+                                         * client; see dix/devices.c */
+    float                 dxremaind, dyremaind; /* for acceleration */
+    CARD8	 	  mode;
 } ValuatorClassRec, *ValuatorClassPtr;
 
 typedef struct _ButtonClassRec {
@@ -158,7 +172,9 @@ typedef struct _ButtonClassRec {
     CARD8		down[DOWN_LENGTH];
     CARD8		map[MAP_LENGTH];
 #ifdef XKB
-    union _XkbAction *	xkb_acts;
+    union _XkbAction    *xkb_acts;
+#else
+    void                *pad0;
 #endif
 } ButtonClassRec, *ButtonClassPtr;
 
@@ -175,6 +191,26 @@ typedef struct _ProximityClassRec {
     char	pad;
 } ProximityClassRec, *ProximityClassPtr;
 
+typedef struct _AbsoluteClassRec {
+    /* Calibration. */
+    int         min_x;
+    int         max_x;
+    int         min_y;
+    int         max_y;
+    int         flip_x;
+    int         flip_y;
+    int		rotation;
+    int         button_threshold;
+
+    /* Area. */
+    int         offset_x;
+    int         offset_y;
+    int         width;
+    int         height;
+    int         screen;
+    XID		following;
+} AbsoluteClassRec, *AbsoluteClassPtr;
+
 typedef struct _KbdFeedbackClassRec *KbdFeedbackPtr;
 typedef struct _PtrFeedbackClassRec *PtrFeedbackPtr;
 typedef struct _IntegerFeedbackClassRec *IntegerFeedbackPtr;
@@ -189,6 +225,8 @@ typedef struct _KbdFeedbackClassRec {
     KbdFeedbackPtr	next;
 #ifdef XKB
     struct _XkbSrvLedInfo *xkb_sli;
+#else
+    void                *pad0;
 #endif
 } KbdFeedbackClassRec;
 
@@ -223,6 +261,8 @@ typedef struct _LedFeedbackClassRec {
     LedFeedbackPtr	next;
 #ifdef XKB
     struct _XkbSrvLedInfo *xkb_sli;
+#else
+    void                *pad0;
 #endif
 } LedFeedbackClassRec;
 
@@ -248,6 +288,8 @@ typedef struct _DeviceIntRec {
 					  used to initialize, turn on, or
 					  turn off the device */
     Bool	inited;			/* TRUE if INIT returns Success */
+    Bool        enabled;                /* TRUE if ON returns Success */
+    Bool        coreEvents;             /* TRUE if device also sends core */
     GrabPtr	grab;			/* the grabber - used by DIX */
     struct {
 	Bool		frozen;
@@ -274,6 +316,7 @@ typedef struct _DeviceIntRec {
     ButtonClassPtr	button;
     FocusClassPtr	focus;
     ProximityClassPtr	proximity;
+    AbsoluteClassPtr    absolute;
     KbdFeedbackPtr	kbdfeed;
     PtrFeedbackPtr	ptrfeed;
     IntegerFeedbackPtr	intfeed;
@@ -281,9 +324,12 @@ typedef struct _DeviceIntRec {
     BellFeedbackPtr	bell;
     LedFeedbackPtr	leds;
 #ifdef XKB
-    struct _XkbInterest *	xkb_interest;
+    struct _XkbInterest *xkb_interest;
+#else
+    void                *pad0;
 #endif
-    DevUnion		*devPrivates;
+    char                *config_info; /* used by the hotplug layer */
+    PrivateRec		*devPrivates;
     int			nPrivates;
     DeviceUnwrapProc    unwrapProc;
 } DeviceIntRec;

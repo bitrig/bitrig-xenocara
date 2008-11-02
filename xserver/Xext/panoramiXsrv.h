@@ -12,14 +12,11 @@ extern int PanoramiXNumScreens;
 extern PanoramiXData *panoramiXdataPtr;
 extern int PanoramiXPixWidth;
 extern int PanoramiXPixHeight;
-extern RegionRec PanoramiXScreenRegion;
-extern XID *PanoramiXVisualTable;
 
+extern VisualID PanoramiXTranslateVisualID(int screen, VisualID orig);
 extern void PanoramiXConsolidate(void);
 extern Bool PanoramiXCreateConnectionBlock(void);
 extern PanoramiXRes * PanoramiXFindIDByScrnum(RESTYPE, XID, int);
-extern PanoramiXRes * PanoramiXFindIDOnAnyScreen(RESTYPE, XID);
-extern WindowPtr PanoramiXChangeWindow(int, WindowPtr);
 extern Bool XineramaRegisterConnectionBlockCallback(void (*func)(void));
 extern int XineramaDeleteResource(pointer, XID);
 
@@ -32,6 +29,16 @@ extern unsigned long XRT_WINDOW;
 extern unsigned long XRT_PIXMAP;
 extern unsigned long XRT_GC;
 extern unsigned long XRT_COLORMAP;
+
+/*
+ * Drivers are allowed to wrap this function.  Each wrapper can decide that the
+ * two visuals are unequal, but if they are deemed equal, the wrapper must call
+ * down and return FALSE if the wrapped function does.  This ensures that all
+ * layers agree that the visuals are equal.  The first visual is always from
+ * screen 0.
+ */
+typedef Bool (*XineramaVisualsEqualProcPtr)(VisualPtr, ScreenPtr, VisualPtr);
+extern XineramaVisualsEqualProcPtr XineramaVisualsEqualPtr;
 
 extern void XineramaGetImageData(
     DrawablePtr *pDrawables,

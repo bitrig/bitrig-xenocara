@@ -56,13 +56,9 @@ SOFTWARE.
 #include <dix-config.h>
 #endif
 
-#include <X11/X.h>	/* for inputstr.h    */
-#include <X11/Xproto.h>	/* Request macro     */
 #include "inputstr.h"	/* DeviceIntPtr      */
 #include <X11/extensions/XI.h>
 #include <X11/extensions/XIproto.h>
-#include "extnsionst.h"
-#include "extinit.h"	/* LookupDeviceIntRec */
 #include "exglobals.h"
 
 #include "getbmap.h"
@@ -74,9 +70,9 @@ SOFTWARE.
  */
 
 int
-SProcXGetDeviceButtonMapping(register ClientPtr client)
+SProcXGetDeviceButtonMapping(ClientPtr client)
 {
-    register char n;
+    char n;
 
     REQUEST(xGetDeviceButtonMappingReq);
     swaps(&stuff->length, n);
@@ -90,11 +86,12 @@ SProcXGetDeviceButtonMapping(register ClientPtr client)
  */
 
 int
-ProcXGetDeviceButtonMapping(register ClientPtr client)
+ProcXGetDeviceButtonMapping(ClientPtr client)
 {
     DeviceIntPtr dev;
     xGetDeviceButtonMappingReply rep;
     ButtonClassPtr b;
+    int rc;
 
     REQUEST(xGetDeviceButtonMappingReq);
     REQUEST_SIZE_MATCH(xGetDeviceButtonMappingReq);
@@ -105,19 +102,14 @@ ProcXGetDeviceButtonMapping(register ClientPtr client)
     rep.length = 0;
     rep.sequenceNumber = client->sequence;
 
-    dev = LookupDeviceIntRec(stuff->deviceid);
-    if (dev == NULL) {
-	SendErrorToClient(client, IReqCode, X_GetDeviceButtonMapping, 0,
-			  BadDevice);
-	return Success;
-    }
+    rc = dixLookupDevice(&dev, stuff->deviceid, client, DixGetAttrAccess);
+    if (rc != Success)
+	return rc;
 
     b = dev->button;
-    if (b == NULL) {
-	SendErrorToClient(client, IReqCode, X_GetDeviceButtonMapping, 0,
-			  BadMatch);
-	return Success;
-    }
+    if (b == NULL)
+	return BadMatch;
+
     rep.nElts = b->numButtons;
     rep.length = (rep.nElts + (4 - 1)) / 4;
     WriteReplyToClient(client, sizeof(xGetDeviceButtonMappingReply), &rep);
@@ -136,7 +128,7 @@ void
 SRepXGetDeviceButtonMapping(ClientPtr client, int size,
 			    xGetDeviceButtonMappingReply * rep)
 {
-    register char n;
+    char n;
 
     swaps(&rep->sequenceNumber, n);
     swapl(&rep->length, n);

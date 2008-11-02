@@ -21,12 +21,17 @@ PM2_LIBS =					\
 	$(top_builddir)/hw/kdrive/vesa/libvesa.a \
 	@KDRIVE_LIBS@
 
+if GLX
+Xpm2_LDFLAGS = $(LD_EXPORT_SYMBOLS_FLAG)
+endif
+
 Xpm2_LDADD = \
 	$(PM2_LIBS)				\
-	@KDRIVE_LIBS@                          \
-	@XSERVER_LIBS@			
+	@KDRIVE_LIBS@
 
-
-Xpm2_DEPENDENCIES = 				\
+Xpm2_DEPENDENCIES =	\
 	libpm2.a 				\
-	$(top_builddir)/hw/kdrive/vesa/libvesa.a 
+	@KDRIVE_LOCAL_LIBS@
+
+relink:
+	rm -f $(bin_PROGRAMS) && make $(bin_PROGRAMS)

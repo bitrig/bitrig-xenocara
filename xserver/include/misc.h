@@ -87,10 +87,7 @@ extern unsigned long serverGeneration;
 #define MAXSCREENS	16
 #endif
 #define MAXCLIENTS	256
-#define MAXDITS		1
-#define MAXEXTENSIONS	128
 #define MAXFORMATS	8
-#define MAXVISUALS_PER_SCREEN 50
 
 typedef unsigned long PIXEL;
 typedef unsigned long ATOM;
@@ -239,7 +236,7 @@ extern int Ones(
     unsigned long /*mask*/);
 
 typedef struct _xPoint *DDXPointPtr;
-typedef struct _Box *BoxPtr;
+typedef struct pixman_box16 *BoxPtr;
 typedef struct _xEvent *xEventPtr;
 typedef struct _xRectangle *xRectanglePtr;
 typedef struct _GrabRec *GrabPtr;

@@ -74,10 +74,10 @@ cursor metrics.
 */
 
 int
-ServerBitsFromGlyph(FontPtr pfont, unsigned ch, register CursorMetricPtr cm, unsigned char **ppbits)
+ServerBitsFromGlyph(FontPtr pfont, unsigned ch, CursorMetricPtr cm, unsigned char **ppbits)
 {
-    register ScreenPtr pScreen;
-    register GCPtr pGC;
+    ScreenPtr pScreen;
+    GCPtr pGC;
     xRectangle rect;
     PixmapPtr ppix;
     long nby;
@@ -98,7 +98,8 @@ ServerBitsFromGlyph(FontPtr pfont, unsigned ch, register CursorMetricPtr cm, uns
     bzero(pbits, nby);
 
     ppix = (PixmapPtr)(*pScreen->CreatePixmap)(pScreen, cm->width,
-					       cm->height, 1);
+					       cm->height, 1,
+					       CREATE_PIXMAP_USAGE_SCRATCH);
     pGC = GetScratchGC(1, pScreen);
     if (!ppix || !pGC)
     {
@@ -140,7 +141,7 @@ ServerBitsFromGlyph(FontPtr pfont, unsigned ch, register CursorMetricPtr cm, uns
 
 
 Bool
-CursorMetricsFromGlyph(register FontPtr pfont, unsigned ch, register CursorMetricPtr cm)
+CursorMetricsFromGlyph(FontPtr pfont, unsigned ch, CursorMetricPtr cm)
 {
     CharInfoPtr 	pci;
     unsigned long	nglyphs;

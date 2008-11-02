@@ -22,7 +22,6 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  */
-/* $XConsortium: sysv_video.c /main/8 1996/10/25 11:38:09 kaleb $ */
 
 #ifdef HAVE_XORG_CONFIG_H
 #include <xorg-config.h>
@@ -235,7 +234,7 @@ unmapVidMem(int ScreenNum, pointer Base, unsigned long Size)
 	return;
 }
 
-#if defined(SVR4) && defined(i386) && !defined(sun)
+#if defined(SVR4) && defined(__i386__) && !defined(sun)
 /*
  * For some SVR4 versions, a 32-bit read is done for the first location
  * in each page when the page is first mapped.  If this is done while
@@ -271,7 +270,7 @@ xf86OSInitVidMem(VidMemInfoPtr pVidMem)
 	pVidMem->linearSupported = linearVidMem();
 	pVidMem->mapMem = mapVidMem;
 	pVidMem->unmapMem = unmapVidMem;
-#if defined(SVR4) && defined(i386) && !defined(sun)
+#if defined(SVR4) && defined(__i386__) && !defined(sun)
 	pVidMem->readSideEffects = readSideEffects;
 #endif
 	pVidMem->initialised = TRUE;

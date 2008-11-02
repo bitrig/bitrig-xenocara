@@ -39,7 +39,7 @@
 #include "fb.h"
 
 #define EXA_VERSION_MAJOR   2
-#define EXA_VERSION_MINOR   0
+#define EXA_VERSION_MINOR   4
 #define EXA_VERSION_RELEASE 0
 
 typedef struct _ExaOffscreenArea ExaOffscreenArea;
@@ -56,7 +56,7 @@ struct _ExaOffscreenArea {
     int                 base_offset;	/* allocation base */
     int                 offset;         /* aligned offset */
     int                 size;           /* total allocation size */
-    int                 score;
+    unsigned            last_use;
     pointer             privData;
 
     ExaOffscreenSaveProc save;
@@ -64,6 +64,8 @@ struct _ExaOffscreenArea {
     ExaOffscreenState   state;
 
     ExaOffscreenArea    *next;
+
+    unsigned            eviction_cost;
 };
 
 /**
@@ -73,8 +75,8 @@ struct _ExaOffscreenArea {
 typedef struct _ExaDriver {
     /**
      * exa_major and exa_minor should be set by the driver to the version of
-     * EXA which the driver was compiled for (or configures itself at runtime to
-     * support).  This allows EXA to extend the structure for new features
+     * EXA which the driver was compiled for (or configures itself at runtime
+     * to support).  This allows EXA to extend the structure for new features
      * without breaking ABI for drivers compiled against older versions.
      */
     int exa_major, exa_minor;
@@ -229,7 +231,7 @@ typedef struct _ExaDriver {
      * @{
      */
     /**
-     * PrepareCopy() sets up the driver for doing a copy within offscreen
+     * PrepareCopy() sets up the driver for doing a copy within video 
      * memory.
      *
      * @param pSrcPixmap source pixmap
@@ -636,6 +638,23 @@ typedef struct _ExaDriver {
      */
     void	(*FinishAccess)(PixmapPtr pPix, int index);
 
+    /**
+     * PixmapIsOffscreen() is an optional driver replacement to
+     * exaPixmapIsOffscreen(). Set to NULL if you want the standard behaviour
+     * of exaPixmapIsOffscreen().
+     *
+     * @param pPix the pixmap
+     * @return TRUE if the given drawable is in framebuffer memory.
+     *
+     * exaPixmapIsOffscreen() is used to determine if a pixmap is in offscreen
+     * memory, meaning that acceleration could probably be done to it, and that it
+     * will need to be wrapped by PrepareAccess()/FinishAccess() when accessing it
+     * with the CPU.
+     *
+     *
+     */
+    Bool	(*PixmapIsOffscreen)(PixmapPtr pPix);
+
 	/** @name PrepareAccess() and FinishAccess() indices
 	 * @{
 	 */
@@ -654,6 +673,44 @@ typedef struct _ExaDriver {
 	 */
 	#define EXA_PREPARE_MASK	2
 	/** @} */
+
+    /**
+     * maxPitchPixels controls the pitch limitation for rendering from
+     * the card.
+     * The driver should never receive a request for rendering a pixmap
+     * that has a pitch (in pixels) beyond maxPitchPixels.
+     *
+     * Setting this field is optional -- if your hardware doesn't have
+     * a pitch limitation in pixels, don't set this. If neither this value
+     * nor maxPitchBytes is set, then maxPitchPixels is set to maxX.
+     * If set, it must not be smaller than maxX.
+     *
+     * @sa maxPitchBytes
+     */
+    int maxPitchPixels;
+
+    /**
+     * maxPitchBytes controls the pitch limitation for rendering from
+     * the card.
+     * The driver should never receive a request for rendering a pixmap
+     * that has a pitch (in bytes) beyond maxPitchBytes.
+     *
+     * Setting this field is optional -- if your hardware doesn't have
+     * a pitch limitation in bytes, don't set this.
+     * If set, it must not be smaller than maxX * 4.
+     * There's no default value for maxPitchBytes.
+     *
+     * @sa maxPitchPixels
+     */
+    int maxPitchBytes;
+
+    /* Hooks to allow driver to its own pixmap memory management */
+    void *(*CreatePixmap)(ScreenPtr pScreen, int size, int align);
+    void (*DestroyPixmap)(ScreenPtr pScreen, void *driverPriv);
+    Bool (*ModifyPixmapHeader)(PixmapPtr pPixmap, int width, int height,
+                              int depth, int bitsPerPixel, int devKind,
+                              pointer pPixData);
+
     /** @} */
 } ExaDriverRec, *ExaDriverPtr;
 
@@ -678,6 +735,13 @@ typedef struct _ExaDriver {
  * (right-to-left, bottom-to-top).
  */
 #define EXA_TWO_BITBLT_DIRECTIONS	(1 << 2)
+
+/**
+ * EXA_HANDLES_PIXMAPS indicates to EXA that the driver can handle
+ * all pixmap addressing and migration.
+ */
+#define EXA_HANDLES_PIXMAPS             (1 << 3)
+
 /** @} */
 
 ExaDriverPtr
@@ -704,6 +768,9 @@ exaOffscreenAlloc(ScreenPtr pScreen, int size, int align,
 ExaOffscreenArea *
 exaOffscreenFree(ScreenPtr pScreen, ExaOffscreenArea *area);
 
+void
+ExaOffscreenMarkUsed (PixmapPtr pPixmap);
+
 unsigned long
 exaGetPixmapOffset(PixmapPtr pPix);
 
@@ -715,6 +782,18 @@ exaGetPixmapSize(PixmapPtr pPix);
 
 void
 exaEnableDisableFBAccess (int index, Bool enable);
+
+void
+exaMoveInPixmap (PixmapPtr pPixmap);
+
+void
+exaMoveOutPixmap (PixmapPtr pPixmap);
+
+void *
+exaGetPixmapDriverPrivate(PixmapPtr p);
+
+CARD32
+exaGetPixmapFirstPixel (PixmapPtr pPixmap);
 
 /**
  * Returns TRUE if the given planemask covers all the significant bits in the

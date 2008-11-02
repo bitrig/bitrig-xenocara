@@ -56,15 +56,11 @@ SOFTWARE.
 #include <dix-config.h>
 #endif
 
-#include <X11/X.h>	/* for inputstr.h    */
-#include <X11/Xproto.h>	/* Request macro     */
 #include "inputstr.h"	/* DeviceIntPtr      */
 #include <X11/extensions/XI.h>
 #include <X11/extensions/XIproto.h>
 #include "XIstubs.h"
 #include "windowstr.h"	/* window structure  */
-#include "extnsionst.h"
-#include "extinit.h"	/* LookupDeviceIntRec */
 #include "exglobals.h"
 
 #include "opendev.h"
@@ -79,9 +75,9 @@ extern CARD8 event_base[];
  */
 
 int
-SProcXOpenDevice(register ClientPtr client)
+SProcXOpenDevice(ClientPtr client)
 {
-    register char n;
+    char n;
 
     REQUEST(xOpenDeviceReq);
     swaps(&stuff->length, n);
@@ -95,10 +91,9 @@ SProcXOpenDevice(register ClientPtr client)
  */
 
 int
-ProcXOpenDevice(register ClientPtr client)
+ProcXOpenDevice(ClientPtr client)
 {
     xInputClassInfo evbase[numInputClasses];
-    Bool enableit = FALSE;
     int j = 0;
     int status = Success;
     xOpenDeviceReply rep;
@@ -108,29 +103,22 @@ ProcXOpenDevice(register ClientPtr client)
     REQUEST_SIZE_MATCH(xOpenDeviceReq);
 
     if (stuff->deviceid == inputInfo.pointer->id ||
-	stuff->deviceid == inputInfo.keyboard->id) {
-	SendErrorToClient(client, IReqCode, X_OpenDevice, 0, BadDevice);
-	return Success;
-    }
+	stuff->deviceid == inputInfo.keyboard->id)
+	return BadDevice;
 
-    if ((dev = LookupDeviceIntRec(stuff->deviceid)) == NULL) {	/* not open */
+    status = dixLookupDevice(&dev, stuff->deviceid, client, DixUseAccess);
+    if (status == BadDevice) {  /* not open */
 	for (dev = inputInfo.off_devices; dev; dev = dev->next)
 	    if (dev->id == stuff->deviceid)
 		break;
-	if (dev == NULL) {
-	    SendErrorToClient(client, IReqCode, X_OpenDevice, 0, BadDevice);
-	    return Success;
-	}
-	enableit = TRUE;
-    }
+	if (dev == NULL)
+	    return BadDevice;
+    } else if (status != Success)
+	return status;
 
     OpenInputDevice(dev, client, &status);
-    if (status != Success) {
-	SendErrorToClient(client, IReqCode, X_OpenDevice, 0, status);
-	return Success;
-    }
-    if (enableit && dev->inited && dev->startup)
-	(void)EnableDevice(dev);
+    if (status != Success)
+	return status;
 
     rep.repType = X_Reply;
     rep.RepType = X_OpenDevice;
@@ -179,7 +167,7 @@ ProcXOpenDevice(register ClientPtr client)
 void
 SRepXOpenDevice(ClientPtr client, int size, xOpenDeviceReply * rep)
 {
-    register char n;
+    char n;
 
     swaps(&rep->sequenceNumber, n);
     swapl(&rep->length, n);

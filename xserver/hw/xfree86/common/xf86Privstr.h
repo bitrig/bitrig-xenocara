@@ -60,6 +60,12 @@ typedef enum {
     SKAlways
 } SpecialKeysInDDX;
 
+typedef enum {
+    XF86_GlxVisualsMinimal,
+    XF86_GlxVisualsTypical,
+    XF86_GlxVisualsAll,
+} XF86_GlxVisuals;
+
 /*
  * xf86InfoRec contains global parameters which the video drivers never
  * need to access.  Global parameters which the video drivers do need
@@ -67,38 +73,10 @@ typedef enum {
  */
 
 typedef struct {
-
-    /* keyboard part */
-    DeviceIntPtr	pKeyboard;
-    DeviceProc		kbdProc;		/* procedure for initializing */
-    void		(* kbdEvents)(void);	/* proc for processing events */
     int			consoleFd;
-    int			kbdFd;
     int			vtno;
-    int			kbdType;		/* AT84 / AT101 */
-    int			kbdRate;
-    int			kbdDelay;
-    int			bell_pitch;
-    int			bell_duration;
-    Bool		autoRepeat;
-    unsigned long	leds;
-    unsigned long	xleds;
-    char *		vtinit;
-    int			scanPrefix;		/* scancode-state */
-    Bool		capsLock;
-    Bool		numLock;
-    Bool		scrollLock;
-    Bool		modeSwitchLock;
-    Bool		composeLock;
     Bool		vtSysreq;
     SpecialKeysInDDX	ddxSpecialKeys;
-    Bool		ActionKeyBindingsSet;
-#if defined(SVR4) && defined(i386)
-    Bool		panix106;
-#endif  /* SVR4 && i386 */
-#if defined(__OpenBSD__) || defined(__NetBSD__)
-    int                 wsKbdType;
-#endif
 
     /* mouse part */
     DeviceIntPtr	pMouse;
@@ -125,25 +103,6 @@ typedef struct {
     int			consType;	/* Which console driver? */
 #endif
 
-#ifdef XKB
-    /* 
-     * would like to use an XkbComponentNamesRec here but can't without
-     * pulling in a bunch of header files. :-(
-     */
-    char *		xkbkeymap;
-    char *		xkbkeycodes;
-    char *		xkbtypes;
-    char *		xkbcompat;
-    char *		xkbsymbols;
-    char *		xkbgeometry;
-    Bool		xkbcomponents_specified;
-    char *		xkbrules;
-    char *		xkbmodel;
-    char *		xkblayout;
-    char *		xkbvariant;
-    char *		xkboptions;
-#endif
-
     /* Other things */
     Bool		allowMouseOpenFail;
     Bool		vidModeEnabled;		/* VidMode extension enabled */
@@ -155,7 +114,7 @@ typedef struct {
     PciProbeType	pciFlags;
     Pix24Flags		pixmap24;
     MessageType		pix24From;
-#if defined(i386) || defined(__i386__)
+#ifdef __i386__
     Bool		pc98;
 #endif
     Bool		pmFlag;
@@ -166,6 +125,11 @@ typedef struct {
     MessageType		randRFrom;
     Bool		aiglx;
     MessageType		aiglxFrom;
+    XF86_GlxVisuals	glxVisuals;
+    MessageType		glxVisualsFrom;
+    
+    Bool		useDefaultFontPath;
+    MessageType		useDefaultFontPathFrom;
     Bool        ignoreABI;
     struct {
 	Bool		disabled;		/* enable/disable deactivating
@@ -179,6 +143,15 @@ typedef struct {
 	Bool		allowClosedown;
 	ServerGrabInfoRec server;
     } grabInfo;
+
+    Bool        allowEmptyInput;  /* Allow the server to start with no input
+                                   * devices. */
+    Bool        autoAddDevices; /* Whether to succeed NIDR, or ignore. */
+    Bool        autoEnableDevices; /* Whether to enable, or let the client
+                                    * control. */
+
+    Bool		dri2;
+    MessageType		dri2From;
 } xf86InfoRec, *xf86InfoPtr;
 
 #ifdef DPMSExtension

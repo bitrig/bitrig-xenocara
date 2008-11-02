@@ -3,7 +3,7 @@ noinst_LTLIBRARIES = libdixmods.la libxorgxkb.la
 SUBDIRS = extmod
 
 if GLX
-GLXMODS = libglx.la libGLcore.la
+GLXMODS = libglx.la
 endif
 
 if XTRAP
@@ -14,36 +14,44 @@ if DBE
 DBEMOD = libdbe.la
 endif
 
-module_LTLIBRARIES = libafb.la \
-                     libcfb.la \
-                     libcfb32.la \
+if AFB
+AFBMOD = libafb.la
+endif
+
+if CFB
+CFBMOD = libcfb.la libcfb32.la
+endif
+
+if MFB
+MFBMOD = libmfb.la
+endif
+
+if RECORD
+RECORDMOD = librecord.la
+endif
+
+module_LTLIBRARIES = $(AFBMOD) \
+                     $(CFBMOD) \
                      libfb.la \
-                     libmfb.la \
+                     libwfb.la \
+                     $(MFBMOD) \
                      libshadow.la
 
 extsmoduledir = $(moduledir)/extensions
-extsmodule_LTLIBRARIES = librecord.la \
+extsmodule_LTLIBRARIES = $(RECORDMOD) \
 			 $(DBEMOD) \
                          $(GLXMODS) \
                          $(XTRAPMOD)
 
 fontsmoduledir = $(moduledir)/fonts
-fontsmodule_LTLIBRARIES = libfreetype.la \
-                          libtype1.la
+fontsmodule_LTLIBRARIES = libfreetype.la
 
 AM_CFLAGS = @XORG_CFLAGS@ @DIX_CFLAGS@
 INCLUDES = @XORG_INCS@ \
-           -I$(top_srcdir)/afb \
-           -I$(top_srcdir)/cfb \
-           -I$(top_srcdir)/mfb \
            -I$(top_srcdir)/dbe \
            -I$(top_srcdir)/hw/xfree86/loader \
            -I$(top_srcdir)/miext/shadow \
-           -I$(top_srcdir)/GL/glx
-
-libGLcore_la_LDFLAGS = -avoid-version
-libGLcore_la_LIBADD = $(top_builddir)/GL/mesa/libGLcore.la
-libGLcore_la_SOURCES = GLcoremodule.c
+           -I$(top_srcdir)/glx
 
 libafb_la_LDFLAGS = -avoid-version
 libafb_la_LIBADD = $(top_builddir)/afb/libafb.la
@@ -63,15 +71,20 @@ libdbe_la_SOURCES = dbemodule.c
 
 libfb_la_LDFLAGS = -avoid-version
 libfb_la_LIBADD = $(top_builddir)/fb/libfb.la
-libfb_la_SOURCES = $(top_builddir)/fb/fbcmap.c fbmodule.c
-libfb_la_CFLAGS = -DXFree86Server $(AM_CFLAGS)
+libfb_la_SOURCES = $(top_builddir)/fb/fbcmap_mi.c fbmodule.c
+libfb_la_CFLAGS = $(AM_CFLAGS)
+
+libwfb_la_LDFLAGS = -avoid-version
+libwfb_la_LIBADD = $(top_builddir)/fb/libwfb.la
+libwfb_la_SOURCES = $(top_builddir)/fb/fbcmap_mi.c fbmodule.c
+libwfb_la_CFLAGS = $(AM_CFLAGS) -DFB_ACCESS_WRAPPER
 
 libglx_la_LDFLAGS = -avoid-version
 if AIGLX
-GLXDRI_LIBRARY = $(top_builddir)/GL/glx/libglxdri.la
+GLXDRI_LIBRARY = $(top_builddir)/glx/libglxdri.la
 endif
 libglx_la_LIBADD = \
-	$(top_builddir)/GL/glx/libglx.la \
+	$(top_builddir)/glx/libglx.la \
 	$(GLXDRI_LIBRARY)
 libglx_la_SOURCES = glxmodule.c
 
@@ -89,9 +102,6 @@ libshadow_la_SOURCES = shmodule.c
 
 libfreetype_la_LDFLAGS = -avoid-version
 libfreetype_la_SOURCES = ftmodule.c
-
-libtype1_la_LDFLAGS = -avoid-version
-libtype1_la_SOURCES = type1mod.c
 
 libdixmods_la_SOURCES = $(top_srcdir)/mi/miinitext.c
 libdixmods_la_CFLAGS = -DXFree86LOADER $(AM_CFLAGS)

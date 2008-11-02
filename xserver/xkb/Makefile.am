@@ -32,7 +32,6 @@ XKBFILE_SRCS = \
         xkmread.c \
         xkbtext.c \
         xkbfmisc.c \
-        xkberrs.c \
         xkbout.c
 
 X11_SRCS = \
@@ -41,13 +40,14 @@ X11_SRCS = \
         XKBGAlloc.c \
         XKBMAlloc.c
 
-XI_SRCS = xkbPrOtherEv.c
+# ends up unused...
+# XI_SRCS = xkbPrOtherEv.c
 
 libxkb_la_SOURCES = $(DDX_SRCS) $(DIX_SRCS) $(XI_SRCS) $(XKBFILE_SRCS) \
                     $(X11_SRCS)
 libxkbstubs_la_SOURCES = ddxVT.c ddxPrivate.c ddxKillSrv.c
 
-EXTRA_DIST = xkb.h xkbDflts.h
+EXTRA_DIST = xkbDflts.h xkbgeom.h xkb.h
 
 xkbcompileddir = $(XKB_COMPILED_DIR)
 dist_xkbcompiled_DATA = README.compiled

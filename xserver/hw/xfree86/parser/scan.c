@@ -1,5 +1,4 @@
 /* 
- * 
  * Copyright (c) 1997  Metro Link Incorporated
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -65,6 +64,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdarg.h>
+#include <X11/Xfuncproto.h>
 
 #if !defined(X_NOT_POSIX)
 #if defined(_POSIX_SOURCE)
@@ -106,17 +106,13 @@ static int pushToken = LOCK_TOKEN;
 static int eol_seen = 0;		/* private state to handle comments */
 LexRec val;
 
-#ifdef __UNIXOS2__
-extern char *__XOS2RedirRoot(char *path);
-#endif
-
 /* 
  * xf86strToUL --
  *
  *  A portable, but restricted, version of strtoul().  It only understands
  *  hex, octal, and decimal.  But it's good enough for our needs.
  */
-unsigned int
+static unsigned int
 xf86strToUL (char *str)
 {
 	int base = 10;
@@ -384,11 +380,20 @@ again:
 			if (c == '0')
 				if ((configBuf[configPos] == 'x') ||
 					(configBuf[configPos] == 'X'))
+                                {
 					base = 16;
+                                        val.numType = PARSE_HEX;
+                                }
 				else
+                                {
 					base = 8;
+                                        val.numType = PARSE_OCTAL;
+                                }
 			else
+                        {
 				base = 10;
+                                val.numType = PARSE_DECIMAL;
+                        }
 
 			configRBuf[0] = c;
 			i = 1;
@@ -523,10 +528,6 @@ xf86pathIsAbsolute(const char *path)
 {
 	if (path && path[0] == '/')
 		return 1;
-#ifdef __UNIXOS2__
-	if (path && (path[0] == '\\' || (path[1] == ':')))
-		return 1;
-#endif
 	return 0;
 }
 
@@ -567,11 +568,9 @@ xf86pathIsSafe(const char *path)
  *    %E    config file environment ($XORGCONFIG) as an absolute path
  *    %F    config file environment ($XORGCONFIG) as a relative path
  *    %G    config file environment ($XORGCONFIG) as a safe path
- *    %D    $HOME
  *    %P    projroot
  *    %M    major version number
  *    %%    %
- *    %&    UNIXOS2 only: prepend X11ROOT env var
  */
 
 #ifndef XCONFIGFILE
@@ -622,12 +621,9 @@ DoSubstitution(const char *template, const char *cmdline, const char *projroot,
 {
 	char *result;
 	int i, l;
-	static const char *env = NULL, *home = NULL;
+	static const char *env = NULL;
 	static char *hostname = NULL;
 	static char majorvers[3] = "";
-#ifdef __UNIXOS2__
-	static char *x11root = NULL;
-#endif
 
 	if (!template)
 		return NULL;
@@ -716,14 +712,6 @@ DoSubstitution(const char *template, const char *cmdline, const char *projroot,
 				} else
 					BAIL_OUT;
 				break;
-			case 'D':
-				if (!home)
-					home = getenv("HOME");
-				if (home && xf86pathIsAbsolute(home))
-					APPEND_STR(home);
-				else
-					BAIL_OUT;
-				break;
 			case 'P':
 				if (projroot && xf86pathIsAbsolute(projroot))
 					APPEND_STR(projroot);
@@ -744,16 +732,6 @@ DoSubstitution(const char *template, const char *cmdline, const char *projroot,
 				result[l++] = '%';
 				CHECK_LENGTH;
 				break;
-#ifdef __UNIXOS2__
-			case '&':
-				if (!x11root)
-					x11root = getenv("X11ROOT");
-				if (x11root)
-					APPEND_STR(x11root);
-				else
-					BAIL_OUT;
-				break;
-#endif
 			default:
 				fprintf(stderr, "invalid escape %%%c found in path template\n",
 						template[i]);
@@ -922,20 +900,6 @@ xf86parseError (char *format,...)
 }
 
 void
-xf86parseWarning (char *format,...)
-{
-	va_list ap;
-
-	ErrorF ("Parse warning on line %d of section %s in file %s\n\t",
-		 configLineNo, configSection, configPath);
-	va_start (ap, format);
-	VErrorF (format, ap);
-	va_end (ap);
-
-	ErrorF ("\n");
-}
-
-void
 xf86validationError (char *format,...)
 {
 	va_list ap;
@@ -985,7 +949,7 @@ StringToToken (char *str, xf86ConfigSymTabRec * tab)
  * Compare two names.  The characters '_', ' ', and '\t' are ignored
  * in the comparison.
  */
-int
+_X_EXPORT int
 xf86nameCompare (const char *s1, const char *s2)
 {
 	char c1, c2;

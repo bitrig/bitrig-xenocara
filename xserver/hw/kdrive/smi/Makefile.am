@@ -25,13 +25,17 @@ SMI_LIBS =					\
 	$(top_builddir)/hw/kdrive/vesa/libvesa.a \
 	@KDRIVE_LIBS@
 
+if GLX
+Xsmi_LDFLAGS = $(LD_EXPORT_SYMBOLS_FLAG)
+endif
+
 Xsmi_LDADD = \
 	$(SMI_LIBS)				\
-	@KDRIVE_LIBS@                          \
-	@XSERVER_LIBS@					
+	@KDRIVE_LIBS@
 
-
-Xsmi_DEPENDENCIES = 				\
+Xsmi_DEPENDENCIES =	\
 	libsmi.a 				\
-	$(top_builddir)/hw/kdrive/fbdev/libfbdev.a \
-	$(top_builddir)/hw/kdrive/vesa/libvesa.a
+	@KDRIVE_LOCAL_LIBS@
+
+relink:
+	rm -f $(bin_PROGRAMS) && make $(bin_PROGRAMS)

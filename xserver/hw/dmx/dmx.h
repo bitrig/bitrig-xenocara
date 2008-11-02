@@ -1,4 +1,3 @@
-/* $XFree86$ */
 /*
  * Copyright 2001-2003 Red Hat Inc., Durham, North Carolina.
  *
@@ -210,8 +209,6 @@ typedef struct _DMXScreenInfo {
     UnrealizeWindowProcPtr         UnrealizeWindow;
     RestackWindowProcPtr           RestackWindow;
     WindowExposuresProcPtr         WindowExposures;
-    PaintWindowBackgroundProcPtr   PaintWindowBackground;
-    PaintWindowBorderProcPtr       PaintWindowBorder;
     CopyWindowProcPtr              CopyWindow;
 
     ResizeWindowProcPtr            ResizeWindow;

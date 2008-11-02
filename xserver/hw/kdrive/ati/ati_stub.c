@@ -1,6 +1,4 @@
 /*
- * $Id: ati_stub.c,v 1.1 2006/11/26 18:22:13 matthieu Exp $
- *
  * Copyright © 2003 Eric Anholt
  *
  * Permission to use, copy, modify, distribute, and sell this software and its
@@ -21,7 +19,6 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-/* $Header: /home/thib/scm/openbsd-cvs/xenocara/xserver/hw/kdrive/ati/Attic/ati_stub.c,v 1.1 2006/11/26 18:22:13 matthieu Exp $ */
 
 #ifdef HAVE_CONFIG_H
 #include <kdrive-config.h>
@@ -53,7 +50,8 @@ InitOutput(ScreenInfo *pScreenInfo, int argc, char **argv)
 void
 InitInput(int argc, char **argv)
 {
-	KdInitInput(&LinuxMouseFuncs, &LinuxKeyboardFuncs);
+	KdOsAddInputDrivers();
+	KdInitInput();
 }
 
 void

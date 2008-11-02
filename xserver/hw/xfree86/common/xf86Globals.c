@@ -46,10 +46,12 @@
 
 /* Globals that video drivers may access */
 
-_X_EXPORT int xf86ScreenIndex = -1;	/* Index of ScrnInfo in pScreen.devPrivates */
-int xf86CreateRootWindowIndex = -1;	/* Index into pScreen.devPrivates */
+/* Index into pScreen.devPrivates */
+DevPrivateKey xf86CreateRootWindowKey = &xf86CreateRootWindowKey;
+/* Index of ScrnInfo in pScreen.devPrivates */
+_X_EXPORT DevPrivateKey xf86ScreenKey = &xf86ScreenKey;
+_X_EXPORT DevPrivateKey xf86PixmapKey = &xf86PixmapKey;
 _X_EXPORT ScrnInfoPtr *xf86Screens = NULL;	/* List of ScrnInfos */
-_X_EXPORT int xf86PixmapIndex = 0;
 _X_EXPORT const unsigned char byte_reversed[256] =
 {
     0x00, 0x80, 0x40, 0xc0, 0x20, 0xa0, 0x60, 0xe0,
@@ -93,36 +95,10 @@ InputInfoPtr xf86InputDevs = NULL;
 /* Globals that video drivers may not access */
 
 xf86InfoRec xf86Info = {
-	NULL,		/* pKeyboard */
-	NULL,		/* kbdProc */
-	NULL,		/* kbdEvents */
 	-1,		/* consoleFd */
-	-1,		/* kbdFd */
 	-1,		/* vtno */
-	-1,		/* kbdType */
-	-1,		/* kbdRate */
-	-1, 		/* kbdDelay */
-	-1,		/* bell_pitch */
-	-1,		/* bell_duration */
-	TRUE,		/* autoRepeat */
-	0,		/* leds */
-	0,		/* xleds */
-	NULL,		/* vtinit */
-	0,		/* scanPrefix */
-	FALSE,		/* capsLock */
-	FALSE,		/* numLock */
-	FALSE,		/* scrollLock */
-	FALSE,		/* modeSwitchLock */
-	FALSE,		/* composeLock */
 	FALSE,		/* vtSysreq */
 	SKWhenNeeded,	/* ddxSpecialKeys */
-	FALSE,		/* ActionKeyBindingsSet */
-#if defined(SVR4) && defined(i386)
-	FALSE,		/* panix106 */
-#endif
-#if defined(__OpenBSD__) || defined(__NetBSD__)
-	0,		/* wskbdType */
-#endif
 	NULL,		/* pMouse */
 #ifdef XINPUT
 	NULL,		/* mouseLocal */
@@ -141,20 +117,6 @@ xf86InfoRec xf86Info = {
 	-1,		/* screenFd */
 	-1,		/* consType */
 #endif
-#ifdef XKB
-	NULL,		/* xkbkeymap */
-	NULL,		/* xkbkeycodes */
-	NULL,		/* xkbtypes */
-	NULL,		/* xkbcompat */
-	NULL,		/* xkbsymbols */
-	NULL,		/* xkbgeometry */
-	FALSE,		/* xkbcomponents_specified */
-	NULL,		/* xkbrules */
-	NULL,		/* xkbmodel */
-	NULL,		/* xkblayout */
-	NULL,		/* xkbvariant */
-	NULL,		/* xkboptions */
-#endif
 	FALSE,		/* allowMouseOpenFail */
 	TRUE,		/* vidModeEnabled */
 	FALSE,		/* vidModeAllowNonLocal */
@@ -163,7 +125,7 @@ xf86InfoRec xf86Info = {
 	PCIOsConfig,	/* pciFlags */
 	Pix24DontCare,	/* pixmap24 */
 	X_DEFAULT,	/* pix24From */
-#if defined(i386) || defined(__i386__)
+#ifdef __i386__
 	FALSE,		/* pc98 */
 #endif
 	TRUE,		/* pmFlag */
@@ -185,15 +147,12 @@ _X_EXPORT confDRIRec xf86ConfigDRI = {0, };
 XF86ConfigPtr xf86configptr = NULL;
 Bool xf86Resetting = FALSE;
 Bool xf86Initialising = FALSE;
-Bool xf86ProbeFailed = FALSE;
 Bool xf86DoProbe = FALSE;
 Bool xf86DoConfigure = FALSE;
 DriverPtr *xf86DriverList = NULL;
 int xf86NumDrivers = 0;
 InputDriverPtr *xf86InputDriverList = NULL;
 int xf86NumInputDrivers = 0;
-ModuleInfoPtr *xf86ModuleInfoList = NULL;
-int xf86NumModuleInfos = 0;
 int xf86NumScreens = 0;
 
 const char *xf86VisualNames[] = {
@@ -243,4 +202,7 @@ Bool xf86MiscModInDevAllowNonLocal = FALSE;
 RootWinPropPtr *xf86RegisteredPropertiesTable = NULL;
 _X_EXPORT Bool xf86inSuspend = FALSE;
 Bool xorgHWAccess = FALSE;
-PciBusId xf86IsolateDevice;
+
+struct pci_slot_match xf86IsolateDevice = {
+    PCI_MATCH_ANY, PCI_MATCH_ANY, PCI_MATCH_ANY, PCI_MATCH_ANY, 0
+};

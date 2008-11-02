@@ -30,7 +30,9 @@ if XPRINT
 XPRINT_SUBDIRS = xprint
 endif
 
-# need to add darwin support here
+if XQUARTZ
+XQUARTZ_SUBDIRS = xquartz
+endif
 
 SUBDIRS =			\
 	$(XORG_SUBDIRS)		\
@@ -38,11 +40,12 @@ SUBDIRS =			\
 	$(XWIN_SUBDIRS)		\
 	$(XVFB_SUBDIRS)		\
 	$(XNEST_SUBDIRS)	\
-	$(DMX_SUBDIRS)          \
-        $(KDRIVE_SUBDIRS)	\
+	$(DMX_SUBDIRS)		\
+	$(KDRIVE_SUBDIRS)	\
+	$(XQUARTZ_SUBDIRS)	\
 	$(XPRINT_SUBDIRS)
 
-DIST_SUBDIRS = dmx xfree86 vfb xnest xwin darwin kdrive xgl xprint
+DIST_SUBDIRS = dmx xfree86 vfb xnest xwin xquartz kdrive xgl xprint
 
 relink:
 	for i in $(SUBDIRS) ; do $(MAKE) -C $$i relink ; done

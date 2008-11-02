@@ -20,7 +20,6 @@
  * SOFTWARE.
  *
 */
-/* $XConsortium: ppcArea.c /main/4 1996/02/21 17:57:02 kaleb $ */
 
 /* 
  * ppc solid area fill
@@ -50,7 +49,7 @@ int alu ;
 unsigned long int fg, bg, pm ;
 int xSrc, ySrc ;
 PixmapPtr pPixmap ;
-ppcPrivGC *pPrivGC = pGC->devPrivates[mfbGetGCPrivateIndex()].ptr;
+ppcPrivGC *pPrivGC = dixLookupPrivate(&pGC->devPrivates, mfbGetGCPrivateKey());
 
 TRACE( ( "xf4bppFillArea(0x%x,%d,0x%x,0x%x)\n", pWin, nboxes, pBox, pGC ) ) ;
 

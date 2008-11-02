@@ -21,33 +21,30 @@ RANDRSOURCES = xf86RandR.c
 
 BUSSOURCES = xf86isaBus.c xf86pciBus.c xf86fbBus.c xf86noBus.c $(SBUS_SOURCES)
 
-KBDSOURCES = xf86Kbd@XORG_OS_KBD@.c
-
 MODEDEFSOURCES = $(srcdir)/vesamodes $(srcdir)/extramodes
 
-xf86DefModeSet.c: $(srcdir)/modeline2c.pl $(MODEDEFSOURCES)
-	cat $(MODEDEFSOURCES) | $(PERL) $(srcdir)/modeline2c.pl > $@
+xf86DefModeSet.c: $(srcdir)/modeline2c.awk $(MODEDEFSOURCES)
+	cat $(MODEDEFSOURCES) | $(AWK) -f $(srcdir)/modeline2c.awk > $@
 
 BUILT_SOURCES = xf86DefModeSet.c
 
 AM_LDFLAGS = -r
 libcommon_la_SOURCES = xf86Configure.c xf86Bus.c xf86Config.c \
-                      xf86Cursor.c xf86cvt.c xf86DGA.c xf86DPMS.c \
-                      xf86DoProbe.c xf86DoScanPci.c xf86Events.c \
-                      xf86Globals.c xf86Io.c xf86AutoConfig.c \
+                      xf86Cursor.c xf86DGA.c xf86DPMS.c \
+                      xf86DoProbe.c xf86Events.c \
+                      xf86Globals.c xf86AutoConfig.c \
                       xf86MiscExt.c xf86Option.c \
                       xf86VidMode.c xf86fbman.c xf86cmap.c \
                       xf86Helper.c xf86PM.c \
                       xf86Mode.c xf86Build.h xorgHelper.c xf86Versions.c \
                       $(XVSOURCES) $(BUSSOURCES) $(XKBSOURCES) \
-                      $(DEBUGSOURCES) $(XISOURCES) $(RANDRSOURCES) \
-                      $(KBDSOURCES)
+                      $(DEBUGSOURCES) $(XISOURCES) $(RANDRSOURCES)
 nodist_libcommon_la_SOURCES = xf86DefModeSet.c
 libinit_a_SOURCES = xf86Build.h xf86Init.c
 
 INCLUDES = $(XORG_INCS) -I$(srcdir)/../ddc -I$(srcdir)/../i2c \
 	   -I$(srcdir)/../loader -I$(srcdir)/../rac -I$(srcdir)/../parser \
-           -I$(srcdir)/../scanpci -I$(srcdir)/../vbe -I$(srcdir)/../int10 \
+           -I$(srcdir)/../vbe -I$(srcdir)/../int10 \
 	   -I$(srcdir)/../vgahw -I$(srcdir)/../dixmods/extmod
 
 sdk_HEADERS = compiler.h fourcc.h xf86.h xf86Module.h xf86Opt.h \
@@ -59,11 +56,6 @@ sdk_HEADERS = compiler.h fourcc.h xf86.h xf86Module.h xf86Opt.h \
 DISTCLEANFILES = xf86Build.h
 CLEANFILES = $(BUILT_SOURCES)
 
-# this is a hack for now.  as above we don't have rules to build all of these
-# yet, but we want to make sure they all get into the distball.  this should
-# eventually go away.
-DISTKBDSOURCES = xf86Kbd.c xf86KbdBSD.c xf86KbdLnx.c xf86KbdMach.c
-
 EXTRA_DIST = \
 	atKeynames.h \
 	compiler.h \
@@ -74,7 +66,6 @@ EXTRA_DIST = \
 	xf86Bus.h \
 	xf86Config.h \
 	xf86InPriv.h \
-	xf86Keymap.h \
 	xf86Module.h \
 	xf86Opt.h \
 	xf86PciInfo.h \
@@ -94,13 +85,12 @@ EXTRA_DIST = \
 	xf86Version.h \
 	xorgVersion.h \
 	xf86Date.h \
-	xf86DefModes.c \
 	$(MODEDEFSOURCES) \
-	modeline2c.pl \
+	modeline2c.awk \
         $(DISTKBDSOURCES)
 
 if LNXACPI
 XORG_CFLAGS += -DHAVE_ACPI
 endif
 
-AM_CFLAGS = $(XORG_CFLAGS)
+AM_CFLAGS = $(DIX_CFLAGS) $(XORG_CFLAGS)

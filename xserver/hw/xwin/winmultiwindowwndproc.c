@@ -38,6 +38,7 @@
 #include "winmultiwindowclass.h"
 #include "winprefs.h"
 #include "winmsg.h"
+#include "inputstr.h"
 
 /*
  * External global variables
@@ -364,7 +365,7 @@ winTopLevelWindowProc (HWND hwnd, UINT message,
       ErrorF ("\thenght %08X\n", pWin->drawable.height);
       ErrorF ("\tpScreen %08X\n", pWin->drawable.pScreen);
       ErrorF ("\tserialNumber %08X\n", pWin->drawable.serialNumber);
-      ErrorF ("g_iWindowPrivateIndex %d\n", g_iWindowPrivateIndex);
+      ErrorF ("g_iWindowPrivateKey %p\n", g_iWindowPrivateKey);
       ErrorF ("pWinPriv %08X\n", pWinPriv);
       ErrorF ("s_pScreenPriv %08X\n", s_pScreenPriv);
       ErrorF ("s_pScreenInfo %08X\n", s_pScreenInfo);
@@ -444,7 +445,7 @@ winTopLevelWindowProc (HWND hwnd, UINT message,
       /* Avoid the BitBlt's if the PAINTSTRUCT is bogus */
       if (ps.rcPaint.right==0 && ps.rcPaint.bottom==0 && ps.rcPaint.left==0 && ps.rcPaint.top==0)
       {
-	EndPaint (hwndScreen, &ps);
+	EndPaint (hwnd, &ps);
 	return 0;
       }
 
@@ -474,7 +475,7 @@ winTopLevelWindowProc (HWND hwnd, UINT message,
 	}
 
       /* EndPaint frees the DC */
-      EndPaint (hwndScreen, &ps);
+      EndPaint (hwnd, &ps);
       return 0;
 
     case WM_MOUSEMOVE:
@@ -494,8 +495,8 @@ winTopLevelWindowProc (HWND hwnd, UINT message,
 	break;
 
       /* Has the mouse pointer crossed screens? */
-      if (s_pScreen != miPointerCurrentScreen ())
-	miPointerSetNewScreen (s_pScreenInfo->dwScreen,
+      if (s_pScreen != miPointerGetScreen(inputInfo.pointer))
+	miPointerSetScreen (inputInfo.pointer, s_pScreenInfo->dwScreen,
 			       ptMouse.x - s_pScreenInfo->dwXOffset,
 			       ptMouse.y - s_pScreenInfo->dwYOffset);
 

@@ -1,4 +1,3 @@
-/* $TOG: InitOutput.c /main/20 1998/02/10 13:23:56 kaleb $ */
 /*
 
 Copyright 1993, 1998  The Open Group
@@ -44,7 +43,7 @@ from The Open Group.
 #include <mntent.h>
 #endif
 #if defined(XKB) && defined(WIN32)
-#include <X11/extensions/XKBsrv.h>
+#include <xkbsrv.h>
 #endif
 #ifdef RELOCATE_PROJECTROOT
 #include <shlobj.h>
@@ -601,24 +600,6 @@ winFixupPaths (void)
         winMsg (font_from, "FontPath set to \"%s\"\n", defaultFontPath);
 
 #ifdef RELOCATE_PROJECTROOT
-    if (1) {
-      const char *libx11dir = "/usr/X11R6/lib/X11";
-      size_t libx11dir_len = strlen(libx11dir);
-
-      if (strncmp(libx11dir, rgbPath, libx11dir_len) == 0)
-      {
-          size_t newsize = strlen(rgbPath) - libx11dir_len + basedirlen;
-          char *compose = malloc(newsize + 1);  
-          strcpy(compose, basedir);
-          strcat(compose, rgbPath + libx11dir_len);
-          compose[newsize] = 0;
-          rgbPath = xstrdup (compose);
-          free (compose);
-
-          winMsg (X_DEFAULT, "RgbPath set to \"%s\"\n", rgbPath);
-      }
-    }
-
     if (getenv("XKEYSYMDB") == NULL)
     {
         char buffer[MAX_PATH];
@@ -694,6 +675,7 @@ winFixupPaths (void)
         if (sizeof(xkbbasedir) > 0)
             xkbbasedir[sizeof(xkbbasedir)-1] = 0;
         XkbBaseDirectory = xkbbasedir;
+	XkbBinDirectory = basedir;
     }
 #endif /* XKB */
 #endif /* RELOCATE_PROJECTROOT */

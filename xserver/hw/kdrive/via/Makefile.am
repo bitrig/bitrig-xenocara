@@ -5,10 +5,6 @@ INCLUDES = 					\
 
 bin_PROGRAMS = Xvia
 
-if TSLIB
-TSLIB_FLAG = -lts
-endif
-
 noinst_LIBRARIES = libvia.a
 
 libvia_a_SOURCES = 	\
@@ -25,10 +21,17 @@ VIA_LIBS =	\
 	libvia.a	\
 	$(top_builddir)/hw/kdrive/vesa/libvesa.a
 
+if GLX
+Xvia_LDFLAGS = $(LD_EXPORT_SYMBOLS_FLAG)
+endif
+
 Xvia_LDADD =						\
 	$(VIA_LIBS)					\
-	@KDRIVE_LIBS@					\
-	@XSERVER_LIBS@					\
-	$(TSLIB_FLAG)					
+	@KDRIVE_LIBS@
 
-Xvia_DEPENDENCIES = $(VIA_LIBS)
+Xvia_DEPENDENCIES =	\
+	libvia.a	\
+	@KDRIVE_LOCAL_LIBS@
+
+relink:
+	rm -f $(bin_PROGRAMS) && make $(bin_PROGRAMS)

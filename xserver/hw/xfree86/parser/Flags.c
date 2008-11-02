@@ -63,6 +63,7 @@
 #include "xf86tokens.h"
 #include "Configint.h"
 #include <math.h>
+#include <X11/Xfuncproto.h>
 
 extern LexRec val;
 
@@ -198,21 +199,21 @@ addNewOption2 (XF86OptionPtr head, char *name, char *val, int used)
 {
 	XF86OptionPtr new, old = NULL;
 
-	/* Don't allow duplicates */
- 	if (head != NULL && (old = xf86findOption(head, name)) != NULL)
- 		new = old;
- 	else {
+	/* Don't allow duplicates, free old strings */
+	if (head != NULL && (old = xf86findOption(head, name)) != NULL) {
+		new = old;
+		xf86conffree(new->opt_name);
+		xf86conffree(new->opt_val);
+	}
+	else
 		new = xf86confcalloc (1, sizeof (XF86OptionRec));
- 		new->list.next = NULL;
- 	}
- 	new->opt_name = name;
- 	new->opt_val = val;
- 	new->opt_used = used;
-	
-  	if (old == NULL)
-		return ((XF86OptionPtr) xf86addListItem ((glp) head, (glp) new));
- 	else 
- 		return head;
+	new->opt_name = name;
+	new->opt_val = val;
+	new->opt_used = used;
+
+	if (old)
+		return head;
+	return ((XF86OptionPtr) xf86addListItem ((glp) head, (glp) new));
 }
 
 XF86OptionPtr
@@ -330,7 +331,7 @@ xf86findOption (XF86OptionPtr list, const char *name)
  * returned.  If the option is not found, a NULL is returned.
  */
 
-char *
+_X_EXPORT char *
 xf86findOptionValue (XF86OptionPtr list, const char *name)
 {
 	XF86OptionPtr p = xf86findOption (list, name);
@@ -439,15 +440,6 @@ xf86uLongToString(unsigned long i)
 		return NULL;
 	sprintf(s, "%lu", i);
 	return s;
-}
-
-void
-xf86debugListOptions(XF86OptionPtr Options)
-{
-	while (Options) {
-		ErrorF("Option: %s Value: %s\n",Options->opt_name,Options->opt_val);
-		Options = Options->list.next;
-	}
 }
 
 XF86OptionPtr

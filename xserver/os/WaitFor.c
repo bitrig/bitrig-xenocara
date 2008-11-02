@@ -67,9 +67,6 @@ SOFTWARE.
 #include <X11/X.h>
 #include "misc.h"
 
-#ifdef __UNIXOS2__
-#define select(n,r,w,x,t) os2PseudoSelect(n,r,w,x,t)
-#endif
 #include "osdep.h"
 #include <X11/Xpoll.h>
 #include "dixstruct.h"
@@ -125,7 +122,7 @@ struct _OsTimerRec {
 };
 
 static void DoTimer(OsTimerPtr timer, CARD32 now, OsTimerPtr *prev);
-static void CheckAllTimers(CARD32 now);
+static void CheckAllTimers(void);
 static OsTimerPtr timers = NULL;
 
 /*****************
@@ -204,21 +201,24 @@ WaitForSomething(int *pClientsReady)
 	    timeout = timers->expires - now;
             if (timeout > 0 && timeout > timers->delta + 250) {
                 /* time has rewound.  reset the timers. */
-                CheckAllTimers(now);
-                timeout = timers->expires - now;
+                CheckAllTimers();
             }
 
-            if (timeout < 0)
-                timeout = 0;
-	    waittime.tv_sec = timeout / MILLI_PER_SECOND;
-	    waittime.tv_usec = (timeout % MILLI_PER_SECOND) *
-		               (1000000 / MILLI_PER_SECOND);
-	    wt = &waittime;
+	    if (timers) {
+		timeout = timers->expires - now;
+		if (timeout < 0)
+		    timeout = 0;
+		waittime.tv_sec = timeout / MILLI_PER_SECOND;
+		waittime.tv_usec = (timeout % MILLI_PER_SECOND) *
+				   (1000000 / MILLI_PER_SECOND);
+		wt = &waittime;
+	    }
 	}
 	XFD_COPYSET(&AllSockets, &LastSelectMask);
 #ifdef SMART_SCHEDULE
 	}
-	SmartScheduleIdle = TRUE;
+	SmartScheduleStopTimer ();
+
 #endif
 	BlockHandler((pointer)&wt, (pointer)&LastSelectMask);
 	if (NewOutputPending)
@@ -238,13 +238,7 @@ WaitForSomething(int *pClientsReady)
 	selecterr = GetErrno();
 	WakeupHandler(i, (pointer)&LastSelectMask);
 #ifdef SMART_SCHEDULE
-	if (i >= 0)
-	{
-	    SmartScheduleIdle = FALSE;
-	    SmartScheduleIdleCount = 0;
-	    if (SmartScheduleTimerStopped)
-		(void) SmartScheduleStartTimer ();
-	}
+	SmartScheduleStartTimer ();
 #endif
 	if (i <= 0) /* An error or timeout occurred */
 	{
@@ -260,13 +254,13 @@ WaitForSomething(int *pClientsReady)
 		}
 		else if (selecterr == EINVAL)
 		{
-		    FatalError("WaitForSomething(): select: errno=%d\n",
-			selecterr);
+		    FatalError("WaitForSomething(): select: %s\n",
+			strerror(selecterr));
             }
-		else if (selecterr != EINTR)
+		else if (selecterr != EINTR && selecterr != EAGAIN)
 		{
-		    ErrorF("WaitForSomething(): select: errno=%d\n",
-			selecterr);
+		    ErrorF("WaitForSomething(): select: %s\n",
+			strerror(selecterr));
 		}
 	    }
 #ifdef SMART_SCHEDULE
@@ -335,19 +329,12 @@ WaitForSomething(int *pClientsReady)
 	    if (XFD_ANYSET(&tmp_set))
 		QueueWorkProc(EstablishNewConnections, NULL,
 			      (pointer)&LastSelectMask);
-#ifdef DPMSExtension
-	    if (XFD_ANYSET (&devicesReadable) && (DPMSPowerLevel != DPMSModeOn))
-		DPMSSet(DPMSModeOn);
-#endif
+
 	    if (XFD_ANYSET (&devicesReadable) || XFD_ANYSET (&clientsReadable))
 		break;
-#ifdef WIN32
-	    /* Windows keyboard and mouse events are added to the input queue
-	       in Block- and WakupHandlers. There is no device to check if  
-	       data is ready. So check here if new input is available */
+	    /* check here for DDXes that queue events during Block/Wakeup */
 	    if (*checkForInput[0] != *checkForInput[1])
 		return 0;
-#endif
 	}
     }
 
@@ -419,29 +406,17 @@ WaitForSomething(int *pClientsReady)
     return nready;
 }
 
-#if 0
-/*
- * This is not always a macro.
- */
-ANYSET(FdMask *src)
-{
-    int i;
-
-    for (i=0; i<mskcnt; i++)
-	if (src[ i ])
-	    return (TRUE);
-    return (FALSE);
-}
-#endif
-
 /* If time has rewound, re-run every affected timer.
  * Timers might drop out of the list, so we have to restart every time. */
 static void
-CheckAllTimers(CARD32 now)
+CheckAllTimers(void)
 {
     OsTimerPtr timer;
+    CARD32 now;
 
 start:
+    now = GetTimeInMillis();
+
     for (timer = timers; timer; timer = timer->next) {
         if (timer->expires - now > timer->delta + 250) {
             TimerForce(timer);
@@ -584,7 +559,7 @@ TimerInit(void)
 
 #define DPMS_CHECK_MODE(mode,time)\
     if (time > 0 && DPMSPowerLevel < mode && timeout >= time)\
-	DPMSSet(mode);
+	DPMSSet(serverClient, mode);
 
 #define DPMS_CHECK_TIMEOUT(time)\
     if (time > 0 && (time - timeout) > 0)\
@@ -653,7 +628,7 @@ ScreenSaverTimeoutExpire(OsTimerPtr timer,CARD32 now,pointer arg)
     }
 
     ResetOsBuffers(); /* not ideal, but better than nothing */
-    SaveScreens(SCREEN_SAVER_ON, ScreenSaverActive);
+    dixSaveScreens(serverClient, SCREEN_SAVER_ON, ScreenSaverActive);
 
     if (ScreenSaverInterval > 0)
     {

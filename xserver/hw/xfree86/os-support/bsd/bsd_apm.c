@@ -1,5 +1,3 @@
-/* $XFree86$ */
-
 #ifdef HAVE_XORG_CONFIG_H
 #include <xorg-config.h>
 #endif
@@ -68,7 +66,7 @@ bsdPMGetEventFromOS(int fd, pmEvent *events, int num)
 	if (ioctl(fd, APM_IOC_NEXTEVENT, &bsdEvent) < 0) {
 	    if (errno != EAGAIN) {
 		xf86Msg(X_WARNING, "bsdPMGetEventFromOS: APM_IOC_NEXTEVENT"
-			" errno = %d\n", errno);
+			" %s\n", strerror(errno));
 	    }
 	    break;
 	}

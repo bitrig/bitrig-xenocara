@@ -65,11 +65,12 @@ SOFTWARE.
 #include "cfbmskbits.h"
 
 PixmapPtr
-cfbCreatePixmap (pScreen, width, height, depth)
+cfbCreatePixmap (pScreen, width, height, depth, usage_hint)
     ScreenPtr	pScreen;
     int		width;
     int		height;
     int		depth;
+    unsigned	usage_hint;
 {
     PixmapPtr pPixmap;
     size_t datasize;
@@ -96,12 +97,9 @@ cfbCreatePixmap (pScreen, width, height, depth)
     pPixmap->drawable.height = height;
     pPixmap->devKind = paddedWidth;
     pPixmap->refcnt = 1;
-#ifdef PIXPRIV
     pPixmap->devPrivate.ptr = datasize ?
 		(pointer)((char *)pPixmap + pScreen->totalPixmapSize) : NULL;
-#else
-    pPixmap->devPrivate.ptr = (pointer)(pPixmap + 1);
-#endif
+    pPixmap->usage_hint = usage_hint;
     return pPixmap;
 }
 
@@ -111,6 +109,7 @@ cfbDestroyPixmap(pPixmap)
 {
     if(--pPixmap->refcnt)
 	return TRUE;
+    dixFreePrivates(pPixmap->devPrivates);
     xfree(pPixmap);
     return TRUE;
 }
@@ -126,7 +125,7 @@ cfbCopyPixmap(pSrc)
     size = pSrc->drawable.height * pSrc->devKind;
     pScreen = pSrc->drawable.pScreen;
     pDst = (*pScreen->CreatePixmap) (pScreen, pSrc->drawable.width, 
-				pSrc->drawable.height, pSrc->drawable.depth);
+				pSrc->drawable.height, pSrc->drawable.depth, 0);
     if (!pDst)
 	return NullPixmap;
     memmove((char *)pDst->devPrivate.ptr, (char *)pSrc->devPrivate.ptr, size);
@@ -273,7 +272,7 @@ cfbXRotatePixmap(pPix, rw)
 	int size, tsize;
 
 	tsize = PixmapBytePad(pPix->drawable.width - rot, pPix->drawable.depth);
-	pwTmp = (CfbBits *) ALLOCATE_LOCAL(pPix->drawable.height * tsize);
+	pwTmp = (CfbBits *) xalloc(pPix->drawable.height * tsize);
 	if (!pwTmp)
 	    return;
 	/* divide pw (the pixmap) in two vertically at (w - rot) and swap */
@@ -291,7 +290,7 @@ cfbXRotatePixmap(pPix, rw)
 		    0, 0, rot, 0,
 		    (int)pPix->drawable.width - rot, (int)pPix->drawable.height,
 		    tsize, size);
-	DEALLOCATE_LOCAL(pwTmp);
+	xfree(pwTmp);
 #endif
     }
 }
@@ -331,13 +330,13 @@ cfbYRotatePixmap(pPix, rh)
 
     nbyDown = rot * pPix->devKind;
     nbyUp = (pPix->devKind * pPix->drawable.height) - nbyDown;
-    if(!(ptmp = (char *)ALLOCATE_LOCAL(nbyUp)))
+    if(!(ptmp = (char *)xalloc(nbyUp)))
 	return;
 
     memmove(ptmp, pbase, nbyUp);		/* save the low rows */
     memmove(pbase, pbase+nbyUp, nbyDown);	/* slide the top rows down */
     memmove(pbase+nbyDown, ptmp, nbyUp);	/* move lower rows up to row rot */
-    DEALLOCATE_LOCAL(ptmp);
+    xfree(ptmp);
 }
 
 void

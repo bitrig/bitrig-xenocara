@@ -344,13 +344,11 @@ winProcSetSelectionOwner (ClientPtr client)
   if (None != stuff->window)
     {
       /* Grab the Window from the request */
-      pWindow = (WindowPtr) SecurityLookupWindow (stuff->window, client,
-						  SecurityReadAccess);
-      if (!pWindow)
-	{
+      int rc = dixLookupWindow(&pWindow, stuff->window, client, DixReadAccess);
+      if (rc != Success) {
 	  ErrorF ("winProcSetSelectionOwner - Found BadWindow, aborting.\n");
 	  goto winProcSetSelectionOwner_Done;
-	}
+      }
     }
 
   /* Now we either have a valid window or None */
@@ -433,7 +431,6 @@ winProcSetSelectionOwner (ClientPtr client)
    * and we currently own the Win32 clipboard.
    */
   if (None == stuff->window
-      && g_iClipboardWindow != client->lastDrawableID
       && (None == s_iOwners[CLIP_OWN_PRIMARY]
 	  || g_iClipboardWindow == s_iOwners[CLIP_OWN_PRIMARY])
       && (None == s_iOwners[CLIP_OWN_CLIPBOARD]

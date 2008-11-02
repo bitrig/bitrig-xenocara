@@ -1,4 +1,3 @@
-/* $XFree86$ */
 /*
  * Copyright 2002-2004 Red Hat Inc., Durham, North Carolina.
  *
@@ -57,15 +56,14 @@ extern Bool dmxBECreateColormap(ColormapPtr pColormap);
 extern Bool dmxBEFreeColormap(ColormapPtr pColormap);
 
 /** Private index.  \see dmxcmap.c \see dmxscrinit.c \see dmxwindow.c */
-extern int dmxColormapPrivateIndex;
+extern DevPrivateKey dmxColormapPrivateKey;
 
 /** Set colormap private structure. */
 #define DMX_SET_COLORMAP_PRIV(_pCMap, _pCMapPriv)			\
-    (_pCMap)->devPrivates[dmxColormapPrivateIndex].ptr			\
-	= (pointer)(_pCMapPriv);
+    dixSetPrivate(&(_pCMap)->devPrivates, dmxColormapPrivateKey, _pCMapPriv)
 
 /** Get colormap private structure. */
-#define DMX_GET_COLORMAP_PRIV(_pCMap)					\
-    (dmxColormapPrivPtr)(_pCMap)->devPrivates[dmxColormapPrivateIndex].ptr
+#define DMX_GET_COLORMAP_PRIV(_pCMap) (dmxColormapPrivPtr)		\
+    dixLookupPrivate(&(_pCMap)->devPrivates, dmxColormapPrivateKey)
 
 #endif /* DMXCMAP_H */

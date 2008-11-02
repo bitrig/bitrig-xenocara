@@ -95,9 +95,7 @@ Author:  Adobe Systems Incorporated
 #include "scrnintstr.h"
 #define  XK_LATIN1
 #include <X11/keysymdef.h>
-#ifdef XACE
 #include "xace.h"
-#endif
 
 /*
  * CompareTimeStamps returns -1, 0, or +1 depending on if the first
@@ -170,7 +168,7 @@ ISOLatin1ToLower (unsigned char source)
 _X_EXPORT void
 CopyISOLatin1Lowered(unsigned char *dest, unsigned char *source, int length)
 {
-    register int i;
+    int i;
 
     for (i = 0; i < length; i++, source++, dest++)
 	*dest = ISOLatin1ToLower (*source);
@@ -196,115 +194,86 @@ CompareISOLatin1Lowered(unsigned char *s1, int s1len,
     return (int) c1 - (int) c2;
 }
 
-#ifdef XACE
-
-/* SecurityLookupWindow and SecurityLookupDrawable:
- * Look up the window/drawable taking into account the client doing
- * the lookup and the type of access desired.  Return the window/drawable
- * if it exists and the client is allowed access, else return NULL.
- * Most Proc* functions should be calling these instead of
- * LookupWindow and LookupDrawable, which do no access checks.
- * XACE note: need to see if client->lastDrawableID can still be used here.
+/*
+ * dixLookupWindow and dixLookupDrawable:
+ * Look up the window/drawable taking into account the client doing the
+ * lookup, the type of drawable desired, and the type of access desired.
+ * Return Success with *pDraw set if the window/drawable exists and the client
+ * is allowed access, else return an error code with *pDraw set to NULL.  The
+ * access mask values are defined in resource.h.  The type mask values are
+ * defined in pixmap.h, with zero equivalent to M_DRAWABLE.
  */
-
-_X_EXPORT WindowPtr
-SecurityLookupWindow(XID rid, ClientPtr client, Mask access_mode)
+_X_EXPORT int
+dixLookupDrawable(DrawablePtr *pDraw, XID id, ClientPtr client,
+		  Mask type, Mask access)
 {
+    DrawablePtr pTmp;
+    int rc;
+
+    *pDraw = NULL;
+    client->errorValue = id;
+
+    if (id == INVALID)
+	return BadDrawable;
+
+    rc = dixLookupResource((pointer *)&pTmp, id, RC_DRAWABLE, client, access);
+
+    if (rc == BadValue)
+	return BadDrawable;
+    if (rc != Success)
+	return rc;
+    if (!((1 << pTmp->type) & (type ? type : M_DRAWABLE)))
+	return BadMatch;
+
+    *pDraw = pTmp;
+    return Success;
+}
+
+_X_EXPORT int
+dixLookupWindow(WindowPtr *pWin, XID id, ClientPtr client, Mask access)
+{
+    int rc;
+    rc = dixLookupDrawable((DrawablePtr*)pWin, id, client, M_WINDOW, access);
+    return (rc == BadDrawable) ? BadWindow : rc;
+}
+
+_X_EXPORT int
+dixLookupGC(GCPtr *pGC, XID id, ClientPtr client, Mask access)
+{
+    GCPtr pTmp = (GCPtr)SecurityLookupIDByType(client, id, RT_GC, access);
+    if (pTmp) {
+	*pGC = pTmp;
+	return Success;
+    }
+    client->errorValue = id;
+    *pGC = NULL;
+    return BadGC;
+}
+
+_X_EXPORT int
+dixLookupClient(ClientPtr *pClient, XID rid, ClientPtr client, Mask access)
+{
+    pointer pRes;
+    int rc = BadValue, clientIndex = CLIENT_ID(rid);
+
+    if (!clientIndex || !clients[clientIndex] || (rid & SERVER_BIT))
+	goto bad;
+
+    rc = dixLookupResource(&pRes, rid, RC_ANY, client, DixGetAttrAccess);
+    if (rc != Success)
+	goto bad;
+
+    rc = XaceHook(XACE_CLIENT_ACCESS, client, clients[clientIndex], access);
+    if (rc != Success)
+	goto bad;
+
+    *pClient = clients[clientIndex];
+    return Success;
+bad:
     client->errorValue = rid;
-    if(rid == INVALID)
-	return NULL;
-    return (WindowPtr)SecurityLookupIDByType(client, rid, RT_WINDOW, access_mode);
+    *pClient = NULL;
+    return rc;
 }
-
-
-_X_EXPORT pointer
-SecurityLookupDrawable(XID rid, ClientPtr client, Mask access_mode)
-{
-    register DrawablePtr pDraw;
-
-    if(rid == INVALID)
-	return (pointer) NULL;
-    pDraw = (DrawablePtr)SecurityLookupIDByClass(client, rid, RC_DRAWABLE,
-						 access_mode);
-    if (pDraw && (pDraw->type != UNDRAWABLE_WINDOW))
-        return (pointer)pDraw;		
-    return (pointer)NULL;
-}
-
-/* We can't replace the LookupWindow and LookupDrawable functions with
- * macros because of compatibility with loadable servers.
- */
-
-_X_EXPORT WindowPtr
-LookupWindow(XID rid, ClientPtr client)
-{
-    return SecurityLookupWindow(rid, client, SecurityUnknownAccess);
-}
-
-_X_EXPORT pointer
-LookupDrawable(XID rid, ClientPtr client)
-{
-    return SecurityLookupDrawable(rid, client, SecurityUnknownAccess);
-}
-
-#else /* not XACE */
-
-WindowPtr
-LookupWindow(XID rid, ClientPtr client)
-{
-    WindowPtr	pWin;
-
-    client->errorValue = rid;
-    if(rid == INVALID)
-	return NULL;
-    if (client->lastDrawableID == rid)
-    {
-        if (client->lastDrawable->type == DRAWABLE_WINDOW)
-            return ((WindowPtr) client->lastDrawable);
-        return (WindowPtr) NULL;
-    }
-    pWin = (WindowPtr)LookupIDByType(rid, RT_WINDOW);
-    if (pWin && pWin->drawable.type == DRAWABLE_WINDOW) {
-	client->lastDrawable = (DrawablePtr) pWin;
-	client->lastDrawableID = rid;
-	client->lastGCID = INVALID;
-	client->lastGC = (GCPtr)NULL;
-    }
-    return pWin;
-}
-
-
-pointer
-LookupDrawable(XID rid, ClientPtr client)
-{
-    register DrawablePtr pDraw;
-
-    if(rid == INVALID)
-	return (pointer) NULL;
-    if (client->lastDrawableID == rid)
-	return ((pointer) client->lastDrawable);
-    pDraw = (DrawablePtr)LookupIDByClass(rid, RC_DRAWABLE);
-    if (pDraw && (pDraw->type != UNDRAWABLE_WINDOW))
-        return (pointer)pDraw;		
-    return (pointer)NULL;
-}
-
-#endif /* XACE */
-
-_X_EXPORT ClientPtr
-LookupClient(XID rid, ClientPtr client)
-{
-    pointer pRes = (pointer)SecurityLookupIDByClass(client, rid, RC_ANY,
-						    SecurityReadAccess);
-    int clientIndex = CLIENT_ID(rid);
-
-    if (clientIndex && pRes && clients[clientIndex] && !(rid & SERVER_BIT))
-    {
-	return clients[clientIndex];
-    }
-    return (ClientPtr)NULL;
-}
-
 
 int
 AlterSaveSetForClient(ClientPtr client, WindowPtr pWin, unsigned mode,
@@ -365,8 +334,8 @@ AlterSaveSetForClient(ClientPtr client, WindowPtr pWin, unsigned mode,
 void
 DeleteWindowFromAnySaveSet(WindowPtr pWin)
 {
-    register int i;
-    register ClientPtr client;
+    int i;
+    ClientPtr client;
     
     for (i = 0; i< currentMaxClients; i++)
     {    
@@ -407,7 +376,7 @@ static Bool		handlerDeleted;
 void
 BlockHandler(pointer pTimeout, pointer pReadmask)
 {
-    register int i, j;
+    int i, j;
     
     ++inHandler;
     for (i = 0; i < screenInfo.numScreens; i++)
@@ -441,7 +410,7 @@ BlockHandler(pointer pTimeout, pointer pReadmask)
 void
 WakeupHandler(int result, pointer pReadmask)
 {
-    register int i, j;
+    int i, j;
 
     ++inHandler;
     for (i = numHandlers - 1; i >= 0; i--)
@@ -523,7 +492,7 @@ RemoveBlockAndWakeupHandlers (BlockHandlerProcPtr blockHandler,
 }
 
 void
-InitBlockAndWakeupHandlers ()
+InitBlockAndWakeupHandlers (void)
 {
     xfree (handlers);
     handlers = (BlockHandlerPtr) 0;
@@ -831,7 +800,7 @@ _DeleteCallbackList(
 
     for (i = 0; i < numCallbackListsToCleanup; i++)
     {
-	if ((listsToCleanup[i] = pcbl) != 0)
+	if (listsToCleanup[i] == pcbl)
 	{
 	    listsToCleanup[i] = NULL;
 	    break;
@@ -847,18 +816,8 @@ _DeleteCallbackList(
     *pcbl = NULL;
 }
 
-static CallbackFuncsRec default_cbfuncs =
-{
-    _AddCallback,
-    _DeleteCallback,
-    _CallCallbacks,
-    _DeleteCallbackList
-};
-
-/* ===== Public Procedures ===== */
-
-Bool
-CreateCallbackList(CallbackListPtr *pcbl, CallbackFuncsPtr cbfuncs)
+static Bool
+CreateCallbackList(CallbackListPtr *pcbl)
 {
     CallbackListPtr  cbl;
     int i;
@@ -866,7 +825,6 @@ CreateCallbackList(CallbackListPtr *pcbl, CallbackFuncsPtr cbfuncs)
     if (!pcbl) return FALSE;
     cbl = (CallbackListPtr) xalloc(sizeof(CallbackListRec));
     if (!cbl) return FALSE;
-    cbl->funcs = cbfuncs ? *cbfuncs : default_cbfuncs;
     cbl->inCallback = 0;
     cbl->deleted = FALSE;
     cbl->numDeleted = 0;
@@ -889,41 +847,43 @@ CreateCallbackList(CallbackListPtr *pcbl, CallbackFuncsPtr cbfuncs)
     return TRUE;
 }
 
+/* ===== Public Procedures ===== */
+
 _X_EXPORT Bool 
 AddCallback(CallbackListPtr *pcbl, CallbackProcPtr callback, pointer data)
 {
     if (!pcbl) return FALSE;
     if (!*pcbl)
     {	/* list hasn't been created yet; go create it */
-	if (!CreateCallbackList(pcbl, (CallbackFuncsPtr)NULL))
+	if (!CreateCallbackList(pcbl))
 	    return FALSE;
     }
-    return ((*(*pcbl)->funcs.AddCallback) (pcbl, callback, data));
+    return _AddCallback(pcbl, callback, data);
 }
 
 _X_EXPORT Bool 
 DeleteCallback(CallbackListPtr *pcbl, CallbackProcPtr callback, pointer data)
 {
     if (!pcbl || !*pcbl) return FALSE;
-    return ((*(*pcbl)->funcs.DeleteCallback) (pcbl, callback, data));
+    return _DeleteCallback(pcbl, callback, data);
 }
 
 void 
 CallCallbacks(CallbackListPtr *pcbl, pointer call_data)
 {
     if (!pcbl || !*pcbl) return;
-    (*(*pcbl)->funcs.CallCallbacks) (pcbl, call_data);
+    _CallCallbacks(pcbl, call_data);
 }
 
 void
 DeleteCallbackList(CallbackListPtr *pcbl)
 {
     if (!pcbl || !*pcbl) return;
-    (*(*pcbl)->funcs.DeleteCallbackList) (pcbl);
+    _DeleteCallbackList(pcbl);
 }
 
 void 
-InitCallbackManager()
+InitCallbackManager(void)
 {
     int i;
 

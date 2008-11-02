@@ -1,6 +1,4 @@
 /*
- * $Id: xfixes.c,v 1.1 2006/11/26 18:15:08 matthieu Exp $
- *
  * Copyright © 2006 Sun Microsystems
  *
  * Permission to use, copy, modify, distribute, and sell this software and its
@@ -55,10 +53,10 @@
 #define SERVER_XFIXES_MAJOR 4
 #define SERVER_XFIXES_MINOR 0
 
-unsigned char	XFixesReqCode;
+static unsigned char	XFixesReqCode;
 int		XFixesEventBase;
 int		XFixesErrorBase;
-int		XFixesClientPrivateIndex;
+static DevPrivateKey XFixesClientPrivateKey = &XFixesClientPrivateKey;
 
 static int
 ProcXFixesQueryVersion(ClientPtr client)
@@ -169,7 +167,7 @@ SProcXFixesQueryVersion(ClientPtr client)
     return (*ProcXFixesVector[stuff->xfixesReqType]) (client);
 }
 
-int	(*SProcXFixesVector[XFixesNumberRequests])(ClientPtr) = {
+static int (*SProcXFixesVector[XFixesNumberRequests])(ClientPtr) = {
 /*************** Version 1 ******************/
     SProcXFixesQueryVersion,
     SProcXFixesChangeSaveSet,
@@ -241,9 +239,7 @@ XFixesExtensionInit(void)
 {
     ExtensionEntry *extEntry;
 
-    XFixesClientPrivateIndex = AllocateClientPrivateIndex ();
-    if (!AllocateClientPrivate (XFixesClientPrivateIndex, 
-				sizeof (XFixesClientRec)))
+    if (!dixRequestPrivate(XFixesClientPrivateKey, sizeof (XFixesClientRec)))
 	return;
     if (!AddCallback (&ClientStateCallback, XFixesClientCallback, 0))
 	return;

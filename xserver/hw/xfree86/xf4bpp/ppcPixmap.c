@@ -68,7 +68,6 @@ ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
 SOFTWARE.
 
 ******************************************************************/
-/* $XConsortium: ppcPixmap.c /main/5 1996/02/21 17:58:00 kaleb $ */
 
 #ifdef HAVE_XORG_CONFIG_H
 #include <xorg-config.h>
@@ -83,16 +82,17 @@ SOFTWARE.
 #include "scrnintstr.h"
 
 PixmapPtr
-xf4bppCreatePixmap( pScreen, width, height, depth )
+xf4bppCreatePixmap( pScreen, width, height, depth, usage_hint )
     ScreenPtr	pScreen ;
     int		width ;
     int		height ;
     int		depth ;
+    unsigned	usage_hint ;
 {
     register PixmapPtr pPixmap  = (PixmapPtr)NULL;
     size_t size ;
     
-    TRACE(("xf4bppCreatePixmap(pScreen=0x%x, width=%d, height=%d, depth=%d)\n", pScreen, width, height, depth)) ;
+    TRACE(("xf4bppCreatePixmap(pScreen=0x%x, width=%d, height=%d, depth=%d, usage_hint=%d)\n", pScreen, width, height, depth, usage_hint)) ;
 
     if ( depth > 8 )
 	return (PixmapPtr) NULL ;
@@ -120,13 +120,10 @@ xf4bppCreatePixmap( pScreen, width, height, depth )
     pPixmap->devKind = size;
     pPixmap->refcnt = 1 ;
     size = height * pPixmap->devKind ;
-#ifdef PIXPRIV
     pPixmap->devPrivate.ptr = (pointer) (((CARD8*)pPixmap)
 					 + pScreen->totalPixmapSize);
-#else
-    pPixmap->devPrivate.ptr = (pointer) (pPixmap + 1);
-#endif
     bzero( (char *) pPixmap->devPrivate.ptr, size ) ;
+    pPixmap->usage_hint = usage_hint;
     return pPixmap ;
 }
 
@@ -142,6 +139,7 @@ xf4bppCopyPixmap(pSrc)
     pDst = xalloc(sizeof(PixmapRec) + size);
     if (!pDst)
 	return NullPixmap;
+    pDst->devPrivates = NULL;
     pDst->drawable = pSrc->drawable;
     pDst->drawable.id = 0;
     pDst->drawable.serialNumber = NEXT_SERIAL_NUMBER;

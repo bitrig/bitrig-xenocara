@@ -191,8 +191,6 @@ _X_HIDDEN void *miLookupTab[] = {
     SYMFUNC(miSegregateChildren)
     SYMFUNC(miHookInitVisuals)
     SYMFUNC(miPointerAbsoluteCursor)
-    SYMFUNC(miPointerGetMotionEvents)
-    SYMFUNC(miPointerGetMotionBufferSize)
     SYMFUNC(miOverlayCopyUnderlay)
     SYMFUNC(miOverlaySetTransFunction)
     SYMFUNC(miOverlayCollectUnderlayRegions)
@@ -202,17 +200,11 @@ _X_HIDDEN void *miLookupTab[] = {
     SYMFUNC(miOverlaySetRootClip)
     SYMVAR(miEmptyBox)
     SYMVAR(miEmptyData)
-    SYMVAR(miZeroLineScreenIndex)
+    SYMVAR(miZeroLineScreenKey)
     SYMVAR(miSpritePointerFuncs)
-    SYMVAR(miPointerScreenIndex)
+    SYMVAR(miPointerScreenKey)
     SYMVAR(miInstalledMaps)
     SYMVAR(miInitVisualsProc)
-#ifdef RENDER
-    SYMFUNC(miGlyphExtents)
-#endif
-#ifdef COMPOSITE
-    SYMFUNC(miDisableCompositeWrapper)
-#endif
 #ifdef DAMAGE
     SYMFUNC(DamageDamageRegion)
 #endif

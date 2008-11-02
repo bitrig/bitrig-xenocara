@@ -11,7 +11,6 @@ the suitability of this software for any purpose.  It is provided "as
 is" without express or implied warranty.
 
 */
-/* $XFree86$ */
 
 #ifndef XNESTGC_H
 #define XNESTGC_H
@@ -23,10 +22,10 @@ typedef struct {
   int nClipRects;
 } xnestPrivGC;
 
-extern int xnestGCPrivateIndex;
+extern DevPrivateKey xnestGCPrivateKey;
 
-#define xnestGCPriv(pGC) \
-  ((xnestPrivGC *)((pGC)->devPrivates[xnestGCPrivateIndex].ptr))
+#define xnestGCPriv(pGC) ((xnestPrivGC *) \
+    dixLookupPrivate(&(pGC)->devPrivates, xnestGCPrivateKey))
 
 #define xnestGC(pGC) (xnestGCPriv(pGC)->gc)
 

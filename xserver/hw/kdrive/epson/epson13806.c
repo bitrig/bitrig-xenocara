@@ -1,4 +1,3 @@
-/* $Header: /home/thib/scm/openbsd-cvs/xenocara/xserver/hw/kdrive/epson/Attic/epson13806.c,v 1.1 2006/11/26 18:22:01 matthieu Exp $ */
 /*
  * Copyright 2004 by Costas Stylianou <costas.stylianou@psion.com> +44(0)7850 394095
  *
@@ -332,7 +331,7 @@ epsonCreateColormap (ColormapPtr pmap)
         case FB_VISUAL_STATIC_PSEUDOCOLOR:
             pVisual = pmap->pVisual;
             nent = pVisual->ColormapEntries;
-            pdefs = ALLOCATE_LOCAL (nent * sizeof (xColorItem));
+            pdefs = xalloc (nent * sizeof (xColorItem));
             if (!pdefs)
                 return FALSE;
             for (i = 0; i < nent; i++)
@@ -344,7 +343,7 @@ epsonCreateColormap (ColormapPtr pmap)
                 pmap->red[i].co.local.green = pdefs[i].green;
                 pmap->red[i].co.local.blue = pdefs[i].blue;
             }
-            DEALLOCATE_LOCAL (pdefs);
+            xfree (pdefs);
             return TRUE;
 
         default:

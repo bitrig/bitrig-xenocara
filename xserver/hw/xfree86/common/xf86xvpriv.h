@@ -30,10 +30,11 @@
 #define _XF86XVPRIV_H_
 
 #include "xf86xv.h"
+#include "privates.h"
 
 /*** These are DDX layer privates ***/
 
-extern int XF86XvScreenIndex;
+extern DevPrivateKey XF86XvScreenKey;
 
 typedef struct {
    DestroyWindowProcPtr		DestroyWindow;
@@ -80,6 +81,7 @@ typedef struct {
 typedef struct _XF86XVWindowRec{
    XvPortRecPrivatePtr PortRec;
    struct _XF86XVWindowRec *next;
+   GCPtr pGC;
 } XF86XVWindowRec, *XF86XVWindowPtr;
 
 #endif  /* _XF86XVPRIV_H_ */
