@@ -142,10 +142,10 @@ tdfx_translate_vertex( GLcontext *ctx, const tdfxVertex *src, SWvertex *dst)
    tdfxContextPtr fxMesa = TDFX_CONTEXT(ctx);
 
    if (fxMesa->vertexFormat == TDFX_LAYOUT_TINY) {
-      dst->win[0] = src->x - fxMesa->x_offset;
-      dst->win[1] = src->y - (fxMesa->screen_height - fxMesa->height - fxMesa->y_offset);
-      dst->win[2] = src->z;
-      dst->win[3] = 1.0;
+      dst->attrib[FRAG_ATTRIB_WPOS][0] = src->x - fxMesa->x_offset;
+      dst->attrib[FRAG_ATTRIB_WPOS][1] = src->y - (fxMesa->screen_height - fxMesa->height - fxMesa->y_offset);
+      dst->attrib[FRAG_ATTRIB_WPOS][2] = src->z;
+      dst->attrib[FRAG_ATTRIB_WPOS][3] = 1.0;
 
       dst->color[0] = src->color[2];
       dst->color[1] = src->color[1];
@@ -155,36 +155,36 @@ tdfx_translate_vertex( GLcontext *ctx, const tdfxVertex *src, SWvertex *dst)
    else {
       GLfloat w = 1.0 / src->rhw;
 
-      dst->win[0] = src->x - fxMesa->x_offset;
-      dst->win[1] = src->y - (fxMesa->screen_height - fxMesa->height - fxMesa->y_offset);
-      dst->win[2] = src->z;
-      dst->win[3] = src->rhw;
+      dst->attrib[FRAG_ATTRIB_WPOS][0] = src->x - fxMesa->x_offset;
+      dst->attrib[FRAG_ATTRIB_WPOS][1] = src->y - (fxMesa->screen_height - fxMesa->height - fxMesa->y_offset);
+      dst->attrib[FRAG_ATTRIB_WPOS][2] = src->z;
+      dst->attrib[FRAG_ATTRIB_WPOS][3] = src->rhw;
 
       dst->color[0] = src->color[2];
       dst->color[1] = src->color[1];
       dst->color[2] = src->color[0];
       dst->color[3] = src->color[3];
 
-      dst->texcoord[0][0] = 1.0 / fxMesa->sScale0 * w * src->tu0;
-      dst->texcoord[0][1] = 1.0 / fxMesa->tScale0 * w * src->tv0;
+      dst->attrib[FRAG_ATTRIB_TEX0][0] = 1.0 / fxMesa->sScale0 * w * src->tu0;
+      dst->attrib[FRAG_ATTRIB_TEX0][1] = 1.0 / fxMesa->tScale0 * w * src->tv0;
       if (fxMesa->vertexFormat == TDFX_LAYOUT_PROJ1 || fxMesa->vertexFormat == TDFX_LAYOUT_PROJ2) {
-         dst->texcoord[0][3] = w * src->tq0;
+         dst->attrib[FRAG_ATTRIB_TEX0][3] = w * src->tq0;
       } else {
-	 dst->texcoord[0][3] = 1.0;
+	 dst->attrib[FRAG_ATTRIB_TEX0][3] = 1.0;
       }
 
       if (fxMesa->SetupIndex & TDFX_TEX1_BIT) {
-         dst->texcoord[1][0] = 1.0 / fxMesa->sScale1 * w * src->tu1;
-         dst->texcoord[1][1] = 1.0 / fxMesa->tScale1 * w * src->tv1;
+         dst->attrib[FRAG_ATTRIB_TEX1][0] = 1.0 / fxMesa->sScale1 * w * src->tu1;
+         dst->attrib[FRAG_ATTRIB_TEX1][1] = 1.0 / fxMesa->tScale1 * w * src->tv1;
          if (fxMesa->vertexFormat == TDFX_LAYOUT_PROJ2) {
-            dst->texcoord[1][3] = w * src->tq1;
+            dst->attrib[FRAG_ATTRIB_TEX1][3] = w * src->tq1;
          } else {
-	    dst->texcoord[1][3] = 1.0;
+	    dst->attrib[FRAG_ATTRIB_TEX1][3] = 1.0;
          }
       }
    }
 
-   dst->pointSize = ctx->Point._Size;
+   dst->pointSize = ctx->Point.Size;
 }
 
 

@@ -1,4 +1,3 @@
-/* $XFree86: xc/lib/GL/mesa/src/drv/r200/r200_cmdbuf.c,v 1.1 2002/10/30 12:51:51 alanh Exp $ */
 /*
 Copyright (C) The Weather Channel, Inc.  2002.  All Rights Reserved.
 
@@ -107,8 +106,8 @@ void r200SetUpAtomList( r200ContextPtr rmesa )
       insert_at_tail( &rmesa->hw.atomlist, &rmesa->hw.mtl[i] );
    for (i = 0; i < 6; ++i)
        insert_at_tail( &rmesa->hw.atomlist, &rmesa->hw.ucp[i] );
-   /* FIXME: is this a good place to insert that atom ? */
    insert_at_tail( &rmesa->hw.atomlist, &rmesa->hw.spr );
+   insert_at_tail( &rmesa->hw.atomlist, &rmesa->hw.ptp );
    insert_at_tail( &rmesa->hw.atomlist, &rmesa->hw.prf );
    insert_at_tail( &rmesa->hw.atomlist, &rmesa->hw.pvs );
    insert_at_tail( &rmesa->hw.atomlist, &rmesa->hw.vpp[0] );

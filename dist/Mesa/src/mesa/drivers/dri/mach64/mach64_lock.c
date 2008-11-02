@@ -70,7 +70,7 @@ void mach64GetLock( mach64ContextPtr mmesa, GLuint flags )
 
    if ( mmesa->lastStamp != dPriv->lastStamp ) {
       mmesa->lastStamp = dPriv->lastStamp;
-      if (mmesa->glCtx->DrawBuffer->_ColorDrawBufferMask[0] == BUFFER_BIT_BACK_LEFT)
+      if (mmesa->glCtx->DrawBuffer->_ColorDrawBufferIndexes[0] == BUFFER_BACK_LEFT)
          mach64SetCliprects( mmesa->glCtx, GL_BACK_LEFT );
       else
          mach64SetCliprects( mmesa->glCtx, GL_FRONT_LEFT );
@@ -82,14 +82,15 @@ void mach64GetLock( mach64ContextPtr mmesa, GLuint flags )
 		    | MACH64_UPLOAD_MISC
 		    | MACH64_UPLOAD_CLIPRECTS);
 
+   /* EXA render acceleration uses the texture engine, so restore it */
+   mmesa->dirty |= (MACH64_UPLOAD_TEXTURE);
+
    if ( sarea->ctx_owner != mmesa->hHWContext ) {
       sarea->ctx_owner = mmesa->hHWContext;
       mmesa->dirty = MACH64_UPLOAD_ALL;
    }
 
    for ( i = mmesa->firstTexHeap ; i < mmesa->lastTexHeap ; i++ ) {
-      if ( mmesa->texHeap[i] && (sarea->tex_age[i] != mmesa->lastTexAge[i]) ) {
-	 mach64AgeTextures( mmesa, i );
-      }
+      DRI_AGE_TEXTURES( mmesa->texture_heaps[i] );
    }
 }

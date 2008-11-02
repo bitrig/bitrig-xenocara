@@ -43,12 +43,12 @@
 
 #define SORT_LINE_VERT() \
 do { \
-	if(v[0].win[1] <= v[1].win[1]) { \
+	if(v[0].attrib[FRAG_ATTRIB_WPOS][1] <= v[1].attrib[FRAG_ATTRIB_WPOS][1]) { \
 \
                 idx[0] = 0; \
                 idx[1] = 1; \
 \
-        } else if (v[0].win[1] > v[1].win[1]) { \
+        } else if (v[0].attrib[FRAG_ATTRIB_WPOS][1] > v[1].attrib[FRAG_ATTRIB_WPOS][1]) { \
 \
                 idx[0] = 1; \
                 idx[1] = 0; \
@@ -58,19 +58,19 @@ do { \
 
 #define SET_LINE_VERT() \
 do { \
-        x[0] = (v[idx[0]].win[0] * 1024.0f * 1024.0f); /* 0x100000 */ \
-        y[0] = fy[0] = dPriv->h - v[idx[0]].win[1]; \
-        z[0] = (v[idx[0]].win[2]) * 1024.0f * 32.0f; /* 0x8000; */ \
+        x[0] = (v[idx[0]].attrib[FRAG_ATTRIB_WPOS][0] * 1024.0f * 1024.0f); /* 0x100000 */ \
+        y[0] = fy[0] = dPriv->h - v[idx[0]].attrib[FRAG_ATTRIB_WPOS][1]; \
+        z[0] = (v[idx[0]].attrib[FRAG_ATTRIB_WPOS][2]) * 1024.0f * 32.0f; /* 0x8000; */ \
 \
-        x[1] = (v[idx[1]].win[0] * 1024.0f * 1024.0f); /* 0x100000 */ \
-        y[1] = dPriv->h - v[idx[1]].win[1]; \
-        z[1] = (v[idx[1]].win[2]) * 1024.0f * 32.0f; /* 0x8000 */ \
+        x[1] = (v[idx[1]].attrib[FRAG_ATTRIB_WPOS][0] * 1024.0f * 1024.0f); /* 0x100000 */ \
+        y[1] = dPriv->h - v[idx[1]].attrib[FRAG_ATTRIB_WPOS][1]; \
+        z[1] = (v[idx[1]].attrib[FRAG_ATTRIB_WPOS][2]) * 1024.0f * 32.0f; /* 0x8000 */ \
 } while(0)
 
 #define SET_LINE_XY() \
 do { \
-	tmp = v[idx[0]].win[0]; \
-        tmp2 = v[idx[1]].win[0]; \
+	tmp = v[idx[0]].attrib[FRAG_ATTRIB_WPOS][0]; \
+        tmp2 = v[idx[1]].attrib[FRAG_ATTRIB_WPOS][0]; \
 \
 	dx01 = x[0] - x[1]; \
         dy01 = y[0] - y[1]; \
@@ -265,7 +265,7 @@ do { \
 #define SORT_VERT() \
 do { \
 	for (i=0; i<3; i++) \
-		fy[i] = v[i].win[1]; \
+		fy[i] = v[i].attrib[FRAG_ATTRIB_WPOS][1]; \
 \
 		if (fy[1] > fy[0]) {  /* (fy[1] > fy[0]) */ \
 \
@@ -305,9 +305,9 @@ do { \
 do { \
 	for (i=0; i<3; i++) \
 	{ \
-		x[i] = ((v[idx[i]].win[0]) * /* 0x100000*/  1024.0 * 1024.0); \
-		y[i] = fy[i] = (dPriv->h - v[idx[i]].win[1]); \
-		z[i] = ((v[idx[i]].win[2]) * /* 0x8000 */ 1024.0 * 32.0); \
+		x[i] = ((v[idx[i]].attrib[FRAG_ATTRIB_WPOS][0]) * /* 0x100000*/  1024.0 * 1024.0); \
+		y[i] = fy[i] = (dPriv->h - v[idx[i]].attrib[FRAG_ATTRIB_WPOS][1]); \
+		z[i] = ((v[idx[i]].attrib[FRAG_ATTRIB_WPOS][2]) * /* 0x8000 */ 1024.0 * 32.0); \
 	} \
 \
 	ydiff = fy[0] - (float)y[0]; \
@@ -407,22 +407,22 @@ do { \
                 ctx->Texture.Unit[0]._Current->DriverData); \
         deltwx = deltwy = wstart = deltdx = deltdy = dstart = 0; \
 \
-        u0 = (v[idx[0]].texcoord[0][0] \
+        u0 = (v[idx[0]].attrib[FRAG_ATTRIB_TEX0][0] \
                 * (GLfloat)(t->image[0].image->Width) * 256.0); \
-        u1 = (v[idx[1]].texcoord[0][0] \
+        u1 = (v[idx[1]].attrib[FRAG_ATTRIB_TEX0][0] \
                 * (GLfloat)(t->globj->Image[0][0]->Width) * 256.0); \
-        u2 = (v[idx[2]].texcoord[0][0] \
+        u2 = (v[idx[2]].attrib[FRAG_ATTRIB_TEX0][0] \
                 * (GLfloat)(t->globj->Image[0][0]->Width) * 256.0); \
-        v0 = (v[idx[0]].texcoord[0][1] \
+        v0 = (v[idx[0]].attrib[FRAG_ATTRIB_TEX0][1] \
                 * (GLfloat)(t->globj->Image[0][0]->Height) * 256.0); \
-        v1 = (v[idx[1]].texcoord[0][1] \
+        v1 = (v[idx[1]].attrib[FRAG_ATTRIB_TEX0][1] \
                 * (GLfloat)(t->globj->Image[0][0]->Height) * 256.0); \
-        v2 = (v[idx[2]].texcoord[0][1] \
+        v2 = (v[idx[2]].attrib[FRAG_ATTRIB_TEX0][1] \
                 * (GLfloat)(t->globj->Image[0][0]->Height) * 256.0); \
 \
-        w0 = (v[idx[0]].win[3]); \
-        w1 = (v[idx[1]].win[3]); \
-        w2 = (v[idx[2]].win[3]); \
+        w0 = (v[idx[0]].attrib[FRAG_ATTRIB_WPOS][3]); \
+        w1 = (v[idx[1]].attrib[FRAG_ATTRIB_WPOS][3]); \
+        w2 = (v[idx[2]].attrib[FRAG_ATTRIB_WPOS][3]); \
 } while (0)
 
 #define SET_BASEUV() \
@@ -485,23 +485,23 @@ do { \
         GLfloat sxy, suv; \
         int lev; \
 \
-        suv = (v[idx[0]].texcoord[0][0] - \
-                v[idx[2]].texcoord[0][0]) * \
-                (v[idx[1]].texcoord[0][1] - \
-                v[idx[2]].texcoord[0][1]) - \
-                (v[idx[1]].texcoord[0][0] - \
-                v[idx[2]].texcoord[0][0]) * \
-                (v[idx[0]].texcoord[0][1] - \
-                v[idx[2]].texcoord[0][2]); \
+        suv = (v[idx[0]].attrib[FRAG_ATTRIB_TEX0][0] - \
+                v[idx[2]].attrib[FRAG_ATTRIB_TEX0][0]) * \
+                (v[idx[1]].attrib[FRAG_ATTRIB_TEX0][1] - \
+                v[idx[2]].attrib[FRAG_ATTRIB_TEX0][1]) - \
+                (v[idx[1]].attrib[FRAG_ATTRIB_TEX0][0] - \
+                v[idx[2]].attrib[FRAG_ATTRIB_TEX0][0]) * \
+                (v[idx[0]].attrib[FRAG_ATTRIB_TEX0][1] - \
+                v[idx[2]].attrib[FRAG_ATTRIB_TEX0][2]); \
 \
-        sxy = (v[idx[0]].texcoord[0][0] - \
-                v[idx[2]].texcoord[0][0]) * \
-                (v[idx[1]].texcoord[0][1] - \
-                v[idx[2]].texcoord[0][1]) - \
-                (v[idx[1]].texcoord[0][0] - \
-                v[idx[2]].texcoord[0][0]) * \
-                (v[idx[0]].texcoord[0][1] - \
-                v[idx[2]].texcoord[0][2]); \
+        sxy = (v[idx[0]].attrib[FRAG_ATTRIB_TEX0][0] - \
+                v[idx[2]].attrib[FRAG_ATTRIB_TEX0][0]) * \
+                (v[idx[1]].attrib[FRAG_ATTRIB_TEX0][1] - \
+                v[idx[2]].attrib[FRAG_ATTRIB_TEX0][1]) - \
+                (v[idx[1]].attrib[FRAG_ATTRIB_TEX0][0] - \
+                v[idx[2]].attrib[FRAG_ATTRIB_TEX0][0]) * \
+                (v[idx[0]].attrib[FRAG_ATTRIB_TEX0][1] - \
+                v[idx[2]].attrib[FRAG_ATTRIB_TEX0][2]); \
 \
 	if (sxy < 0) sxy *= -1.0; \
 	if (suv < 0) suv *= -1.0; \
@@ -732,8 +732,8 @@ DEBUG(("***\n"));
 
 #if (IND & S3V_RAST_CULL_BIT)
 	cull = vmesa->backface_sign *
-		((v[1].win[0] - v[0].win[0]) * (v[0].win[1] - v[2].win[1]) +
-		 (v[1].win[1] - v[0].win[1]) * (v[2].win[0] - v[0].win[0]));
+		((v[1].attrib[FRAG_ATTRIB_WPOS][0] - v[0].attrib[FRAG_ATTRIB_WPOS][0]) * (v[0].attrib[FRAG_ATTRIB_WPOS][1] - v[2].attrib[FRAG_ATTRIB_WPOS][1]) +
+		 (v[1].attrib[FRAG_ATTRIB_WPOS][1] - v[0].attrib[FRAG_ATTRIB_WPOS][1]) * (v[2].attrib[FRAG_ATTRIB_WPOS][0] - v[0].attrib[FRAG_ATTRIB_WPOS][0]));
 
 	if (cull < vmesa->cull_zero /* -0.02f */) return;
 #endif
@@ -842,8 +842,8 @@ static void TAG(s3v_quad)( s3vContextPtr vmesa,
 
 #if (IND & S3V_RAST_CULL_BIT)
 	cull = vmesa->backface_sign *
-		((v[1].win[0] - v[0].win[0]) * (v[0].win[1] - v[2].win[1]) +
-		 (v[1].win[1] - v[0].win[1]) * (v[2].win[0] - v[0].win[0]));
+		((v[1].attrib[FRAG_ATTRIB_WPOS][0] - v[0].attrib[FRAG_ATTRIB_WPOS][0]) * (v[0].attrib[FRAG_ATTRIB_WPOS][1] - v[2].attrib[FRAG_ATTRIB_WPOS][1]) +
+		 (v[1].attrib[FRAG_ATTRIB_WPOS][1] - v[0].attrib[FRAG_ATTRIB_WPOS][1]) * (v[2].attrib[FRAG_ATTRIB_WPOS][0] - v[0].attrib[FRAG_ATTRIB_WPOS][0]));
 
 	if (cull < vmesa->cull_zero /* -0.02f */) goto second; /* return; */ /* (a) */
 #endif
@@ -897,8 +897,8 @@ second:
 
 #if (IND & S3V_RAST_CULL_BIT)
 	cull = vmesa->backface_sign *
-		((v[1].win[0] - v[0].win[0]) * (v[0].win[1] - v[2].win[1]) +
-		 (v[1].win[1] - v[0].win[1]) * (v[2].win[0] - v[0].win[0]));
+		((v[1].attrib[FRAG_ATTRIB_WPOS][0] - v[0].attrib[FRAG_ATTRIB_WPOS][0]) * (v[0].attrib[FRAG_ATTRIB_WPOS][1] - v[2].attrib[FRAG_ATTRIB_WPOS][1]) +
+		 (v[1].attrib[FRAG_ATTRIB_WPOS][1] - v[0].attrib[FRAG_ATTRIB_WPOS][1]) * (v[2].attrib[FRAG_ATTRIB_WPOS][0] - v[0].attrib[FRAG_ATTRIB_WPOS][0]));
 		 
 	if (cull < /* -0.02f */ vmesa->cull_zero) return;
 #endif

@@ -1,9 +1,14 @@
-/*
+/**************************************************************************
+
+Copyright 2000, 2001 ATI Technologies Inc., Ontario, Canada, and
+                     VA Linux Systems Inc., Fremont, California.
 Copyright (C) The Weather Channel, Inc.  2002.  All Rights Reserved.
 
 The Weather Channel (TM) funded Tungsten Graphics to develop the
 initial release of the Radeon 8500 driver under the XFree86 license.
 This notice must be preserved.
+
+All Rights Reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the
@@ -29,16 +34,12 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /*
  * Authors:
+ *   Gareth Hughes <gareth@valinux.com>
  *   Keith Whitwell <keith@tungstengraphics.com>
+ *   Kevin E. Martin <martin@valinux.com>
  */
-#include <string.h>
 
-#include "r200_context.h"
 #include "radeon_lock.h"
-#if R200_MERGED
-#include "r200_tex.h"
-#endif
-#include "r200_state.h"
 #include "radeon_ioctl.h"
 #include "radeon_state.h"
 #include "r300_context.h"
@@ -55,88 +56,31 @@ int prevLockLine = 0;
 
 /* Turn on/off page flipping according to the flags in the sarea:
  */
-static void radeonUpdatePageFlipping(radeonContextPtr radeon)
+void radeonUpdatePageFlipping(radeonContextPtr rmesa)
 {
 	int use_back;
 
-	radeon->doPageFlip = radeon->sarea->pfState;
-        if (!radeon->doPageFlip) {
-           driFlipRenderbuffers(radeon->glCtx->WinSysDrawBuffer, GL_FALSE);
-        }
+	rmesa->doPageFlip = rmesa->sarea->pfState;
+	if (rmesa->glCtx->WinSysDrawBuffer) {
+		driFlipRenderbuffers(rmesa->glCtx->WinSysDrawBuffer,
+				     rmesa->sarea->pfCurrentPage);
+		r300UpdateDrawBuffer(rmesa->glCtx);
+	}
 
-	use_back = (radeon->glCtx->DrawBuffer->_ColorDrawBufferMask[0] == BUFFER_BIT_BACK_LEFT);
-	use_back ^= (radeon->sarea->pfCurrentPage == 1);
+	use_back = rmesa->glCtx->DrawBuffer ?
+	    (rmesa->glCtx->DrawBuffer->_ColorDrawBufferIndexes[0] ==
+	     BUFFER_BACK_LEFT) : 1;
+	use_back ^= (rmesa->sarea->pfCurrentPage == 1);
 
 	if (use_back) {
-		radeon->state.color.drawOffset = radeon->radeonScreen->backOffset;
-		radeon->state.color.drawPitch = radeon->radeonScreen->backPitch;
+		rmesa->state.color.drawOffset =
+		    rmesa->radeonScreen->backOffset;
+		rmesa->state.color.drawPitch = rmesa->radeonScreen->backPitch;
 	} else {
-		radeon->state.color.drawOffset = radeon->radeonScreen->frontOffset;
-		radeon->state.color.drawPitch = radeon->radeonScreen->frontPitch;
-	}
-}
-
-/**
- * Called by radeonGetLock() after the lock has been obtained.
- */
-#if R200_MERGED
-static void r200RegainedLock(r200ContextPtr r200)
-{
-	__DRIdrawablePrivate *dPriv = r200->radeon.dri.drawable;
-	int i;
-
-	if (r200->radeon.lastStamp != dPriv->lastStamp) {
-		radeonUpdatePageFlipping(&r200->radeon);
-		R200_STATECHANGE(r200, ctx);
-		r200->hw.ctx.cmd[CTX_RB3D_COLOROFFSET] =
-			r200->radeon.state.color.drawOffset
-			+ r200->radeon.radeonScreen->fbLocation;
-		r200->hw.ctx.cmd[CTX_RB3D_COLORPITCH] =
-			r200->radeon.state.color.drawPitch;
-
-		if (r200->radeon.glCtx->DrawBuffer->_ColorDrawBufferMask[0] == BUFFER_BIT_BACK_LEFT)
-			radeonSetCliprects(&r200->radeon, GL_BACK_LEFT);
-		else
-			radeonSetCliprects(&r200->radeon, GL_FRONT_LEFT);
-		r200UpdateViewportOffset(r200->radeon.glCtx);
-		r200->radeon.lastStamp = dPriv->lastStamp;
-	}
-
-	for (i = 0; i < r200->nr_heaps; i++) {
-		DRI_AGE_TEXTURES(r200->texture_heaps[i]);
-	}
-}
-#endif
-
-static void r300RegainedLock(radeonContextPtr radeon)
-{
-	__DRIdrawablePrivate *dPriv = radeon->dri.drawable;
-	int i;
-	r300ContextPtr r300 = (r300ContextPtr)radeon;
-
-	if (radeon->lastStamp != dPriv->lastStamp) {
-		_mesa_resize_framebuffer(radeon->glCtx,
-			(GLframebuffer*)dPriv->driverPrivate,
-			dPriv->w, dPriv->h);
-
-		radeonUpdatePageFlipping(radeon);
-
-		if (radeon->glCtx->DrawBuffer->_ColorDrawBufferMask[0] == BUFFER_BIT_BACK_LEFT)
-			radeonSetCliprects(radeon, GL_BACK_LEFT);
-		else
-			radeonSetCliprects(radeon, GL_FRONT_LEFT);
-
-#if 1
-		r300UpdateViewportOffset( radeon->glCtx );
-		driUpdateFramebufferSize(radeon->glCtx, dPriv);
-#else
-		radeonUpdateScissor(radeon->glCtx);
-#endif
-		radeon->lastStamp = dPriv->lastStamp;
-	}
-
-	for (i = 0; i < r300->nr_heaps; i++) {
-		DRI_AGE_TEXTURES(r300->texture_heaps[i]);
+		rmesa->state.color.drawOffset =
+		    rmesa->radeonScreen->frontOffset;
+		rmesa->state.color.drawPitch =
+		    rmesa->radeonScreen->frontPitch;
 	}
 }
 
@@ -148,15 +92,17 @@ static void r300RegainedLock(radeonContextPtr radeon)
  * the hardware lock when it changes the window state, this routine will
  * automatically be called after such a change.
  */
-void radeonGetLock(radeonContextPtr radeon, GLuint flags)
+void radeonGetLock(radeonContextPtr rmesa, GLuint flags)
 {
-	__DRIdrawablePrivate *dPriv = radeon->dri.drawable;
-	__DRIscreenPrivate *sPriv = radeon->dri.screen;
-	drm_radeon_sarea_t *sarea = radeon->sarea;
-	
-	assert (dPriv != NULL);
+	__DRIdrawablePrivate *const drawable = rmesa->dri.drawable;
+	__DRIdrawablePrivate *const readable = rmesa->dri.readable;
+	__DRIscreenPrivate *sPriv = rmesa->dri.screen;
+	drm_radeon_sarea_t *sarea = rmesa->sarea;
+	r300ContextPtr r300 = (r300ContextPtr) rmesa;
 
-	drmGetLock(radeon->dri.fd, radeon->dri.hwContext, flags);
+	assert(drawable != NULL);
+
+	drmGetLock(rmesa->dri.fd, rmesa->dri.hwContext, flags);
 
 	/* The window might have moved, so we might need to get new clip
 	 * rects.
@@ -166,17 +112,26 @@ void radeonGetLock(radeonContextPtr radeon, GLuint flags)
 	 * Since the hardware state depends on having the latest drawable
 	 * clip rects, all state checking must be done _after_ this call.
 	 */
-	DRI_VALIDATE_DRAWABLE_INFO(sPriv, dPriv);
+	DRI_VALIDATE_DRAWABLE_INFO(sPriv, drawable);
+	if (drawable != readable) {
+		DRI_VALIDATE_DRAWABLE_INFO(sPriv, readable);
+	}
 
-	if (sarea->ctx_owner != radeon->dri.hwContext)
-		sarea->ctx_owner = radeon->dri.hwContext;
+	if (rmesa->lastStamp != drawable->lastStamp) {
+		radeonUpdatePageFlipping(rmesa);
+		radeonSetCliprects(rmesa);
+		r300UpdateViewportOffset(rmesa->glCtx);
+		driUpdateFramebufferSize(rmesa->glCtx, drawable);
+	}
 
-	if (IS_R300_CLASS(radeon->radeonScreen))
-		r300RegainedLock(radeon);
-#if R200_MERGED
-	else
-		r200RegainedLock((r200ContextPtr)radeon);
-#endif
-	
-	radeon->lost_context = GL_TRUE;
+	if (sarea->ctx_owner != rmesa->dri.hwContext) {
+		int i;
+
+		sarea->ctx_owner = rmesa->dri.hwContext;
+		for (i = 0; i < r300->nr_heaps; i++) {
+			DRI_AGE_TEXTURES(r300->texture_heaps[i]);
+		}
+	}
+
+	rmesa->lost_context = GL_TRUE;
 }

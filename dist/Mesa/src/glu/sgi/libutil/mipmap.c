@@ -1,37 +1,32 @@
 /*
-** License Applicability. Except to the extent portions of this file are
-** made subject to an alternative license as permitted in the SGI Free
-** Software License B, Version 1.1 (the "License"), the contents of this
-** file are subject only to the provisions of the License. You may not use
-** this file except in compliance with the License. You may obtain a copy
-** of the License at Silicon Graphics, Inc., attn: Legal Services, 1600
-** Amphitheatre Parkway, Mountain View, CA 94043-1351, or at:
-**
-** http://oss.sgi.com/projects/FreeB
-**
-** Note that, as provided in the License, the Software is distributed on an
-** "AS IS" basis, with ALL EXPRESS AND IMPLIED WARRANTIES AND CONDITIONS
-** DISCLAIMED, INCLUDING, WITHOUT LIMITATION, ANY IMPLIED WARRANTIES AND
-** CONDITIONS OF MERCHANTABILITY, SATISFACTORY QUALITY, FITNESS FOR A
-** PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
-**
-** Original Code. The Original Code is: OpenGL Sample Implementation,
-** Version 1.2.1, released January 26, 2000, developed by Silicon Graphics,
-** Inc. The Original Code is Copyright (c) 1991-2000 Silicon Graphics, Inc.
-** Copyright in any portions created by third parties is as indicated
-** elsewhere herein. All Rights Reserved.
-**
-** Additional Notice Provisions: The application programming interfaces
-** established by SGI in conjunction with the Original Code are The
-** OpenGL(R) Graphics System: A Specification (Version 1.2.1), released
-** April 1, 1999; The OpenGL(R) Graphics System Utility Library (Version
-** 1.3), released November 4, 1998; and OpenGL(R) Graphics with the X
-** Window System(R) (Version 1.3), released October 19, 1998. This software
-** was created using the OpenGL(R) version 1.2.1 Sample Implementation
-** published by SGI, but has not been independently verified as being
-** compliant with the OpenGL(R) version 1.2.1 Specification.
-**
-*/
+ * SGI FREE SOFTWARE LICENSE B (Version 2.0, Sept. 18, 2008)
+ * Copyright (C) 1991-2000 Silicon Graphics, Inc. All Rights Reserved.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice including the dates of first publication and
+ * either this permission notice or a reference to
+ * http://oss.sgi.com/projects/FreeB/
+ * shall be included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+ * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+ * SILICON GRAPHICS, INC. BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+ * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
+ * OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ * Except as contained in this notice, the name of Silicon Graphics, Inc.
+ * shall not be used in advertising or otherwise to promote the sale, use or
+ * other dealings in this Software without prior written authorization from
+ * Silicon Graphics, Inc.
+ */
 
 #include "gluos.h"
 #include <assert.h>
@@ -377,6 +372,7 @@ static void halveImage_ubyte(GLint components, GLuint width, GLuint height,
 {
     int i, j, k;
     int newwidth, newheight;
+    int padBytes;
     GLubyte *s;
     const char *t;
 
@@ -390,6 +386,7 @@ static void halveImage_ubyte(GLint components, GLuint width, GLuint height,
 
     newwidth = width / 2;
     newheight = height / 2;
+    padBytes = ysize - (width*group_size);
     s = dataout;
     t = (const char *)datain;
 
@@ -405,6 +402,7 @@ static void halveImage_ubyte(GLint components, GLuint width, GLuint height,
 	    }
 	    t += group_size;
 	}
+	t += padBytes;
 	t += ysize;
     }
 }
@@ -476,6 +474,7 @@ static void halveImage_byte(GLint components, GLuint width, GLuint height,
 {
     int i, j, k;
     int newwidth, newheight;
+    int padBytes;
     GLbyte *s;
     const char *t;
 
@@ -489,6 +488,7 @@ static void halveImage_byte(GLint components, GLuint width, GLuint height,
 
     newwidth = width / 2;
     newheight = height / 2;
+    padBytes = ysize - (width*group_size);
     s = dataout;
     t = (const char *)datain;
 
@@ -504,6 +504,7 @@ static void halveImage_byte(GLint components, GLuint width, GLuint height,
 	    }
 	    t += group_size;
 	}
+	t += padBytes;
 	t += ysize;
     }
 }
@@ -573,6 +574,7 @@ static void halveImage_ushort(GLint components, GLuint width, GLuint height,
 {
     int i, j, k;
     int newwidth, newheight;
+    int padBytes;
     GLushort *s;
     const char *t;
 
@@ -586,6 +588,7 @@ static void halveImage_ushort(GLint components, GLuint width, GLuint height,
 
     newwidth = width / 2;
     newheight = height / 2;
+    padBytes = ysize - (width*group_size);
     s = dataout;
     t = (const char *)datain;
 
@@ -602,6 +605,7 @@ static void halveImage_ushort(GLint components, GLuint width, GLuint height,
 	    }
 	    t += group_size;
 	}
+	t += padBytes;
 	t += ysize;
     }
     else
@@ -616,6 +620,7 @@ static void halveImage_ushort(GLint components, GLuint width, GLuint height,
 	    }
 	    t += group_size;
 	}
+	t += padBytes;
 	t += ysize;
     }
 }
@@ -708,6 +713,7 @@ static void halveImage_short(GLint components, GLuint width, GLuint height,
 {
     int i, j, k;
     int newwidth, newheight;
+    int padBytes;
     GLshort *s;
     const char *t;
 
@@ -721,6 +727,7 @@ static void halveImage_short(GLint components, GLuint width, GLuint height,
 
     newwidth = width / 2;
     newheight = height / 2;
+    padBytes = ysize - (width*group_size);
     s = dataout;
     t = (const char *)datain;
 
@@ -737,6 +744,7 @@ static void halveImage_short(GLint components, GLuint width, GLuint height,
 	    }
 	    t += group_size;
 	}
+	t += padBytes;
 	t += ysize;
     }
     else
@@ -758,6 +766,7 @@ static void halveImage_short(GLint components, GLuint width, GLuint height,
 	    }
 	    t += group_size;
 	}
+	t += padBytes;
 	t += ysize;
     }
 }
@@ -850,6 +859,7 @@ static void halveImage_uint(GLint components, GLuint width, GLuint height,
 {
     int i, j, k;
     int newwidth, newheight;
+    int padBytes;
     GLuint *s;
     const char *t;
 
@@ -863,6 +873,7 @@ static void halveImage_uint(GLint components, GLuint width, GLuint height,
 
     newwidth = width / 2;
     newheight = height / 2;
+    padBytes = ysize - (width*group_size);
     s = dataout;
     t = (const char *)datain;
 
@@ -881,6 +892,7 @@ static void halveImage_uint(GLint components, GLuint width, GLuint height,
 	    }
 	    t += group_size;
 	}
+	t += padBytes;
 	t += ysize;
     }
     else
@@ -899,6 +911,7 @@ static void halveImage_uint(GLint components, GLuint width, GLuint height,
 	    }
 	    t += group_size;
 	}
+	t += padBytes;
 	t += ysize;
     }
 }
@@ -990,6 +1003,7 @@ static void halveImage_int(GLint components, GLuint width, GLuint height,
 {
     int i, j, k;
     int newwidth, newheight;
+    int padBytes;
     GLint *s;
     const char *t;
 
@@ -1003,6 +1017,7 @@ static void halveImage_int(GLint components, GLuint width, GLuint height,
 
     newwidth = width / 2;
     newheight = height / 2;
+    padBytes = ysize - (width*group_size);
     s = dataout;
     t = (const char *)datain;
 
@@ -1019,6 +1034,7 @@ static void halveImage_int(GLint components, GLuint width, GLuint height,
 	    }
 	    t += group_size;
 	}
+	t += padBytes;
 	t += ysize;
     }
     else
@@ -1041,6 +1057,7 @@ static void halveImage_int(GLint components, GLuint width, GLuint height,
 	    }
 	    t += group_size;
 	}
+	t += padBytes;
 	t += ysize;
     }
 }
@@ -1134,6 +1151,7 @@ static void halveImage_float(GLint components, GLuint width, GLuint height,
 {
     int i, j, k;
     int newwidth, newheight;
+    int padBytes;
     GLfloat *s;
     const char *t;
 
@@ -1147,6 +1165,7 @@ static void halveImage_float(GLint components, GLuint width, GLuint height,
 
     newwidth = width / 2;
     newheight = height / 2;
+    padBytes = ysize - (width*group_size);
     s = dataout;
     t = (const char *)datain;
 
@@ -1163,6 +1182,7 @@ static void halveImage_float(GLint components, GLuint width, GLuint height,
 	    }
 	    t += group_size;
 	}
+	t += padBytes;
 	t += ysize;
     }
     else
@@ -1183,6 +1203,7 @@ static void halveImage_float(GLint components, GLuint width, GLuint height,
 	    }
 	    t += group_size;
 	}
+	t += padBytes;
 	t += ysize;
     }
 }
@@ -3845,10 +3866,12 @@ static int gluBuild2DMipmapLevelsCore(GLenum target, GLint internalFormat,
     if (width == newwidth && height == newheight) {
 	/* Use usersImage for level userLevel */
 	if (baseLevel <= level && level <= maxLevel) {
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, psm.unpack_row_length);
 	glTexImage2D(target, level, internalFormat, width,
 		height, 0, format, type,
 		usersImage);
 	}
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 	if(levels == 0) { /* we're done. clean up and return */
 	  glPixelStorei(GL_UNPACK_ALIGNMENT, psm.unpack_alignment);
 	  glPixelStorei(GL_UNPACK_SKIP_ROWS, psm.unpack_skip_rows);
@@ -6599,7 +6622,7 @@ typedef void (GLAPIENTRY *TexImage3Dproc)( GLenum target, GLint level,
 
 static TexImage3Dproc pTexImage3D = 0;
 
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(__WIN32__)
 #  include <dlfcn.h>
 #  include <sys/types.h>
 #else
@@ -6614,7 +6637,7 @@ static void gluTexImage3D( GLenum target, GLint level,
 			   const GLvoid *pixels )
 {
    if (!pTexImage3D) {
-#ifdef _WIN32
+#if defined(_WIN32) || defined(__WIN32__)
       pTexImage3D = (TexImage3Dproc) wglGetProcAddress("glTexImage3D");
       if (!pTexImage3D)
 	 pTexImage3D = (TexImage3Dproc) wglGetProcAddress("glTexImage3DEXT");
@@ -8643,7 +8666,8 @@ static void halveImageSlice(int components,
    int halfHeight= height / 2;
    int halfDepth= depth / 2;
    const char *src= (const char *)dataIn;
-   int padBytes= rowSizeInBytes - (width * groupSizeInBytes);
+   int rowPadBytes= rowSizeInBytes - (width * groupSizeInBytes);
+   int imagePadBytes= imageSizeInBytes - (width*height*groupSizeInBytes);
    int outIndex= 0;
 
    assert((width == 1 || height == 1) && depth >= 2);
@@ -8727,7 +8751,7 @@ static void halveImageSlice(int components,
 	    /* skip over to next horizontal square of 4 */
 	    src+= groupSizeInBytes;
 	 } /* for jj */
-	 src+= padBytes;
+	 src+= rowPadBytes;
 
 	 src+= rowSizeInBytes;
       } /* for ii */
@@ -8772,11 +8796,12 @@ static void halveImageSlice(int components,
 
 	       src+= elementSizeInBytes;
 	    } /* for cc */
-	    src+= padBytes;
+	    src+= rowPadBytes;
 
 	    /* skip over to next vertical square of 4 */
 	    src+= rowSizeInBytes;
 	 } /* for jj */
+         src+= imagePadBytes;
 
 	 src+= imageSizeInBytes;
       } /* for ii */
@@ -8816,7 +8841,8 @@ static void halveImage3D(int components,
       int halfHeight= height / 2;
       int halfDepth= depth / 2;
       const char *src= (const char *) dataIn;
-      int padBytes= rowSizeInBytes - (width*groupSizeInBytes);
+      int rowPadBytes= rowSizeInBytes - (width*groupSizeInBytes);
+      int imagePadBytes= imageSizeInBytes - (width*height*groupSizeInBytes);
       int outIndex= 0;
 
       for (dd= 0; dd < halfDepth; dd++) {
@@ -8872,7 +8898,7 @@ static void halveImage3D(int components,
 	       src+= groupSizeInBytes;
 	    } /* for jj */
 	    /* skip past pad bytes, if any, to get to next row */
-	    src+= padBytes;
+	    src+= rowPadBytes;
 
 	    /* src is at beginning of a row here, but it's the second row of
 	     * the square block of 4 pixels that we just worked on so we
@@ -8886,6 +8912,9 @@ static void halveImage3D(int components,
 	     */
 	    src+= rowSizeInBytes;
 	 } /* for ii */
+
+	 /* skip past pad bytes, if any, to get to next image */
+	 src+= imagePadBytes;
 
 	 src+= imageSizeInBytes;
       } /* for dd */

@@ -37,7 +37,7 @@
 #include "enums.h"
 #include "colormac.h"
 #include "swrast/swrast.h"
-#include "array_cache/acache.h"
+#include "vbo/vbo.h"
 #include "tnl/tnl.h"
 #include "swrast_setup/swrast_setup.h"
 
@@ -497,25 +497,27 @@ void sis6326DDDrawBuffer( GLcontext *ctx, GLenum mode )
    __GLSiSHardware *current = &smesa->current;
 
    if(getenv("SIS_DRAW_FRONT"))
-      ctx->DrawBuffer->_ColorDrawBufferMask[0] = GL_FRONT_LEFT;
+      ctx->DrawBuffer->_ColorDrawBufferIndexes[0] = BUFFER_FRONT_LEFT;
 
-   /*
-    * _DrawDestMask is easier to cope with than <mode>.
-    */
+   if (ctx->DrawBuffer->_NumColorDrawBuffers > 1) {
+      FALLBACK( smesa, SIS_FALLBACK_DRAW_BUFFER, GL_TRUE );
+      return;
+   }
+
    current->hwDstSet &= ~MASK_DstBufferPitch;
-   switch ( ctx->DrawBuffer->_ColorDrawBufferMask[0] ) {
-   case BUFFER_BIT_FRONT_LEFT:
+
+   switch ( ctx->DrawBuffer->_ColorDrawBufferIndexes[0] ) {
+   case BUFFER_FRONT_LEFT:
       current->hwOffsetDest = smesa->front.offset;
       current->hwDstSet |= smesa->front.pitch;
       FALLBACK( smesa, SIS_FALLBACK_DRAW_BUFFER, GL_FALSE );
       break;
-   case BUFFER_BIT_BACK_LEFT:
+   case BUFFER_BACK_LEFT:
       current->hwOffsetDest = smesa->back.offset;
       current->hwDstSet |= smesa->back.pitch;
       FALLBACK( smesa, SIS_FALLBACK_DRAW_BUFFER, GL_FALSE );
       break;
    default:
-      /* GL_NONE or GL_FRONT_AND_BACK or stereo left&right, etc */
       FALLBACK( smesa, SIS_FALLBACK_DRAW_BUFFER, GL_TRUE );
       return;
    }
@@ -645,7 +647,7 @@ sis6326DDInvalidateState( GLcontext *ctx, GLuint new_state )
 
 	_swrast_InvalidateState( ctx, new_state );
 	_swsetup_InvalidateState( ctx, new_state );
-	_ac_InvalidateState( ctx, new_state );
+	_vbo_InvalidateState( ctx, new_state );
 	_tnl_InvalidateState( ctx, new_state );
 	smesa->NewGLState |= new_state;
 }
@@ -727,27 +729,9 @@ void sis6326DDInitStateFuncs( GLcontext *ctx )
    ctx->Driver.Enable			= sis6326DDEnable;
    ctx->Driver.FrontFace	 	= sis6326DDFrontFace;
    ctx->Driver.Fogfv			= sis6326DDFogfv;
-   ctx->Driver.Hint			= NULL;
-   ctx->Driver.Lightfv			= NULL;
    ctx->Driver.LogicOpcode	 	= sis6326DDLogicOpCode;
-   ctx->Driver.PolygonMode		= NULL;
-   ctx->Driver.PolygonStipple		= NULL;
-   ctx->Driver.RenderMode	 	= NULL;
    ctx->Driver.Scissor			= sis6326DDScissor;
    ctx->Driver.ShadeModel		= sis6326DDShadeModel;
    ctx->Driver.LightModelfv		= sis6326DDLightModelfv;
    ctx->Driver.Viewport			= sis6326DDViewport;
-
-   /* Pixel path fallbacks. */
-   ctx->Driver.Accum			= _swrast_Accum;
-   ctx->Driver.Bitmap			= _swrast_Bitmap;
-   ctx->Driver.CopyPixels		= _swrast_CopyPixels;
-   ctx->Driver.DrawPixels		= _swrast_DrawPixels;
-   ctx->Driver.ReadPixels		= _swrast_ReadPixels;
-
-   /* Swrast hooks for imaging extensions: */
-   ctx->Driver.CopyColorTable		= _swrast_CopyColorTable;
-   ctx->Driver.CopyColorSubTable	= _swrast_CopyColorSubTable;
-   ctx->Driver.CopyConvolutionFilter1D	= _swrast_CopyConvolutionFilter1D;
-   ctx->Driver.CopyConvolutionFilter2D	= _swrast_CopyConvolutionFilter2D;
 }

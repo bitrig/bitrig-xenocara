@@ -45,7 +45,7 @@
 
 
 #define GET_XRB(XRB)  struct xmesa_renderbuffer *XRB = \
-   xmesa_renderbuffer(ctx->DrawBuffer->_ColorDrawBuffers[0][0]->Wrapped)
+   xmesa_renderbuffer(ctx->DrawBuffer->_ColorDrawBuffers[0]->Wrapped)
 
 
 /**********************************************************************/
@@ -66,7 +66,7 @@
    XMesaContext xmesa = XMESA_CONTEXT(ctx);			\
    GET_XRB(xrb);
 
-#define RENDER_SPAN( span )					\
+#define RENDER_SPAN( span ) {					\
    GLint x = span.x, y = YFLIP(xrb, span.y);			\
    GLuint i;							\
    for (i = 0; i < span.end; i++, x++) {			\
@@ -82,7 +82,7 @@
       span.green += span.greenStep;				\
       span.blue += span.blueStep;				\
       span.z += span.zStep;					\
-   }
+   } }
 
 #include "swrast/s_tritemp.h"
 
@@ -96,25 +96,28 @@
 #define INTERP_Z 1
 #define DEPTH_TYPE DEFAULT_SOFTWARE_DEPTH_TYPE
 #define INTERP_RGB 1
+#define INTERP_ALPHA 1
 #define PIXEL_ADDRESS(X,Y) PIXEL_ADDR4(xrb, X, Y)
 #define PIXEL_TYPE GLuint
 #define BYTES_PER_ROW (xrb->ximage->bytes_per_line)
 #define SETUP_CODE						\
    GET_XRB(xrb);
-#define RENDER_SPAN( span )					\
+#define RENDER_SPAN( span ) {					\
    GLuint i;							\
    for (i = 0; i < span.end; i++) {				\
       const DEPTH_TYPE z = FixedToDepth(span.z);		\
       if (z < zRow[i]) {					\
-         pRow[i] = PACK_8B8G8R(FixedToInt(span.red),		\
-            FixedToInt(span.green), FixedToInt(span.blue));	\
+         pRow[i] = PACK_8A8B8G8R(FixedToInt(span.red),		\
+            FixedToInt(span.green), FixedToInt(span.blue),	\
+            FixedToInt(span.alpha));				\
          zRow[i] = z;						\
       }								\
       span.red += span.redStep;					\
       span.green += span.greenStep;				\
       span.blue += span.blueStep;				\
+      span.alpha += span.alphaStep;				\
       span.z += span.zStep;					\
-   }
+   } }
 
 #include "swrast/s_tritemp.h"
 
@@ -127,26 +130,29 @@
 #define INTERP_Z 1
 #define DEPTH_TYPE DEFAULT_SOFTWARE_DEPTH_TYPE
 #define INTERP_RGB 1
+#define INTERP_ALPHA 1
 #define PIXEL_ADDRESS(X,Y) PIXEL_ADDR4(xrb, X, Y)
 #define PIXEL_TYPE GLuint
 #define BYTES_PER_ROW (xrb->ximage->bytes_per_line)
 #define SETUP_CODE						\
    GET_XRB(xrb);
 
-#define RENDER_SPAN( span )					\
+#define RENDER_SPAN( span ) {					\
    GLuint i;							\
    for (i = 0; i < span.end; i++) {				\
       const DEPTH_TYPE z = FixedToDepth(span.z);		\
       if (z < zRow[i]) {					\
-         pRow[i] = PACK_8R8G8B(FixedToInt(span.red),		\
-            FixedToInt(span.green), FixedToInt(span.blue));	\
+         pRow[i] = PACK_8A8R8G8B(FixedToInt(span.red),		\
+            FixedToInt(span.green), FixedToInt(span.blue),	\
+            FixedToInt(span.alpha));				\
          zRow[i] = z;						\
       }								\
       span.red += span.redStep;					\
       span.green += span.greenStep;				\
       span.blue += span.blueStep;				\
+      span.alpha += span.alphaStep;				\
       span.z += span.zStep;					\
-   }
+   } }
 
 #include "swrast/s_tritemp.h"
 
@@ -165,7 +171,7 @@
 #define SETUP_CODE						\
    GET_XRB(xrb);
 
-#define RENDER_SPAN( span )					\
+#define RENDER_SPAN( span ) {					\
    GLuint i;							\
    for (i = 0; i < span.end; i++) {				\
       const DEPTH_TYPE z = FixedToDepth(span.z);		\
@@ -178,7 +184,7 @@
       span.green += span.greenStep;				\
       span.blue += span.blueStep;				\
       span.z += span.zStep;					\
-   }
+   } }
 
 #include "swrast/s_tritemp.h"
 
@@ -196,7 +202,7 @@
 #define BYTES_PER_ROW (xrb->ximage->bytes_per_line)
 #define SETUP_CODE						\
    GET_XRB(xrb);
-#define RENDER_SPAN( span ) 					\
+#define RENDER_SPAN( span ) {					\
    GLuint i;							\
    for (i = 0; i < span.end; i++) {				\
       const DEPTH_TYPE z = FixedToDepth(span.z);		\
@@ -211,7 +217,7 @@
       span.green += span.greenStep;				\
       span.blue += span.blueStep;				\
       span.z += span.zStep;					\
-   }
+   } }
 #include "swrast/s_tritemp.h"
 
 
@@ -226,7 +232,7 @@
 #define SETUP_CODE						\
    XMesaContext xmesa = XMESA_CONTEXT(ctx);			\
    GET_XRB(xrb);
-#define RENDER_SPAN( span )					\
+#define RENDER_SPAN( span ) {					\
    GLuint i;							\
    GLint x = span.x, y = YFLIP(xrb, span.y);			\
    for (i = 0; i < span.end; i++, x++) {			\
@@ -242,7 +248,7 @@
       span.green += span.greenStep;				\
       span.blue += span.blueStep;				\
       span.z += span.zStep;					\
-   }
+   } }
 #include "swrast/s_tritemp.h"
 
 
@@ -259,7 +265,7 @@
 #define BYTES_PER_ROW (xrb->ximage->bytes_per_line)
 #define SETUP_CODE						\
    GET_XRB(xrb);
-#define RENDER_SPAN( span )					\
+#define RENDER_SPAN( span ) {					\
    GLuint i;							\
    for (i = 0; i < span.end; i++) {				\
       const DEPTH_TYPE z = FixedToDepth(span.z);		\
@@ -272,7 +278,7 @@
       span.green += span.greenStep;				\
       span.blue += span.blueStep;				\
       span.z += span.zStep;					\
-   }
+   } }
 #include "swrast/s_tritemp.h"
 
 
@@ -290,7 +296,7 @@
 #define SETUP_CODE						\
    XMesaContext xmesa = XMESA_CONTEXT(ctx);			\
    GET_XRB(xrb);
-#define RENDER_SPAN( span )					\
+#define RENDER_SPAN( span ) {					\
    GLuint i;							\
    GLint x = span.x, y = YFLIP(xrb, span.y);			\
    for (i = 0; i < span.end; i++, x++) {			\
@@ -304,7 +310,7 @@
       span.green += span.greenStep;				\
       span.blue += span.blueStep;				\
       span.z += span.zStep;					\
-   }
+   } }
 #include "swrast/s_tritemp.h"
 
 
@@ -321,7 +327,7 @@
 #define BYTES_PER_ROW (xrb->ximage->bytes_per_line)
 #define SETUP_CODE						\
    GET_XRB(xrb);
-#define RENDER_SPAN( span )					\
+#define RENDER_SPAN( span ) {					\
    GLuint i;							\
    GLint x = span.x, y = YFLIP(xrb, span.y);			\
    XDITHER_SETUP(y);						\
@@ -336,7 +342,7 @@
       span.green += span.greenStep;				\
       span.blue += span.blueStep;				\
       span.z += span.zStep;					\
-   }
+   } }
 #include "swrast/s_tritemp.h"
 
 
@@ -351,7 +357,7 @@
 #define SETUP_CODE						\
    GET_XRB(xrb);						\
    XMesaImage *img = xrb->ximage;
-#define RENDER_SPAN( span )					\
+#define RENDER_SPAN( span ) {					\
    GLuint i;							\
    GLint x = span.x, y = YFLIP(xrb, span.y);			\
    XDITHER_SETUP(y);						\
@@ -367,7 +373,7 @@
       span.green += span.greenStep;				\
       span.blue += span.blueStep;				\
       span.z += span.zStep;					\
-   }
+   } }
 #include "swrast/s_tritemp.h"
 
 
@@ -384,7 +390,7 @@
 #define BYTES_PER_ROW (xrb->ximage->bytes_per_line)
 #define SETUP_CODE						\
    GET_XRB(xrb);
-#define RENDER_SPAN( span )					\
+#define RENDER_SPAN( span ) {					\
    GLuint i;							\
    LOOKUP_SETUP;						\
    for (i = 0; i < span.end; i++) {				\
@@ -398,7 +404,7 @@
       span.green += span.greenStep;				\
       span.blue += span.blueStep;				\
       span.z += span.zStep;					\
-   }
+   } }
 #include "swrast/s_tritemp.h"
 
 
@@ -416,7 +422,7 @@
 #define SETUP_CODE						\
    XMesaContext xmesa = XMESA_CONTEXT(ctx);			\
    GET_XRB(xrb);
-#define RENDER_SPAN( span )					\
+#define RENDER_SPAN( span ) {					\
    GLuint i;							\
    GLint x = span.x, y = YFLIP(xrb, span.y);			\
    for (i = 0; i < span.end; i++, x++) {			\
@@ -430,7 +436,7 @@
       span.green += span.greenStep;				\
       span.blue += span.blueStep;				\
       span.z += span.zStep;					\
-   }
+   } }
 #include "swrast/s_tritemp.h"
 
 
@@ -447,7 +453,7 @@
    XMesaImage *img = xrb->ximage;				\
    unsigned long pixel;						\
    PACK_TRUECOLOR(pixel, v2->color[0], v2->color[1], v2->color[2]);
-#define RENDER_SPAN( span )					\
+#define RENDER_SPAN( span ) {					\
    GLuint i;							\
    GLint x = span.x, y = YFLIP(xrb, span.y);			\
    for (i = 0; i < span.end; i++, x++) {			\
@@ -457,7 +463,7 @@
          zRow[i] = z;						\
       }								\
       span.z += span.zStep;					\
-   }
+   } }
 #include "swrast/s_tritemp.h"
 
 
@@ -473,8 +479,9 @@
 #define BYTES_PER_ROW (xrb->ximage->bytes_per_line)
 #define SETUP_CODE					\
    GET_XRB(xrb);					\
-   GLuint p = PACK_8B8G8R( v2->color[0], v2->color[1], v2->color[2] );
-#define RENDER_SPAN( span )				\
+   GLuint p = PACK_8A8B8G8R( v2->color[0], v2->color[1],\
+                             v2->color[2], v2->color[3]);
+#define RENDER_SPAN( span ) {				\
    GLuint i;						\
    for (i = 0; i < span.end; i++) {			\
       const DEPTH_TYPE z = FixedToDepth(span.z);	\
@@ -483,7 +490,7 @@
          zRow[i] = z;					\
       }							\
       span.z += span.zStep;				\
-   }
+   } }
 #include "swrast/s_tritemp.h"
 
 
@@ -499,8 +506,9 @@
 #define BYTES_PER_ROW (xrb->ximage->bytes_per_line)
 #define SETUP_CODE					\
    GET_XRB(xrb);					\
-   GLuint p = PACK_8R8G8B( v2->color[0], v2->color[1], v2->color[2] );
-#define RENDER_SPAN( span )				\
+   GLuint p = PACK_8A8R8G8B(v2->color[0], v2->color[1],	\
+                            v2->color[2], v2->color[3]);
+#define RENDER_SPAN( span ) {				\
    GLuint i;						\
    for (i = 0; i < span.end; i++) {			\
       const DEPTH_TYPE z = FixedToDepth(span.z);	\
@@ -509,7 +517,7 @@
          zRow[i] = z;					\
       }							\
       span.z += span.zStep;				\
-   }
+   } }
 #include "swrast/s_tritemp.h"
 
 
@@ -526,7 +534,7 @@
 #define SETUP_CODE					\
    GET_XRB(xrb);					\
    GLuint p = PACK_8R8G8B( v2->color[0], v2->color[1], v2->color[2] );
-#define RENDER_SPAN( span )			\
+#define RENDER_SPAN( span ) {			\
    GLuint i;					\
    for (i = 0; i < span.end; i++) {		\
       DEPTH_TYPE z = FixedToDepth(span.z);	\
@@ -535,7 +543,7 @@
          zRow[i] = z;				\
       }						\
       span.z += span.zStep;			\
-   }
+   } }
 
 #include "swrast/s_tritemp.h"
 
@@ -553,7 +561,7 @@
 #define SETUP_CODE					\
    GET_XRB(xrb);					\
    const GLubyte *color = v2->color;
-#define RENDER_SPAN( span )				\
+#define RENDER_SPAN( span ) {				\
    GLuint i;						\
    for (i = 0; i < span.end; i++) {			\
       const DEPTH_TYPE z = FixedToDepth(span.z);	\
@@ -565,7 +573,7 @@
          zRow[i] = z;					\
       }							\
       span.z += span.zStep;				\
-   }
+   } }
 #include "swrast/s_tritemp.h"
 
 
@@ -580,7 +588,7 @@
    XMesaContext xmesa = XMESA_CONTEXT(ctx);			\
    GET_XRB(xrb);						\
    XMesaImage *img = xrb->ximage;
-#define RENDER_SPAN( span )					\
+#define RENDER_SPAN( span ) {					\
    GLuint i;							\
    GLint x = span.x, y = YFLIP(xrb, span.y);			\
    for (i = 0; i < span.end; i++, x++) {			\
@@ -593,7 +601,7 @@
          zRow[i] = z;						\
       }								\
       span.z += span.zStep;					\
-   }
+   } }
 #include "swrast/s_tritemp.h"
 
 
@@ -610,7 +618,7 @@
 #define SETUP_CODE					\
    GET_XRB(xrb);					\
    GLushort p = PACK_5R6G5B( v2->color[0], v2->color[1], v2->color[2] );
-#define RENDER_SPAN( span )				\
+#define RENDER_SPAN( span ) {				\
    GLuint i;						\
    for (i = 0; i < span.end; i++) {			\
       const DEPTH_TYPE z = FixedToDepth(span.z);	\
@@ -619,7 +627,7 @@
          zRow[i] = z;					\
       }							\
       span.z += span.zStep;				\
-   }
+   } }
 #include "swrast/s_tritemp.h"
 
 
@@ -637,7 +645,7 @@
    XMesaContext xmesa = XMESA_CONTEXT(ctx);			\
    GET_XRB(xrb);						\
    const GLubyte *color = v2->color;
-#define RENDER_SPAN( span )					\
+#define RENDER_SPAN( span ) {					\
    GLuint i;							\
    GLint x = span.x, y = YFLIP(xrb, span.y);			\
    for (i = 0; i < span.end; i++, x++) {			\
@@ -648,7 +656,7 @@
          zRow[i] = z;						\
       }								\
       span.z += span.zStep;					\
-   }
+   } }
 #include "swrast/s_tritemp.h"
 
 
@@ -665,7 +673,7 @@
 #define SETUP_CODE						\
    GET_XRB(xrb);						\
    FLAT_DITHER_SETUP( v2->color[0], v2->color[1], v2->color[2] );
-#define RENDER_SPAN( span )					\
+#define RENDER_SPAN( span ) {					\
    GLuint i;							\
    GLint x = span.x, y = YFLIP(xrb, span.y);			\
    FLAT_DITHER_ROW_SETUP(YFLIP(xrb, y));			\
@@ -676,7 +684,7 @@
          zRow[i] = z;						\
       }								\
       span.z += span.zStep;					\
-   }
+   } }
 #include "swrast/s_tritemp.h"
 
 
@@ -691,7 +699,7 @@
    GET_XRB(xrb);					\
    XMesaImage *img = xrb->ximage;		\
    FLAT_DITHER_SETUP( v2->color[0], v2->color[1], v2->color[2] );
-#define RENDER_SPAN( span )					\
+#define RENDER_SPAN( span ) {					\
    GLuint i;							\
    GLint x = span.x, y = YFLIP(xrb, span.y);	\
    FLAT_DITHER_ROW_SETUP(y);					\
@@ -703,7 +711,7 @@
          zRow[i] = z;						\
       }								\
       span.z += span.zStep;					\
-   }
+   } }
 #include "swrast/s_tritemp.h"
 
 
@@ -723,7 +731,7 @@
    GLubyte r = v2->color[0];					\
    GLubyte g = v2->color[1];					\
    GLubyte b = v2->color[2];
-#define RENDER_SPAN( span )					\
+#define RENDER_SPAN( span ) {					\
    GLuint i;							\
    GLint x = span.x, y = YFLIP(xrb, span.y);	\
    for (i = 0; i < span.end; i++, x++) {			\
@@ -733,7 +741,7 @@
          zRow[i] = z;						\
       }								\
       span.z += span.zStep;					\
-   }
+   } }
 #include "swrast/s_tritemp.h"
 
 
@@ -754,7 +762,7 @@
    GLubyte g = v2->color[1];				\
    GLubyte b = v2->color[2];				\
    GLubyte p = LOOKUP(r,g,b);
-#define RENDER_SPAN( span )				\
+#define RENDER_SPAN( span ) {				\
    GLuint i;						\
    for (i = 0; i < span.end; i++) {			\
       const DEPTH_TYPE z = FixedToDepth(span.z);	\
@@ -763,7 +771,7 @@
          zRow[i] = z;					\
       }							\
       span.z += span.zStep;				\
-   }
+   } }
 #include "swrast/s_tritemp.h"
 
 
@@ -777,7 +785,7 @@
    XMesaContext xmesa = XMESA_CONTEXT(ctx);			\
    GET_XRB(xrb);						\
    XMesaImage *img = xrb->ximage;
-#define RENDER_SPAN( span )					\
+#define RENDER_SPAN( span ) {					\
    GLuint i;							\
    GLint x = span.x, y = YFLIP(xrb, span.y);	\
    for (i = 0; i < span.end; i++, x++) {			\
@@ -788,7 +796,7 @@
       span.red += span.redStep;					\
       span.green += span.greenStep;				\
       span.blue += span.blueStep;				\
-   }
+   } }
 #include "swrast/s_tritemp.h"
 
 
@@ -798,20 +806,23 @@
  */
 #define NAME smooth_8A8B8G8R_triangle
 #define INTERP_RGB 1
+#define INTERP_ALPHA 1
 #define PIXEL_ADDRESS(X,Y) PIXEL_ADDR4(xrb, X, Y)
 #define PIXEL_TYPE GLuint
 #define BYTES_PER_ROW (xrb->ximage->bytes_per_line)
 #define SETUP_CODE						\
    GET_XRB(xrb);
-#define RENDER_SPAN( span )					\
+#define RENDER_SPAN( span ) {					\
    GLuint i;							\
    for (i = 0; i < span.end; i++) {				\
-      pRow[i] = PACK_8B8G8R(FixedToInt(span.red),		\
-         FixedToInt(span.green), FixedToInt(span.blue) );	\
+      pRow[i] = PACK_8A8B8G8R(FixedToInt(span.red),		\
+         FixedToInt(span.green), FixedToInt(span.blue),		\
+         FixedToInt(span.alpha));				\
       span.red += span.redStep;					\
       span.green += span.greenStep;				\
       span.blue += span.blueStep;				\
-   }
+      span.alpha += span.alphaStep;				\
+   } }
 #include "swrast/s_tritemp.h"
 
 
@@ -821,20 +832,23 @@
  */
 #define NAME smooth_8A8R8G8B_triangle
 #define INTERP_RGB 1
+#define INTERP_ALPHA 1
 #define PIXEL_ADDRESS(X,Y) PIXEL_ADDR4(xrb, X, Y)
 #define PIXEL_TYPE GLuint
 #define BYTES_PER_ROW (xrb->ximage->bytes_per_line)
 #define SETUP_CODE						\
    GET_XRB(xrb);
-#define RENDER_SPAN( span )					\
+#define RENDER_SPAN( span ) {					\
    GLuint i;							\
    for (i = 0; i < span.end; i++) {				\
-      pRow[i] = PACK_8R8G8B(FixedToInt(span.red),		\
-         FixedToInt(span.green), FixedToInt(span.blue) );	\
+      pRow[i] = PACK_8A8R8G8B(FixedToInt(span.red),		\
+         FixedToInt(span.green), FixedToInt(span.blue),		\
+         FixedToInt(span.alpha));				\
       span.red += span.redStep;					\
       span.green += span.greenStep;				\
       span.blue += span.blueStep;				\
-   }
+      span.alpha += span.alphaStep;				\
+   } }
 #include "swrast/s_tritemp.h"
 
 
@@ -849,7 +863,7 @@
 #define BYTES_PER_ROW (xrb->ximage->bytes_per_line)
 #define SETUP_CODE						\
    GET_XRB(xrb);
-#define RENDER_SPAN( span )					\
+#define RENDER_SPAN( span ) {					\
    GLuint i;							\
    for (i = 0; i < span.end; i++) {				\
       pRow[i] = PACK_8R8G8B(FixedToInt(span.red),		\
@@ -857,7 +871,7 @@
       span.red += span.redStep;					\
       span.green += span.greenStep;				\
       span.blue += span.blueStep;				\
-   }
+   } }
 #include "swrast/s_tritemp.h"
 
 
@@ -872,7 +886,7 @@
 #define BYTES_PER_ROW (xrb->ximage->bytes_per_line)
 #define SETUP_CODE					\
    GET_XRB(xrb);
-#define RENDER_SPAN( span )				\
+#define RENDER_SPAN( span ) {				\
    GLuint i;						\
    PIXEL_TYPE *pixel = pRow;				\
    for (i = 0; i < span.end; i++, pixel++) {		\
@@ -882,7 +896,7 @@
       span.red += span.redStep;				\
       span.green += span.greenStep;			\
       span.blue += span.blueStep;			\
-   }
+   } }
 #include "swrast/s_tritemp.h"
 
 
@@ -896,7 +910,7 @@
    XMesaContext xmesa = XMESA_CONTEXT(ctx);			\
    GET_XRB(xrb);						\
    XMesaImage *img = xrb->ximage;
-#define RENDER_SPAN( span )					\
+#define RENDER_SPAN( span ) {					\
    GLuint i;							\
    GLint x = span.x, y = YFLIP(xrb, span.y);	\
    for (i = 0; i < span.end; i++, x++) {			\
@@ -907,7 +921,7 @@
       span.red += span.redStep;					\
       span.green += span.greenStep;				\
       span.blue += span.blueStep;				\
-   }
+   } }
 #include "swrast/s_tritemp.h"
 
 
@@ -922,7 +936,7 @@
 #define BYTES_PER_ROW (xrb->ximage->bytes_per_line)
 #define SETUP_CODE						\
    GET_XRB(xrb);
-#define RENDER_SPAN( span )					\
+#define RENDER_SPAN( span ) {					\
    GLuint i;							\
    for (i = 0; i < span.end; i++) {				\
       pRow[i] = (PIXEL_TYPE) PACK_5R6G5B(FixedToInt(span.red),	\
@@ -930,7 +944,7 @@
       span.red += span.redStep;					\
       span.green += span.greenStep;				\
       span.blue += span.blueStep;				\
-   }
+   } }
 #include "swrast/s_tritemp.h"
 
 
@@ -946,7 +960,7 @@
 #define SETUP_CODE						\
    XMesaContext xmesa = XMESA_CONTEXT(ctx);			\
    GET_XRB(xrb);
-#define RENDER_SPAN( span )					\
+#define RENDER_SPAN( span ) {					\
    GLuint i;							\
    GLint x = span.x, y = YFLIP(xrb, span.y);	\
    for (i = 0; i < span.end; i++, x++) {			\
@@ -955,7 +969,7 @@
       span.red += span.redStep;					\
       span.green += span.greenStep;				\
       span.blue += span.blueStep;				\
-   }
+   } }
 #include "swrast/s_tritemp.h"
 
 
@@ -970,7 +984,7 @@
 #define BYTES_PER_ROW (xrb->ximage->bytes_per_line)
 #define SETUP_CODE						\
    GET_XRB(xrb);
-#define RENDER_SPAN( span )					\
+#define RENDER_SPAN( span ) {					\
    GLuint i;							\
    GLint x = span.x, y = YFLIP(xrb, span.y);	\
    XDITHER_SETUP(y);						\
@@ -980,7 +994,7 @@
       span.red += span.redStep;					\
       span.green += span.greenStep;				\
       span.blue += span.blueStep;				\
-   }
+   } }
 #include "swrast/s_tritemp.h"
 
 
@@ -993,7 +1007,7 @@
 #define SETUP_CODE						\
    GET_XRB(xrb);						\
    XMesaImage *img = xrb->ximage;
-#define RENDER_SPAN( span )					\
+#define RENDER_SPAN( span ) {					\
    GLuint i;							\
    GLint x = span.x, y = YFLIP(xrb, span.y);	\
    XDITHER_SETUP(y);						\
@@ -1004,7 +1018,7 @@
       span.red += span.redStep;					\
       span.green += span.greenStep;				\
       span.blue += span.blueStep;				\
-   }
+   } }
 #include "swrast/s_tritemp.h"
 
 
@@ -1019,7 +1033,7 @@
 #define BYTES_PER_ROW (xrb->ximage->bytes_per_line)
 #define SETUP_CODE						\
    GET_XRB(xrb);
-#define RENDER_SPAN( span )					\
+#define RENDER_SPAN( span ) {					\
    GLuint i;							\
    LOOKUP_SETUP;						\
    for (i = 0; i < span.end; i++) {				\
@@ -1028,7 +1042,7 @@
       span.red += span.redStep;					\
       span.green += span.greenStep;				\
       span.blue += span.blueStep;				\
-   }
+   } }
 #include "swrast/s_tritemp.h"
 
 
@@ -1044,7 +1058,7 @@
 #define SETUP_CODE						\
    XMesaContext xmesa = XMESA_CONTEXT(ctx);			\
    GET_XRB(xrb);
-#define RENDER_SPAN( span )					\
+#define RENDER_SPAN( span ) {					\
    GLuint i;							\
    GLint x = span.x, y = YFLIP(xrb, span.y);	\
    for (i = 0; i < span.end; i++, x++) {			\
@@ -1053,7 +1067,7 @@
       span.red += span.redStep;					\
       span.green += span.greenStep;				\
       span.blue += span.blueStep;				\
-   }
+   } }
 #include "swrast/s_tritemp.h"
 
 
@@ -1068,12 +1082,12 @@
    XMesaImage *img = xrb->ximage;				\
    unsigned long pixel;						\
    PACK_TRUECOLOR(pixel, v2->color[0], v2->color[1], v2->color[2]);
-#define RENDER_SPAN( span )					\
+#define RENDER_SPAN( span ) {					\
    GLuint i;							\
    GLint x = span.x, y = YFLIP(xrb, span.y);	\
    for (i = 0; i < span.end; i++, x++) {			\
       XMesaPutPixel(img, x, y, pixel);				\
-   }
+   } }
 #include "swrast/s_tritemp.h"
 
 
@@ -1089,11 +1103,11 @@
    GET_XRB(xrb);					\
    unsigned long p = PACK_8B8G8R( v2->color[0],		\
 		 v2->color[1], v2->color[2] );
-#define RENDER_SPAN( span )				\
+#define RENDER_SPAN( span ) {				\
    GLuint i;						\
    for (i = 0; i < span.end; i++) {			\
       pRow[i] = (PIXEL_TYPE) p;				\
-   }
+   } }
 #include "swrast/s_tritemp.h"
 
 
@@ -1109,11 +1123,11 @@
    GET_XRB(xrb);					\
    unsigned long p = PACK_8R8G8B( v2->color[0],		\
 		 v2->color[1], v2->color[2] );
-#define RENDER_SPAN( span )				\
+#define RENDER_SPAN( span ) {				\
    GLuint i;						\
    for (i = 0; i < span.end; i++) {			\
       pRow[i] = (PIXEL_TYPE) p;				\
-   }
+   } }
 #include "swrast/s_tritemp.h"
 
 
@@ -1129,11 +1143,11 @@
    GET_XRB(xrb);					\
    unsigned long p = PACK_8R8G8B( v2->color[0],		\
 		 v2->color[1], v2->color[2] );
-#define RENDER_SPAN( span )				\
+#define RENDER_SPAN( span ) {				\
    GLuint i;						\
    for (i = 0; i < span.end; i++) {			\
       pRow[i] = (PIXEL_TYPE) p;				\
-   }
+   } }
 #include "swrast/s_tritemp.h"
 
 
@@ -1148,14 +1162,14 @@
 #define SETUP_CODE					\
    GET_XRB(xrb);					\
    const GLubyte *color = v2->color;
-#define RENDER_SPAN( span )				\
+#define RENDER_SPAN( span ) {				\
    GLuint i;						\
    PIXEL_TYPE *pixel = pRow;				\
    for (i = 0; i < span.end; i++, pixel++) {		\
       pixel->r = color[RCOMP];				\
       pixel->g = color[GCOMP];				\
       pixel->b = color[BCOMP];				\
-   }
+   } }
 #include "swrast/s_tritemp.h"
 
 
@@ -1168,7 +1182,7 @@
    XMesaContext xmesa = XMESA_CONTEXT(ctx);			\
    GET_XRB(xrb);						\
    XMesaImage *img = xrb->ximage;
-#define RENDER_SPAN( span )					\
+#define RENDER_SPAN( span ) {					\
    GLuint i;							\
    GLint x = span.x, y = YFLIP(xrb, span.y);	\
    for (i = 0; i < span.end; i++, x++) {			\
@@ -1176,7 +1190,7 @@
       PACK_TRUEDITHER(p, x, y, v2->color[0],			\
                v2->color[1], v2->color[2] );			\
       XMesaPutPixel(img, x, y, p);				\
-   }
+   } }
 #include "swrast/s_tritemp.h"
 
 
@@ -1192,11 +1206,11 @@
    GET_XRB(xrb);					\
    unsigned long p = PACK_5R6G5B( v2->color[0],		\
 		 v2->color[1], v2->color[2] );
-#define RENDER_SPAN( span )				\
+#define RENDER_SPAN( span ) {				\
    GLuint i;						\
    for (i = 0; i < span.end; i++) {			\
       pRow[i] = (PIXEL_TYPE) p;				\
-   }
+   } }
 #include "swrast/s_tritemp.h"
 
 
@@ -1212,13 +1226,13 @@
    XMesaContext xmesa = XMESA_CONTEXT(ctx);			\
    GET_XRB(xrb);						\
    const GLubyte *color = v2->color;
-#define RENDER_SPAN( span )					\
+#define RENDER_SPAN( span ) {					\
    GLuint i;							\
    GLint x = span.x, y = YFLIP(xrb, span.y);	\
    for (i = 0; i < span.end; i++, x++) {			\
       PACK_TRUEDITHER(pRow[i], x, y, color[RCOMP],		\
          color[GCOMP], color[BCOMP]);				\
-   }
+   } }
 #include "swrast/s_tritemp.h"
 
 
@@ -1233,13 +1247,13 @@
 #define SETUP_CODE						\
    GET_XRB(xrb);						\
    FLAT_DITHER_SETUP( v2->color[0], v2->color[1], v2->color[2] );
-#define RENDER_SPAN( span )					\
+#define RENDER_SPAN( span ) {					\
    GLuint i;							\
    GLint x = span.x, y = YFLIP(xrb, span.y);	\
    FLAT_DITHER_ROW_SETUP(YFLIP(xrb, y));		\
    for (i = 0; i < span.end; i++, x++) {			\
       pRow[i] = (PIXEL_TYPE) FLAT_DITHER(x);			\
-   }
+   } }
 #include "swrast/s_tritemp.h"
 
 
@@ -1252,14 +1266,14 @@
    GET_XRB(xrb);						\
    XMesaImage *img = xrb->ximage;				\
    FLAT_DITHER_SETUP( v2->color[0], v2->color[1], v2->color[2] );
-#define RENDER_SPAN( span )					\
+#define RENDER_SPAN( span ) {					\
    GLuint i;							\
    GLint x = span.x, y = YFLIP(xrb, span.y);	\
    FLAT_DITHER_ROW_SETUP(y);					\
    for (i = 0; i < span.end; i++, x++) {			\
       unsigned long p = FLAT_DITHER(x);				\
       XMesaPutPixel(img, x, y, p );				\
-   }
+   } }
 #include "swrast/s_tritemp.h"
 
 
@@ -1277,12 +1291,12 @@
    GLubyte r = v2->color[0];					\
    GLubyte g = v2->color[1];					\
    GLubyte b = v2->color[2];
-#define RENDER_SPAN( span )					\
+#define RENDER_SPAN( span ) {					\
    GLuint i;							\
    GLint x = span.x, y = YFLIP(xrb, span.y);	\
    for (i = 0; i < span.end; i++, x++) {			\
       pRow[i] = (PIXEL_TYPE) DITHER_HPCR(x, y, r, g, b);	\
-   }
+   } }
 #include "swrast/s_tritemp.h"
 
 
@@ -1301,11 +1315,11 @@
    GLubyte g = v2->color[1];				\
    GLubyte b = v2->color[2];				\
    GLubyte p = LOOKUP(r,g,b);
-#define RENDER_SPAN( span )         	 		\
+#define RENDER_SPAN( span ) {         	 		\
    GLuint i;						\
    for (i = 0; i < span.end; i++) {			\
       pRow[i] = (PIXEL_TYPE) p;				\
-   }
+   } }
 #include "swrast/s_tritemp.h"
 
 
@@ -1436,19 +1450,20 @@ do {                                   \
 static swrast_tri_func
 get_triangle_func(GLcontext *ctx)
 {
+#if CHAN_BITS == 8
    SWcontext *swrast = SWRAST_CONTEXT(ctx);
    XMesaContext xmesa = XMESA_CONTEXT(ctx);
-   int depth = GET_VISUAL_DEPTH(xmesa->xm_visual);
-   struct xmesa_renderbuffer *xrb;
+   XMesaBuffer xmbuf = XMESA_BUFFER(ctx->DrawBuffer);
+   const int depth = GET_VISUAL_DEPTH(xmesa->xm_visual);
+   const struct xmesa_renderbuffer *xrb;
 
 #ifdef DEBUG
    triFuncName = NULL;
 #endif
 
-#if CHAN_BITS == 8
    /* trivial fallback tests */
-   if ((ctx->DrawBuffer->_ColorDrawBufferMask[0]
-        & (BUFFER_BIT_FRONT_LEFT | BUFFER_BIT_BACK_LEFT)) == 0)
+   if ((ctx->DrawBuffer->_ColorDrawBufferIndexes[0] != BUFFER_BIT_FRONT_LEFT) &&
+       (ctx->DrawBuffer->_ColorDrawBufferIndexes[0] != BUFFER_BIT_BACK_LEFT))
       return (swrast_tri_func) NULL;
    if (ctx->RenderMode != GL_RENDER)
       return (swrast_tri_func) NULL;
@@ -1461,8 +1476,10 @@ get_triangle_func(GLcontext *ctx)
    if (ctx->Polygon.CullFlag && 
        ctx->Polygon.CullFaceMode == GL_FRONT_AND_BACK)
       return (swrast_tri_func) NULL;
+   if (xmbuf->swAlpha)
+      return (swrast_tri_func) NULL;
 
-   xrb = xmesa_renderbuffer(ctx->DrawBuffer->_ColorDrawBuffers[0][0]->Wrapped);
+   xrb = xmesa_renderbuffer(ctx->DrawBuffer->_ColorDrawBuffers[0]->Wrapped);
 
    if (xrb->ximage) {
       if (   ctx->Light.ShadeModel==GL_SMOOTH

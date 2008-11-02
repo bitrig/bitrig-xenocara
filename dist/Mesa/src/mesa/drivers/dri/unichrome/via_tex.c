@@ -33,6 +33,7 @@
 #include "colortab.h"
 #include "convolve.h"
 #include "context.h"
+#include "mipmap.h"
 #include "simple_list.h"
 #include "texcompress.h"
 #include "texformat.h"
@@ -512,6 +513,13 @@ static GLboolean viaSetTexImages(GLcontext *ctx,
 
    numLevels = lastLevel - firstLevel + 1;
 
+   /* The hardware supports only 10 mipmap levels; ignore higher levels.
+    */
+   if ((numLevels > 10) && (ctx->Const.MaxTextureLevels > 10)) {
+       lastLevel -= numLevels - 10;
+       numLevels = 10;
+   }
+
    /* save these values, check if they effect the residency of the
     * texture:
     */
@@ -812,9 +820,7 @@ static void viaTexImage(GLcontext *ctx,
 
    /* GL_SGIS_generate_mipmap */
    if (level == texObj->BaseLevel && texObj->GenerateMipmap) {
-      _mesa_generate_mipmap(ctx, target,
-                            &ctx->Texture.Unit[ctx->Texture.CurrentUnit],
-                            texObj);
+      _mesa_generate_mipmap(ctx, target, texObj);
    }
 
    _mesa_unmap_teximage_pbo(ctx, packing);

@@ -44,7 +44,7 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "enums.h"
 #include "colormac.h"
 #include "swrast/swrast.h"
-#include "array_cache/acache.h"
+#include "vbo/vbo.h"
 #include "tnl/tnl.h"
 #include "swrast_setup/swrast_setup.h"
 
@@ -813,7 +813,7 @@ static void r128UpdateWindow( GLcontext *ctx )
    r128ContextPtr rmesa = R128_CONTEXT(ctx);
    int x = rmesa->driDrawable->x;
    int y = rmesa->driDrawable->y;
-   struct gl_renderbuffer *rb = ctx->DrawBuffer->_ColorDrawBuffers[0][0];
+   struct gl_renderbuffer *rb = ctx->DrawBuffer->_ColorDrawBuffers[0];
    driRenderbuffer *drb = (driRenderbuffer *) rb;
 
    rmesa->setup.window_xy_offset = (((y & 0xFFF) << R128_WINDOW_Y_SHIFT) |
@@ -897,18 +897,22 @@ static void r128DDDrawBuffer( GLcontext *ctx, GLenum mode )
 
    FLUSH_BATCH( rmesa );
 
-   /*
-    * _ColorDrawBufferMask is easier to cope with than <mode>.
-    */
-   switch ( ctx->DrawBuffer->_ColorDrawBufferMask[0] ) {
-   case BUFFER_BIT_FRONT_LEFT:
-   case BUFFER_BIT_BACK_LEFT:
-      FALLBACK( rmesa, R128_FALLBACK_DRAW_BUFFER, GL_FALSE );
-      break;
-   default:
+   if (ctx->DrawBuffer->_NumColorDrawBuffers != 1) {
       /* GL_NONE or GL_FRONT_AND_BACK or stereo left&right, etc */
       FALLBACK( rmesa, R128_FALLBACK_DRAW_BUFFER, GL_TRUE );
-      break;
+      return;
+   }
+   else {
+      switch ( ctx->DrawBuffer->_ColorDrawBufferIndexes[0] ) {
+      case BUFFER_FRONT_LEFT:
+      case BUFFER_BACK_LEFT:
+         FALLBACK( rmesa, R128_FALLBACK_DRAW_BUFFER, GL_FALSE );
+         break;
+      default:
+         /* GL_NONE or GL_FRONT_AND_BACK or stereo left&right, etc */
+         FALLBACK( rmesa, R128_FALLBACK_DRAW_BUFFER, GL_TRUE );
+         break;
+      }
    }
 
    rmesa->new_state |= R128_NEW_WINDOW;
@@ -1250,7 +1254,7 @@ static void r128DDInvalidateState( GLcontext *ctx, GLuint new_state )
 {
    _swrast_InvalidateState( ctx, new_state );
    _swsetup_InvalidateState( ctx, new_state );
-   _ac_InvalidateState( ctx, new_state );
+   _vbo_InvalidateState( ctx, new_state );
    _tnl_InvalidateState( ctx, new_state );
    R128_CONTEXT(ctx)->NewGLState |= new_state;
 }
@@ -1434,19 +1438,4 @@ void r128DDInitStateFuncs( GLcontext *ctx )
 
    ctx->Driver.DepthRange               = r128DepthRange;
    ctx->Driver.Viewport                 = r128Viewport;
-
-   /* Pixel path fallbacks.
-    */
-   ctx->Driver.Accum = _swrast_Accum;
-   ctx->Driver.Bitmap = _swrast_Bitmap;
-   ctx->Driver.CopyPixels = _swrast_CopyPixels;
-   ctx->Driver.DrawPixels = _swrast_DrawPixels;
-   ctx->Driver.ReadPixels = _swrast_ReadPixels;
-
-   /* Swrast hooks for imaging extensions:
-    */
-   ctx->Driver.CopyColorTable = _swrast_CopyColorTable;
-   ctx->Driver.CopyColorSubTable = _swrast_CopyColorSubTable;
-   ctx->Driver.CopyConvolutionFilter1D = _swrast_CopyConvolutionFilter1D;
-   ctx->Driver.CopyConvolutionFilter2D = _swrast_CopyConvolutionFilter2D;
 }

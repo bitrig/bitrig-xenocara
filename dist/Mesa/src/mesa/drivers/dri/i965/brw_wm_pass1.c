@@ -32,9 +32,6 @@
 
 #include "brw_context.h"
 #include "brw_wm.h"
-#include "program.h"
-#include "arbprogparse.h"
-#include "program_instruction.h"
 
 
 static GLuint get_tracked_mask(struct brw_wm_compile *c,
@@ -153,12 +150,17 @@ void brw_wm_pass1( struct brw_wm_compile *c )
       case OPCODE_FLR:
       case OPCODE_FRC:
       case OPCODE_MOV:
+      case OPCODE_SWZ:
 	 read0 = writemask;
 	 break;
 
       case OPCODE_SUB:
       case OPCODE_SLT:
+      case OPCODE_SLE:
       case OPCODE_SGE:
+      case OPCODE_SGT:
+      case OPCODE_SEQ:
+      case OPCODE_SNE:
       case OPCODE_ADD:
       case OPCODE_MAX:
       case OPCODE_MIN:
@@ -256,11 +258,9 @@ void brw_wm_pass1( struct brw_wm_compile *c )
 	 read0 = WRITEMASK_XYW;
 	 break;
 
-      case OPCODE_SWZ:
       case OPCODE_DST:
       case OPCODE_TXP:
       default:
-	 assert(0);
 	 break;
       }
 

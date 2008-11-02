@@ -46,9 +46,7 @@
 
 /* Clear the color and/or depth buffers.
  */
-static void tdfxClear( GLcontext *ctx,
-			 GLbitfield mask, GLboolean all,
-			 GLint x, GLint y, GLint width, GLint height )
+static void tdfxClear( GLcontext *ctx, GLbitfield mask )
 {
    tdfxContextPtr fxMesa = (tdfxContextPtr) ctx->DriverCtx;
    GLbitfield softwareMask = mask & (BUFFER_BIT_ACCUM);
@@ -56,8 +54,7 @@ static void tdfxClear( GLcontext *ctx,
       fxMesa->haveHwStencil ? fxMesa->glCtx->Visual.stencilBits : 0;
 
    if ( TDFX_DEBUG & DEBUG_VERBOSE_API ) {
-      fprintf( stderr, "%s( %d, %d, %d, %d )\n",
-	       __FUNCTION__, (int) x, (int) y, (int) width, (int) height );
+      fprintf( stderr, "tdfxClear(0x%x)\n", mask);
    }
 
    /* Need this check to respond to glScissor and clipping updates */
@@ -278,7 +275,7 @@ static void tdfxClear( GLcontext *ctx,
                                         fxMesa->Color.ClearAlpha,
                                         fxMesa->Depth.Clear);
 	 FX_grColorMaskv_NoLock(ctx, true4);
-	 if (ctx->DrawBuffer->_ColorDrawBufferMask[0] & BUFFER_BIT_FRONT_LEFT)
+	 if (ctx->DrawBuffer->_ColorDrawBufferIndexes[0] == BUFFER_FRONT_LEFT)
             fxMesa->Glide.grRenderBuffer(GR_BUFFER_FRONTBUFFER);
 	 if (!ctx->Depth.Test || !ctx->Depth.Mask)
 	    fxMesa->Glide.grDepthMask(FXFALSE);
@@ -298,7 +295,7 @@ static void tdfxClear( GLcontext *ctx,
                fxMesa->Glide.grDepthMask(FXTRUE);
             }
             FX_grColorMaskv_NoLock(ctx, true4);
-            if (ctx->DrawBuffer->_ColorDrawBufferMask[0] & BUFFER_BIT_FRONT_LEFT)
+            if (ctx->DrawBuffer->_ColorDrawBufferIndexes[0] == BUFFER_FRONT_LEFT)
                fxMesa->Glide.grRenderBuffer(GR_BUFFER_FRONTBUFFER);
          }
       }
@@ -313,7 +310,7 @@ static void tdfxClear( GLcontext *ctx,
    }
 
    if (softwareMask)
-      _swrast_Clear( ctx, softwareMask, all, x, y, width, height );
+      _swrast_Clear(ctx, softwareMask);
 }
 
 

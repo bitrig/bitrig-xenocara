@@ -50,7 +50,23 @@
 
 
 
+#ifdef HAVE_DIX_CONFIG_H
+
+#include <dix-config.h>
+#define PUBLIC
+
+#else
+
 #include "glheader.h"
+
+#endif
+
+#include <stdlib.h>
+#include <string.h>
+#ifdef DEBUG
+#include <assert.h>
+#endif
+
 #include "glapi.h"
 #include "glapioffsets.h"
 #include "glapitable.h"
@@ -240,6 +256,7 @@ _glapi_check_multithread(void)
       else if (knownID != _glthread_GetID()) {
          ThreadSafe = GL_TRUE;
          _glapi_set_dispatch(NULL);
+         _glapi_set_context(NULL);
       }
    }
    else if (!_glapi_get_dispatch()) {
@@ -430,7 +447,12 @@ get_static_proc_address(const char *funcName)
 {
    const glprocs_table_t * const f = find_entry( funcName );
    if (f) {
-#ifdef DISPATCH_FUNCTION_SIZE
+#if defined(DISPATCH_FUNCTION_SIZE) && defined(GLX_INDIRECT_RENDERING)
+      return (f->Address == NULL)
+	 ? (_glapi_proc) (gl_dispatch_functions_start
+			  + (DISPATCH_FUNCTION_SIZE * f->Offset))
+         : f->Address;
+#elif defined(DISPATCH_FUNCTION_SIZE)
       return (_glapi_proc) (gl_dispatch_functions_start 
                             + (DISPATCH_FUNCTION_SIZE * f->Offset));
 #else
@@ -718,7 +740,7 @@ add_function_name( const char * funcName )
  * \returns
  * The offset in the dispatch table of the named function.  A pointer to the
  * driver's implementation of the named function should be stored at
- * \c dispatch_table[\c offset].
+ * \c dispatch_table[\c offset].  Return -1 if error/problem.
  *
  * \sa glXGetProcAddress
  *
@@ -767,7 +789,7 @@ _glapi_add_dispatch( const char * const * function_names,
        */
 
       if (!function_names[i] || function_names[i][0] != 'g' || function_names[i][1] != 'l')
-	return GL_FALSE;
+         return -1;
    
       /* Determine if the named function already exists.  If the function does
        * exist, it must have the same parameter signature as the function
@@ -993,19 +1015,11 @@ _glapi_check_table(const struct _glapi_table *table)
       assert(blendColorOffset == offset);
    }
    {
-      GLuint istextureOffset = _glapi_get_proc_offset("glIsTextureEXT");
-      char *istextureFunc = (char*) &table->IsTextureEXT;
-      GLuint offset = (istextureFunc - (char *) table) / sizeof(void *);
-      assert(istextureOffset == _gloffset_IsTextureEXT);
-      assert(istextureOffset == offset);
-   }
-   {
       GLuint secondaryColor3fOffset = _glapi_get_proc_offset("glSecondaryColor3fEXT");
       char *secondaryColor3fFunc = (char*) &table->SecondaryColor3fEXT;
       GLuint offset = (secondaryColor3fFunc - (char *) table) / sizeof(void *);
       assert(secondaryColor3fOffset == _gloffset_SecondaryColor3fEXT);
       assert(secondaryColor3fOffset == offset);
-      assert(_glapi_get_proc_address("glSecondaryColor3fEXT") == (_glapi_proc) &glSecondaryColor3fEXT);
    }
    {
       GLuint pointParameterivOffset = _glapi_get_proc_offset("glPointParameterivNV");
@@ -1013,7 +1027,6 @@ _glapi_check_table(const struct _glapi_table *table)
       GLuint offset = (pointParameterivFunc - (char *) table) / sizeof(void *);
       assert(pointParameterivOffset == _gloffset_PointParameterivNV);
       assert(pointParameterivOffset == offset);
-      assert(_glapi_get_proc_address("glPointParameterivNV") == (_glapi_proc) &glPointParameterivNV);
    }
    {
       GLuint setFenceOffset = _glapi_get_proc_offset("glSetFenceNV");
@@ -1031,22 +1044,24 @@ _glapi_check_table(const struct _glapi_table *table)
 #if defined(PTHREADS) || defined(GLX_USE_TLS)
 /**
  * Perform platform-specific GL API entry-point fixups.
- * 
- * 
  */
 static void
 init_glapi_relocs( void )
 {
-#if defined( USE_X86_ASM ) && defined( GLX_USE_TLS )
-    extern void * _x86_get_dispatch(void);
-    const GLubyte * const get_disp = (const GLubyte *) _x86_get_dispatch;
+#if defined(USE_X86_ASM) && defined(GLX_USE_TLS) && !defined(GLX_X86_READONLY_TEXT)
+    extern unsigned long _x86_get_dispatch(void);
+    char run_time_patch[] = {
+       0x65, 0xa1, 0, 0, 0, 0 /* movl %gs:0,%eax */
+    };
+    GLuint *offset = (GLuint *) &run_time_patch[2]; /* 32-bits for x86/32 */
+    const GLubyte * const get_disp = (const GLubyte *) run_time_patch;
     GLubyte * curr_func = (GLubyte *) gl_dispatch_functions_start;
 
-
+    *offset = _x86_get_dispatch();
     while ( curr_func != (GLubyte *) gl_dispatch_functions_end ) {
-	(void) memcpy( curr_func, get_disp, 6 );
+	(void) memcpy( curr_func, get_disp, sizeof(run_time_patch));
 	curr_func += DISPATCH_FUNCTION_SIZE;
     }
-#endif /* defined( USE_X86_ASM ) && defined( GLX_USE_TLS ) */
-}
 #endif
+}
+#endif /* defined(PTHREADS) || defined(GLX_USE_TLS) */

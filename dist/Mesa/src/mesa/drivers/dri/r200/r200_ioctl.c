@@ -1,4 +1,3 @@
-/* $XFree86: xc/lib/GL/mesa/src/drv/r200/r200_ioctl.c,v 1.4 2002/12/17 00:32:56 dawes Exp $ */
 /*
 Copyright (C) The Weather Channel, Inc.  2002.  All Rights Reserved.
 
@@ -420,13 +419,14 @@ static void r200WaitForFrameCompletion( r200ContextPtr rmesa )
 
 /* Copy the back color buffer to the front color buffer.
  */
-void r200CopyBuffer( const __DRIdrawablePrivate *dPriv,
+void r200CopyBuffer( __DRIdrawablePrivate *dPriv,
 		      const drm_clip_rect_t	 *rect)
 {
    r200ContextPtr rmesa;
    GLint nbox, i, ret;
    GLboolean   missed_target;
    int64_t ust;
+   __DRIscreenPrivate *psp = dPriv->driScreenPriv;
 
    assert(dPriv);
    assert(dPriv->driContextPriv);
@@ -450,7 +450,7 @@ void r200CopyBuffer( const __DRIdrawablePrivate *dPriv,
    if (!rect)
    {
        UNLOCK_HARDWARE( rmesa );
-       driWaitForVBlank( dPriv, & rmesa->vbl_seq, rmesa->vblank_flags, & missed_target );
+       driWaitForVBlank( dPriv, & missed_target );
        LOCK_HARDWARE( rmesa );
    }
 
@@ -477,15 +477,17 @@ void r200CopyBuffer( const __DRIdrawablePrivate *dPriv,
 	     if (rect->y2 < b->y2)
 		 b->y2 = rect->y2;
 
-	     if (b->x1 < b->x2 && b->y1 < b->y2)
-		 b++;
+	     if (b->x1 >= b->x2 || b->y1 >= b->y2)
+		 continue;
 	  }
-	  else
-	      b++;
 
+	  b++;
 	  n++;
       }
       rmesa->sarea->nbox = n;
+
+      if (!n)
+	 continue;
 
       ret = drmCommandNone( rmesa->dri.fd, DRM_RADEON_SWAP );
 
@@ -502,7 +504,7 @@ void r200CopyBuffer( const __DRIdrawablePrivate *dPriv,
        rmesa->hw.all_dirty = GL_TRUE;
 
        rmesa->swap_count++;
-       (*dri_interface->getUST)( & ust );
+       (*psp->systemTime->getUST)( & ust );
        if ( missed_target ) {
 	   rmesa->swap_missed_count++;
 	   rmesa->swap_missed_ust = ust - rmesa->swap_ust;
@@ -514,11 +516,12 @@ void r200CopyBuffer( const __DRIdrawablePrivate *dPriv,
    }
 }
 
-void r200PageFlip( const __DRIdrawablePrivate *dPriv )
+void r200PageFlip( __DRIdrawablePrivate *dPriv )
 {
    r200ContextPtr rmesa;
    GLint ret;
    GLboolean   missed_target;
+   __DRIscreenPrivate *psp = dPriv->driScreenPriv;
 
    assert(dPriv);
    assert(dPriv->driContextPriv);
@@ -554,10 +557,10 @@ void r200PageFlip( const __DRIdrawablePrivate *dPriv )
     */
    r200WaitForFrameCompletion( rmesa );
    UNLOCK_HARDWARE( rmesa );
-   driWaitForVBlank( dPriv, & rmesa->vbl_seq, rmesa->vblank_flags, & missed_target );
+   driWaitForVBlank( dPriv, & missed_target );
    if ( missed_target ) {
       rmesa->swap_missed_count++;
-      (void) (*dri_interface->getUST)( & rmesa->swap_missed_ust );
+      (void) (*psp->systemTime->getUST)( & rmesa->swap_missed_ust );
    }
    LOCK_HARDWARE( rmesa );
 
@@ -571,7 +574,7 @@ void r200PageFlip( const __DRIdrawablePrivate *dPriv )
    }
 
    rmesa->swap_count++;
-   (void) (*dri_interface->getUST)( & rmesa->swap_ust );
+   (void) (*psp->systemTime->getUST)( & rmesa->swap_ust );
 
 #if 000
    if ( rmesa->sarea->pfCurrentPage == 1 ) {
@@ -605,18 +608,17 @@ void r200PageFlip( const __DRIdrawablePrivate *dPriv )
 /* ================================================================
  * Buffer clear
  */
-static void r200Clear( GLcontext *ctx, GLbitfield mask, GLboolean all,
-			 GLint cx, GLint cy, GLint cw, GLint ch )
+static void r200Clear( GLcontext *ctx, GLbitfield mask )
 {
    r200ContextPtr rmesa = R200_CONTEXT(ctx);
    __DRIdrawablePrivate *dPriv = rmesa->dri.drawable;
    GLuint flags = 0;
    GLuint color_mask = 0;
    GLint ret, i;
+   GLint cx, cy, cw, ch;
 
    if ( R200_DEBUG & DEBUG_IOCTL ) {
-      fprintf( stderr, "%s:  all=%d cx=%d cy=%d cw=%d ch=%d\n",
-	       __FUNCTION__, all, cx, cy, cw, ch );
+      fprintf( stderr, "r200Clear\n");
    }
 
    {
@@ -653,7 +655,7 @@ static void r200Clear( GLcontext *ctx, GLbitfield mask, GLboolean all,
    if ( mask ) {
       if (R200_DEBUG & DEBUG_FALLBACKS)
 	 fprintf(stderr, "%s: swrast clear, mask: %x\n", __FUNCTION__, mask);
-      _swrast_Clear( ctx, mask, all, cx, cy, cw, ch );
+      _swrast_Clear( ctx, mask );
    }
 
    if ( !flags ) 
@@ -670,11 +672,17 @@ static void r200Clear( GLcontext *ctx, GLbitfield mask, GLboolean all,
       }
    }
 
+   LOCK_HARDWARE( rmesa );
+
+   /* compute region after locking: */
+   cx = ctx->DrawBuffer->_Xmin;
+   cy = ctx->DrawBuffer->_Ymin;
+   cw = ctx->DrawBuffer->_Xmax - cx;
+   ch = ctx->DrawBuffer->_Ymax - cy;
+
    /* Flip top to bottom */
    cx += dPriv->x;
    cy  = dPriv->y + dPriv->h - cy - ch;
-
-   LOCK_HARDWARE( rmesa );
 
    /* Throttle the number of clear ioctls we do.
     */
@@ -717,7 +725,8 @@ static void r200Clear( GLcontext *ctx, GLbitfield mask, GLboolean all,
       drm_radeon_clear_rect_t depth_boxes[RADEON_NR_SAREA_CLIPRECTS];
       GLint n = 0;
 
-      if ( !all ) {
+      if (cw != dPriv->w || ch != dPriv->h) {
+         /* clear subregion */
 	 for ( ; i < nr ; i++ ) {
 	    GLint x = box[i].x1;
 	    GLint y = box[i].y1;
@@ -739,6 +748,7 @@ static void r200Clear( GLcontext *ctx, GLbitfield mask, GLboolean all,
 	    n++;
 	 }
       } else {
+         /* clear whole window */
 	 for ( ; i < nr ; i++ ) {
 	    *b++ = box[i];
 	    n++;
@@ -851,7 +861,7 @@ void r200Finish( GLcontext *ctx )
  * the kernel data structures, and the current context to get the
  * device fd.
  */
-void *r200AllocateMemoryMESA(__DRInativeDisplay *dpy, int scrn, GLsizei size,
+void *r200AllocateMemoryMESA(__DRIscreen *screen, GLsizei size,
 			     GLfloat readfreq, GLfloat writefreq, 
 			     GLfloat priority)
 {
@@ -893,7 +903,7 @@ void *r200AllocateMemoryMESA(__DRInativeDisplay *dpy, int scrn, GLsizei size,
 
 
 /* Called via glXFreeMemoryMESA() */
-void r200FreeMemoryMESA(__DRInativeDisplay *dpy, int scrn, GLvoid *pointer)
+void r200FreeMemoryMESA(__DRIscreen *screen, GLvoid *pointer)
 {
    GET_CURRENT_CONTEXT(ctx);
    r200ContextPtr rmesa;
@@ -930,7 +940,7 @@ void r200FreeMemoryMESA(__DRInativeDisplay *dpy, int scrn, GLvoid *pointer)
 }
 
 /* Called via glXGetMemoryOffsetMESA() */
-GLuint r200GetMemoryOffsetMESA(__DRInativeDisplay *dpy, int scrn, const GLvoid *pointer)
+GLuint r200GetMemoryOffsetMESA(__DRIscreen *screen, const GLvoid *pointer)
 {
    GET_CURRENT_CONTEXT(ctx);
    r200ContextPtr rmesa;

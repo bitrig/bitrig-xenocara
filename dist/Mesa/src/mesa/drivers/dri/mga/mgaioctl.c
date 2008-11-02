@@ -55,7 +55,7 @@ mgaSetFence( mgaContextPtr mmesa, uint32_t * fence )
 {
     int ret = ENOSYS;
 
-    if ( mmesa->driScreen->drmMinor >= 2 ) {
+    if ( mmesa->driScreen->drm_version.minor >= 2 ) {
 	ret = drmCommandWriteRead( mmesa->driScreen->fd, DRM_MGA_SET_FENCE,
 				   fence, sizeof( uint32_t ));
 	if (ret) {
@@ -73,7 +73,7 @@ mgaWaitFence( mgaContextPtr mmesa, uint32_t fence, uint32_t * curr_fence )
 {
     int ret = ENOSYS;
 
-    if ( mmesa->driScreen->drmMinor >= 2 ) {
+    if ( mmesa->driScreen->drm_version.minor >= 2 ) {
 	uint32_t temp = fence;
 	
 	ret = drmCommandWriteRead( mmesa->driScreen->fd,
@@ -204,8 +204,7 @@ drmBufPtr mga_get_buffer_ioctl( mgaContextPtr mmesa )
 
 
 static void
-mgaClear( GLcontext *ctx, GLbitfield mask, GLboolean all,
-            GLint cx, GLint cy, GLint cw, GLint ch )
+mgaClear( GLcontext *ctx, GLbitfield mask )
 {
    mgaContextPtr mmesa = MGA_CONTEXT(ctx);
    __DRIdrawablePrivate *dPriv = mmesa->driDrawable;
@@ -218,6 +217,7 @@ mgaClear( GLcontext *ctx, GLbitfield mask, GLboolean all,
    int i;
    static int nrclears;
    drm_mga_clear_t clear;
+   GLint cx, cy, cw, ch;
 
    FLUSH_BATCH( mmesa );
 
@@ -250,6 +250,12 @@ mgaClear( GLcontext *ctx, GLbitfield mask, GLboolean all,
    if ( flags ) {
       LOCK_HARDWARE( mmesa );
 
+      /* compute region after locking: */
+      cx = ctx->DrawBuffer->_Xmin;
+      cy = ctx->DrawBuffer->_Ymin;
+      cw = ctx->DrawBuffer->_Xmax - cx;
+      ch = ctx->DrawBuffer->_Ymax - cy;
+
       if ( mmesa->dirty_cliprects )
 	 mgaUpdateRects( mmesa, (MGA_FRONT | MGA_BACK) );
 
@@ -269,7 +275,8 @@ mgaClear( GLcontext *ctx, GLbitfield mask, GLboolean all,
 	 drm_clip_rect_t *b = mmesa->sarea->boxes;
 	 int n = 0;
 
-	 if (!all) {
+	 if (cw != dPriv->w || ch != dPriv->h) {
+            /* clear subregion */
 	    for ( ; i < nr ; i++) {
 	       GLint x = box[i].x1;
 	       GLint y = box[i].y1;
@@ -291,6 +298,7 @@ mgaClear( GLcontext *ctx, GLbitfield mask, GLboolean all,
 	       n++;
 	    }
 	 } else {
+            /* clear whole window */
 	    for ( ; i < nr ; i++) {
 	       *b++ = box[i];
 	       n++;
@@ -325,7 +333,7 @@ mgaClear( GLcontext *ctx, GLbitfield mask, GLboolean all,
    }
 
    if (mask) 
-      _swrast_Clear( ctx, mask, all, cx, cy, cw, ch );
+      _swrast_Clear( ctx, mask );
 }
 
 
@@ -401,7 +409,7 @@ static void mgaWaitForFrameCompletion( mgaContextPtr mmesa )
 /*
  * Copy the back buffer to the front buffer.
  */
-void mgaCopyBuffer( const __DRIdrawablePrivate *dPriv )
+void mgaCopyBuffer( __DRIdrawablePrivate *dPriv )
 {
    mgaContextPtr mmesa;
    drm_clip_rect_t *pbox;
@@ -409,7 +417,7 @@ void mgaCopyBuffer( const __DRIdrawablePrivate *dPriv )
    GLint ret;
    GLint i;
    GLboolean   missed_target;
-
+   __DRIscreenPrivate *psp = dPriv->driScreenPriv;
 
    assert(dPriv);
    assert(dPriv->driContextPriv);
@@ -420,11 +428,10 @@ void mgaCopyBuffer( const __DRIdrawablePrivate *dPriv )
    FLUSH_BATCH( mmesa );
 
    mgaWaitForFrameCompletion( mmesa );
-   driWaitForVBlank( dPriv, & mmesa->vbl_seq, mmesa->vblank_flags,
-		     & missed_target );
+   driWaitForVBlank( dPriv, & missed_target );
    if ( missed_target ) {
       mmesa->swap_missed_count++;
-      (void) (*dri_interface->getUST)( & mmesa->swap_missed_ust );
+      (void) (*psp->systemTime->getUST)( & mmesa->swap_missed_ust );
    }
    LOCK_HARDWARE( mmesa );
 
@@ -462,7 +469,7 @@ void mgaCopyBuffer( const __DRIdrawablePrivate *dPriv )
 
    mmesa->dirty |= MGA_UPLOAD_CLIPRECTS;
    mmesa->swap_count++;
-   (void) (*dri_interface->getUST)( & mmesa->swap_ust );
+   (void) (*psp->systemTime->getUST)( & mmesa->swap_ust );
 }
 
 

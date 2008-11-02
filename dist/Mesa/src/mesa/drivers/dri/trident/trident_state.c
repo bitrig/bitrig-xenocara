@@ -26,7 +26,7 @@
  */
 #include "trident_context.h"
 #include "trident_lock.h"
-#include "array_cache/acache.h"
+#include "vbo/vbo.h"
 #include "swrast/swrast.h"
 #include "swrast_setup/swrast_setup.h"
 #include "tnl/tnl.h"
@@ -51,9 +51,9 @@
 #define TRIDENTPACKCOLOR4444(r, g, b, a)					\
    ((((a) & 0xf0) << 8) | (((r) & 0xf0) << 4) | ((g) & 0xf0) | ((b) >> 4))
 
-static __inline__ GLuint tridentPackColor( GLuint cpp,
-					  GLubyte r, GLubyte g,
-					  GLubyte b, GLubyte a )
+static INLINE GLuint tridentPackColor( GLuint cpp,
+                                       GLubyte r, GLubyte g,
+                                       GLubyte b, GLubyte a )
 {
    switch ( cpp ) {
    case 2:
@@ -150,14 +150,14 @@ void tridentCopyBuffer( const __DRIdrawablePrivate *dPriv )
 }
 
 
-static void tridentDDClear( GLcontext *ctx, GLbitfield mask, GLboolean all,
-			       GLint cx, GLint cy, GLint cw, GLint ch )
+static void tridentDDClear( GLcontext *ctx, GLbitfield mask )
 {
    tridentContextPtr tmesa = TRIDENT_CONTEXT(ctx);
    unsigned char *MMIO = tmesa->tridentScreen->mmio.map;
    int busy;
    GLuint flags = 0;
    GLint i;
+   GLint cx, cy, cw, ch;
 
 #define DRM_TRIDENT_FRONT	0x01
 #define DRM_TRIDENT_BACK	0x02
@@ -182,6 +182,12 @@ static void tridentDDClear( GLcontext *ctx, GLbitfield mask, GLboolean all,
    }
 
    LOCK_HARDWARE(tmesa);
+
+   /* get region after locking: */
+   cx = ctx->DrawBuffer->_Xmin;
+   cy = ctx->DrawBuffer->_Ymin;
+   cw = ctx->DrawBuffer->_Xmax - cx;
+   ch = ctx->DrawBuffer->_Ymax - cy;
 
    if ( flags ) {
    
@@ -290,7 +296,7 @@ if (flags & DRM_TRIDENT_FRONT) {
    UNLOCK_HARDWARE(tmesa);
 
    if ( mask )
-      _swrast_Clear( ctx, mask, all, cx, cy, cw, ch );
+      _swrast_Clear( ctx, mask );
 }
 
 static void tridentDDShadeModel( GLcontext *ctx, GLenum mode )
@@ -462,7 +468,7 @@ tridentDDUpdateState( GLcontext *ctx, GLuint new_state )
 {
    _swrast_InvalidateState( ctx, new_state );
    _swsetup_InvalidateState( ctx, new_state );
-   _ac_InvalidateState( ctx, new_state );
+   _vbo_InvalidateState( ctx, new_state );
    _tnl_InvalidateState( ctx, new_state );
    TRIDENT_CONTEXT(ctx)->new_gl_state |= new_state;
 }
@@ -539,20 +545,4 @@ void tridentDDInitStateFuncs( GLcontext *ctx )
    ctx->Driver.DepthRange		= tridentDDDepthRange;
    ctx->Driver.ShadeModel		= tridentDDShadeModel;
    ctx->Driver.Viewport			= tridentDDViewport;
-
-   /* Pixel path fallbacks.
-    */
-   ctx->Driver.Accum = _swrast_Accum;
-   ctx->Driver.Bitmap = _swrast_Bitmap;
-   ctx->Driver.CopyPixels = _swrast_CopyPixels;
-   ctx->Driver.DrawPixels = _swrast_DrawPixels;
-   ctx->Driver.ReadPixels = _swrast_ReadPixels;
-   ctx->Driver.ResizeBuffers = _mesa_resize_framebuffer;
-
-   /* Swrast hooks for imaging extensions:
-    */
-   ctx->Driver.CopyColorTable = _swrast_CopyColorTable;
-   ctx->Driver.CopyColorSubTable = _swrast_CopyColorSubTable;
-   ctx->Driver.CopyConvolutionFilter1D = _swrast_CopyConvolutionFilter1D;
-   ctx->Driver.CopyConvolutionFilter2D = _swrast_CopyConvolutionFilter2D;
 }

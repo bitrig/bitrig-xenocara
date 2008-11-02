@@ -1,8 +1,8 @@
 /*
  * Mesa 3-D graphics library
- * Version:  6.1
+ * Version:  6.5.3
  *
- * Copyright (C) 1999-2004  Brian Paul   All Rights Reserved.
+ * Copyright (C) 1999-2007  Brian Paul   All Rights Reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -59,24 +59,18 @@ struct LineInfo
 
    /* DO_Z */
    GLfloat zPlane[4];
-   /* DO_FOG */
-   GLfloat fPlane[4];
    /* DO_RGBA */
    GLfloat rPlane[4], gPlane[4], bPlane[4], aPlane[4];
    /* DO_INDEX */
    GLfloat iPlane[4];
-   /* DO_SPEC */
-   GLfloat srPlane[4], sgPlane[4], sbPlane[4];
-   /* DO_TEX or DO_MULTITEX */
-   GLfloat sPlane[MAX_TEXTURE_COORD_UNITS][4];
-   GLfloat tPlane[MAX_TEXTURE_COORD_UNITS][4];
-   GLfloat uPlane[MAX_TEXTURE_COORD_UNITS][4];
-   GLfloat vPlane[MAX_TEXTURE_COORD_UNITS][4];
-   GLfloat lambda[MAX_TEXTURE_COORD_UNITS];
-   GLfloat texWidth[MAX_TEXTURE_COORD_UNITS];
-   GLfloat texHeight[MAX_TEXTURE_COORD_UNITS];
+   /* DO_ATTRIBS */
+   GLfloat wPlane[4];
+   GLfloat attrPlane[FRAG_ATTRIB_MAX][4][4];
+   GLfloat lambda[FRAG_ATTRIB_MAX];
+   GLfloat texWidth[FRAG_ATTRIB_MAX];
+   GLfloat texHeight[FRAG_ATTRIB_MAX];
 
-   struct sw_span span;
+   SWspan span;
 };
 
 
@@ -483,40 +477,21 @@ segment(GLcontext *ctx,
 
 #define NAME(x) aa_ci_##x
 #define DO_Z
-#define DO_FOG
+#define DO_ATTRIBS /* for fog */
 #define DO_INDEX
 #include "s_aalinetemp.h"
 
 
 #define NAME(x) aa_rgba_##x
 #define DO_Z
-#define DO_FOG
 #define DO_RGBA
 #include "s_aalinetemp.h"
 
 
-#define NAME(x)  aa_tex_rgba_##x
+#define NAME(x)  aa_general_rgba_##x
 #define DO_Z
-#define DO_FOG
 #define DO_RGBA
-#define DO_TEX
-#include "s_aalinetemp.h"
-
-
-#define NAME(x)  aa_multitex_rgba_##x
-#define DO_Z
-#define DO_FOG
-#define DO_RGBA
-#define DO_MULTITEX
-#include "s_aalinetemp.h"
-
-
-#define NAME(x)  aa_multitex_spec_##x
-#define DO_Z
-#define DO_FOG
-#define DO_RGBA
-#define DO_MULTITEX
-#define DO_SPEC
+#define DO_ATTRIBS
 #include "s_aalinetemp.h"
 
 
@@ -530,18 +505,13 @@ _swrast_choose_aa_line_function(GLcontext *ctx)
 
    if (ctx->Visual.rgbMode) {
       /* RGBA */
-      if (ctx->Texture._EnabledCoordUnits != 0) {
-         if (ctx->Texture._EnabledCoordUnits > 1) {
-            /* Multitextured! */
-            if (ctx->Light.Model.ColorControl==GL_SEPARATE_SPECULAR_COLOR || 
-                ctx->Fog.ColorSumEnabled)
-               swrast->Line = aa_multitex_spec_line;
-            else
-               swrast->Line = aa_multitex_rgba_line;
-         }
-         else {
-            swrast->Line = aa_tex_rgba_line;
-         }
+      if (ctx->Texture._EnabledCoordUnits != 0
+          || ctx->FragmentProgram._Current
+          || (ctx->Light.Enabled &&
+              ctx->Light.Model.ColorControl == GL_SEPARATE_SPECULAR_COLOR)
+          || ctx->Fog.ColorSumEnabled
+          || swrast->_FogEnabled) {
+         swrast->Line = aa_general_rgba_line;
       }
       else {
          swrast->Line = aa_rgba_line;

@@ -50,7 +50,7 @@
 #include "extensions.h"
 #include "framebuffer.h"
 #include "renderbuffer.h"
-#include "array_cache/acache.h"
+#include "vbo/vbo.h"
 #include "swrast/swrast.h"
 #include "swrast_setup/swrast_setup.h"
 #include "tnl/tnl.h"
@@ -93,7 +93,7 @@ update_state( GLcontext *ctx, GLuint new_state )
    /* not much to do here - pass it on */
    _swrast_InvalidateState( ctx, new_state );
    _swsetup_InvalidateState( ctx, new_state );
-   _ac_InvalidateState( ctx, new_state );
+   _vbo_InvalidateState( ctx, new_state );
    _tnl_InvalidateState( ctx, new_state );
 }
 
@@ -137,7 +137,6 @@ init_core_functions( struct dd_function_table *functions )
 {
    functions->GetString = get_string;
    functions->UpdateState = update_state;
-   functions->ResizeBuffers = _mesa_resize_framebuffer;
    functions->GetBufferSize = get_buffer_size;
    functions->Viewport = viewport;
 
@@ -366,7 +365,7 @@ fbCreateContext( const __GLcontextModes *glVisual,
 
    /* Create module contexts */
    _swrast_CreateContext( ctx );
-   _ac_CreateContext( ctx );
+   _vbo_CreateContext( ctx );
    _tnl_CreateContext( ctx );
    _swsetup_CreateContext( ctx );
    _swsetup_Wakeup( ctx );
@@ -400,7 +399,7 @@ fbDestroyContext( __DRIcontextPrivate *driContextPriv )
    if ( fbmesa ) {
       _swsetup_DestroyContext( fbmesa->glCtx );
       _tnl_DestroyContext( fbmesa->glCtx );
-      _ac_DestroyContext( fbmesa->glCtx );
+      _vbo_DestroyContext( fbmesa->glCtx );
       _swrast_DestroyContext( fbmesa->glCtx );
 
       /* free the Mesa context */
@@ -481,11 +480,7 @@ fbCreateBuffer( __DRIscreenPrivate *driScrnPriv,
 static void
 fbDestroyBuffer(__DRIdrawablePrivate *driDrawPriv)
 {
-   struct gl_framebuffer *mesa_framebuffer = (struct gl_framebuffer *)driDrawPriv->driverPrivate;
-   
-   _mesa_free(mesa_framebuffer->Attachment[BUFFER_BACK_LEFT].Renderbuffer->Data);
-   _mesa_destroy_framebuffer(mesa_framebuffer);
-   driDrawPriv->driverPrivate = NULL;
+   _mesa_unreference_framebuffer((GLframebuffer **)(&(driDrawPriv->driverPrivate)));
 }
 
 
@@ -662,8 +657,9 @@ struct DRIDriverRec __driDriver = {
 };
 
 static __GLcontextModes *
-fbFillInModes( unsigned pixel_bits, unsigned depth_bits,
-                 unsigned stencil_bits, GLboolean have_back_buffer )
+fbFillInModes( __DRIscreenPrivate *psp,
+	       unsigned pixel_bits, unsigned depth_bits,
+	       unsigned stencil_bits, GLboolean have_back_buffer )
 {
    __GLcontextModes * modes;
    __GLcontextModes * m;
@@ -710,7 +706,7 @@ fbFillInModes( unsigned pixel_bits, unsigned depth_bits,
       fb_type = GL_UNSIGNED_INT_8_8_8_8_REV;
    }
 
-   modes = (*dri_interface->createContextModes)( num_modes, sizeof( __GLcontextModes ) );
+   modes = (*psp->contextModes->createContextModes)( num_modes, sizeof( __GLcontextModes ) );
    m = modes;
    if ( ! driFillInModes( & m, fb_format, fb_type,
           depth_bits_array, stencil_bits_array, depth_buffer_factor,
@@ -781,7 +777,7 @@ void * __driCreateNewScreen( __DRInativeDisplay *dpy, int scrn, __DRIscreen *psc
                                          frame_buffer, pSAREA, fd,
                                          internal_api_version, &fbAPI);
           if ( psp != NULL ) {
-	     *driver_modes = fbFillInModes( psp->fbBPP,
+	     *driver_modes = fbFillInModes( psp, psp->fbBPP,
 					    (psp->fbBPP == 16) ? 16 : 24,
 					    (psp->fbBPP == 16) ? 0  : 8,
 					    1);

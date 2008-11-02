@@ -17,24 +17,24 @@ message:
 subdirs:
 	@for dir in $(SUBDIRS) ; do \
 		if [ -d $$dir ] ; then \
-			(cd $$dir ; $(MAKE)) || exit 1 ; \
+			(cd $$dir && $(MAKE)) || exit 1; \
 		fi \
 	done
 
-install:
+install: $(TOP)/$(LIB_DIR)
 	@for dir in $(SUBDIRS) ; do \
 		if [ -d $$dir ] ; then \
-			(cd $$dir ; $(MAKE) install) || exit 1 ; \
+			(cd $$dir && $(MAKE) install) || exit 1 ; \
 		fi \
 	done
 
 $(TOP)/$(LIB_DIR):
-	-mkdir $(TOP)/$(LIB_DIR)
+	-@test -d $(TOP)/$(LIB_DIR) || mkdir -p $(TOP)/$(LIB_DIR)
 
 
 clean:
-	@for dir in $(SUBDIRS) ; do \
+	-@for dir in $(SUBDIRS) ; do \
 		if [ -d $$dir ] ; then \
-			(cd $$dir ; $(MAKE) clean) ; \
+			(cd $$dir && $(MAKE) clean) ; \
 		fi \
 	done

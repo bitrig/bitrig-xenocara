@@ -40,6 +40,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "context.h"
 #include "macros.h"
 #include "texformat.h"
+#include "texobj.h"
 #include "enums.h"
 
 #include "radeon_context.h"
@@ -84,7 +85,7 @@ tx_table[] =
    _ALPHA_REV(RGBA8888),
    _ALPHA(ARGB8888),
    _ALPHA_REV(ARGB8888),
-   _INVALID(RGB888),
+   [ MESA_FORMAT_RGB888 ] = { RADEON_TXFORMAT_ARGB8888, 0 },
    _COLOR(RGB565),
    _COLOR_REV(RGB565),
    _ALPHA(ARGB4444),
@@ -134,18 +135,19 @@ static void radeonSetTexImages( radeonContextPtr rmesa,
 
    /* Set the hardware texture format
     */
+   if ( !t->image_override ) {
+      t->pp_txformat &= ~(RADEON_TXFORMAT_FORMAT_MASK |
+                          RADEON_TXFORMAT_ALPHA_IN_MAP);
+      t->pp_txfilter &= ~RADEON_YUV_TO_RGB;
 
-   t->pp_txformat &= ~(RADEON_TXFORMAT_FORMAT_MASK |
-		       RADEON_TXFORMAT_ALPHA_IN_MAP);
-   t->pp_txfilter &= ~RADEON_YUV_TO_RGB;
-
-   if ( VALID_FORMAT( baseImage->TexFormat->MesaFormat ) ) {
-      t->pp_txformat |= tx_table[ baseImage->TexFormat->MesaFormat ].format;
-      t->pp_txfilter |= tx_table[ baseImage->TexFormat->MesaFormat ].filter;
-   }
-   else {
-      _mesa_problem(NULL, "unexpected texture format in %s", __FUNCTION__);
-      return;
+      if ( VALID_FORMAT( baseImage->TexFormat->MesaFormat ) ) {
+         t->pp_txformat |= tx_table[ baseImage->TexFormat->MesaFormat ].format;
+         t->pp_txfilter |= tx_table[ baseImage->TexFormat->MesaFormat ].filter;
+      }
+      else {
+         _mesa_problem(NULL, "unexpected texture format in %s", __FUNCTION__);
+         return;
+      }
    }
 
    texelBytes = baseImage->TexFormat->TexelBytes;
@@ -341,11 +343,13 @@ static void radeonSetTexImages( radeonContextPtr rmesa,
     * requires 64-byte aligned pitches, and we may/may not need the
     * blitter.   NPOT only!
     */
-   if (baseImage->IsCompressed)
-      t->pp_txpitch = (tObj->Image[0][t->base.firstLevel]->Width + 63) & ~(63);
-   else
-      t->pp_txpitch = ((tObj->Image[0][t->base.firstLevel]->Width * texelBytes) + 63) & ~(63);
-   t->pp_txpitch -= 32;
+   if ( !t->image_override ) {
+      if (baseImage->IsCompressed)
+         t->pp_txpitch = (tObj->Image[0][t->base.firstLevel]->Width + 63) & ~(63);
+      else
+         t->pp_txpitch = ((tObj->Image[0][t->base.firstLevel]->Width * texelBytes) + 63) & ~(63);
+      t->pp_txpitch -= 32;
+   }
 
    t->dirty_state = TEX_ALL;
 
@@ -523,9 +527,10 @@ static GLboolean radeonUpdateTextureEnv( GLcontext *ctx, int unit )
 
    /* Set the texture environment state.  Isn't this nice and clean?
     * The chip will automagically set the texture alpha to 0xff when
-    * the texture format does not include an alpha component.  This
+    * the texture format does not include an alpha component. This
     * reduces the amount of special-casing we have to do, alpha-only
-    * textures being a notable exception.
+    * textures being a notable exception. Doesn't work for luminance
+    * textures realized with I8 and ALPHA_IN_MAP not set neither (on r100).
     */
     /* Don't cache these results.
     */
@@ -555,7 +560,10 @@ static GLboolean radeonUpdateTextureEnv( GLcontext *ctx, int unit )
 	 assert(op <= 3);
 	 switch ( srcRGBi ) {
 	 case GL_TEXTURE:
-	    color_arg[i] = radeon_texture_color[op][unit];
+	    if (texUnit->_Current->Image[0][0]->_BaseFormat == GL_ALPHA)
+	       color_arg[i] = radeon_zero_color[op];
+	    else
+	       color_arg[i] = radeon_texture_color[op][unit];
 	    break;
 	 case GL_CONSTANT:
 	    color_arg[i] = radeon_tfactor_color[op];
@@ -574,12 +582,17 @@ static GLboolean radeonUpdateTextureEnv( GLcontext *ctx, int unit )
 	    break;
 	 case GL_TEXTURE0:
 	 case GL_TEXTURE1:
-	 case GL_TEXTURE2:
+	 case GL_TEXTURE2: {
+	    GLuint txunit = srcRGBi - GL_TEXTURE0;
+	    if (ctx->Texture.Unit[txunit]._Current->Image[0][0]->_BaseFormat == GL_ALPHA)
+	       color_arg[i] = radeon_zero_color[op];
+	    else
 	 /* implement ogl 1.4/1.5 core spec here, not specification of
 	  * GL_ARB_texture_env_crossbar (which would require disabling blending
 	  * instead of undefined results when referencing not enabled texunit) */
-	   color_arg[i] = radeon_texture_color[op][srcRGBi - GL_TEXTURE0];
-	   break;
+	      color_arg[i] = radeon_texture_color[op][txunit];
+	    }
+	    break;
 	 default:
 	    return GL_FALSE;
 	 }
@@ -592,7 +605,10 @@ static GLboolean radeonUpdateTextureEnv( GLcontext *ctx, int unit )
 	 assert(op <= 1);
 	 switch ( srcAi ) {
 	 case GL_TEXTURE:
-	    alpha_arg[i] = radeon_texture_alpha[op][unit];
+	    if (texUnit->_Current->Image[0][0]->_BaseFormat == GL_LUMINANCE)
+	       alpha_arg[i] = radeon_zero_alpha[op+1];
+	    else
+	       alpha_arg[i] = radeon_texture_alpha[op][unit];
 	    break;
 	 case GL_CONSTANT:
 	    alpha_arg[i] = radeon_tfactor_alpha[op];
@@ -611,9 +627,14 @@ static GLboolean radeonUpdateTextureEnv( GLcontext *ctx, int unit )
 	    break;
 	 case GL_TEXTURE0:
 	 case GL_TEXTURE1:
-	 case GL_TEXTURE2:
-	   alpha_arg[i] = radeon_texture_alpha[op][srcAi - GL_TEXTURE0];
-	   break;
+	 case GL_TEXTURE2: {    
+	    GLuint txunit = srcAi - GL_TEXTURE0;
+	    if (ctx->Texture.Unit[txunit]._Current->Image[0][0]->_BaseFormat == GL_LUMINANCE)
+	       alpha_arg[i] = radeon_zero_alpha[op+1];
+	    else
+	       alpha_arg[i] = radeon_texture_alpha[op][txunit];
+	    }
+	    break;
 	 default:
 	    return GL_FALSE;
 	 }
@@ -823,6 +844,44 @@ static GLboolean radeonUpdateTextureEnv( GLcontext *ctx, int unit )
    return GL_TRUE;
 }
 
+void radeonSetTexOffset(__DRIcontext * pDRICtx, GLint texname,
+                        unsigned long long offset, GLint depth, GLuint pitch)
+{
+	radeonContextPtr rmesa = pDRICtx->driverPrivate;
+	struct gl_texture_object *tObj =
+	    _mesa_lookup_texture(rmesa->glCtx, texname);
+	radeonTexObjPtr t;
+
+	if (tObj == NULL)
+		return;
+
+	t = (radeonTexObjPtr) tObj->DriverData;
+
+	t->image_override = GL_TRUE;
+
+	if (!offset)
+		return;
+
+	t->pp_txoffset = offset;
+	t->pp_txpitch = pitch - 32;
+
+	switch (depth) {
+	case 32:
+		t->pp_txformat = tx_table[MESA_FORMAT_ARGB8888].format;
+		t->pp_txfilter |= tx_table[MESA_FORMAT_ARGB8888].filter;
+		break;
+	case 24:
+	default:
+		t->pp_txformat = tx_table[MESA_FORMAT_RGB888].format;
+		t->pp_txfilter |= tx_table[MESA_FORMAT_RGB888].filter;
+		break;
+	case 16:
+		t->pp_txformat = tx_table[MESA_FORMAT_RGB565].format;
+		t->pp_txfilter |= tx_table[MESA_FORMAT_RGB565].filter;
+		break;
+	}
+}
+
 #define TEXOBJ_TXFILTER_MASK (RADEON_MAX_MIP_LEVEL_MASK |	\
 			      RADEON_MIN_FILTER_MASK | 		\
 			      RADEON_MAG_FILTER_MASK |		\
@@ -848,7 +907,7 @@ static void import_tex_obj_state( radeonContextPtr rmesa,
 				  radeonTexObjPtr texobj )
 {
 /* do not use RADEON_DB_STATE to avoid stale texture caches */
-   GLuint *cmd = &rmesa->hw.tex[unit].cmd[TEX_CMD_0];
+   int *cmd = &rmesa->hw.tex[unit].cmd[TEX_CMD_0];
    GLuint se_coord_fmt = rmesa->hw.set.cmd[SET_SE_COORDFMT];
 
    RADEON_STATECHANGE( rmesa, tex[unit] );
@@ -871,7 +930,7 @@ static void import_tex_obj_state( radeonContextPtr rmesa,
       se_coord_fmt &= ~(RADEON_VTX_ST0_NONPARAMETRIC << unit);
 
       if (texobj->base.tObj->Target == GL_TEXTURE_CUBE_MAP) {
-	 GLuint *cube_cmd = &rmesa->hw.cube[unit].cmd[CUBE_CMD_0];
+	 int *cube_cmd = &rmesa->hw.cube[unit].cmd[CUBE_CMD_0];
 	 GLuint bytesPerFace = texobj->base.totalSize / 6;
 	 ASSERT(texobj->base.totalSize % 6 == 0);
 
@@ -1119,7 +1178,7 @@ static GLboolean enable_tex_2d( GLcontext *ctx, int unit )
       RADEON_FIREVERTICES( rmesa );
       radeonSetTexImages( rmesa, tObj );
       radeonUploadTexImages( rmesa, (radeonTexObjPtr) tObj->DriverData, 0 );
-      if ( !t->base.memBlock ) 
+      if ( !t->base.memBlock && !t->image_override ) 
 	return GL_FALSE;
    }
 
@@ -1186,7 +1245,8 @@ static GLboolean enable_tex_rect( GLcontext *ctx, int unit )
       RADEON_FIREVERTICES( rmesa );
       radeonSetTexImages( rmesa, tObj );
       radeonUploadTexImages( rmesa, (radeonTexObjPtr) tObj->DriverData, 0 );
-      if ( !t->base.memBlock /* && !rmesa->prefer_gart_client_texturing  FIXME */ ) {
+      if ( !t->base.memBlock &&
+           !t->image_override /* && !rmesa->prefer_gart_client_texturing  FIXME */ ) {
 	 fprintf(stderr, "%s: upload failed\n", __FUNCTION__);
 	 return GL_FALSE;
       }

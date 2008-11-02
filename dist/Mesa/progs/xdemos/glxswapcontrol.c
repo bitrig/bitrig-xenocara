@@ -749,7 +749,7 @@ main(int argc, char *argv[])
 
    dpy = XOpenDisplay(dpyName);
    if (!dpy) {
-      printf("Error: couldn't open display %s\n", dpyName);
+      printf("Error: couldn't open display %s\n", XDisplayName(dpyName));
       return -1;
    }
 
@@ -813,6 +813,11 @@ main(int argc, char *argv[])
    }
 
    init();
+
+   /* Set initial projection/viewing transformation.
+    * same as glxgears.c
+    */
+   reshape(300, 300);
 
    event_loop(dpy, win);
 

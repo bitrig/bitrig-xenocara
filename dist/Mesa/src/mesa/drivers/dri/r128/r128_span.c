@@ -131,6 +131,7 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /* 16-bit depth buffer functions
  */
+#define VALUE_TYPE GLushort
 
 #define WRITE_DEPTH_SPAN()						\
 do {									\
@@ -207,9 +208,11 @@ do {									\
 
 /* 24-bit depth, 8-bit stencil buffer functions
  */
+#define VALUE_TYPE GLuint
+
 #define WRITE_DEPTH_SPAN()						\
 do {									\
-   GLint buf[n];							\
+   GLuint buf[n];							\
    GLint i;								\
    GLuint *readbuf = (GLuint *)((GLubyte *)sPriv->pFB +			\
 				r128scrn->spanOffset);			\
@@ -228,7 +231,7 @@ do {									\
 
 #define WRITE_DEPTH_PIXELS()						\
 do {									\
-   GLint buf[n];							\
+   GLuint buf[n];							\
    GLint ox[MAX_WIDTH];							\
    GLint oy[MAX_WIDTH];							\
    GLuint *readbuf = (GLuint *)((GLubyte *)sPriv->pFB +			\
@@ -309,7 +312,7 @@ do {									\
  */
 #define WRITE_STENCIL_SPAN()						\
 do {									\
-   GLint buf[n];							\
+   GLuint buf[n];							\
    GLint i;								\
    GLuint *readbuf = (GLuint *)((GLubyte *)sPriv->pFB +			\
 				r128scrn->spanOffset);			\
@@ -328,7 +331,7 @@ do {									\
 
 #define WRITE_STENCIL_PIXELS()						\
 do {									\
-   GLint buf[n];							\
+   GLuint buf[n];							\
    GLint ox[MAX_WIDTH];							\
    GLint oy[MAX_WIDTH];							\
    GLuint *readbuf = (GLuint *)((GLubyte *)sPriv->pFB +			\

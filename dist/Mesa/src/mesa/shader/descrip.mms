@@ -1,12 +1,14 @@
 # Makefile for core library for VMS
-# contributed by Jouk Jansen  joukj@hrem.stm.tudelft.nl
-# Last revision : 1 June 2005
-
+# contributed by Jouk Jansen  joukj@hrem.nano.tudelft.nl
+# Last revision : 27 May 2008
 .first
 	define gl [---.include.gl]
 	define math [-.math]
 	define swrast [-.swrast]
 	define array_cache [-.array_cache]
+	define glapi [-.glapi]
+	define main [-.main]
+	define shader [-.shader]
 
 .include [---]mms-config.
 
@@ -16,7 +18,7 @@ VPATH = RCS
 
 INCDIR = [---.include],[.grammar],[-.main],[-.glapi],[.slang]
 LIBDIR = [---.lib]
-CFLAGS = /include=($(INCDIR),[])/define=(PTHREADS=1)/name=(as_is,short)/float=ieee/ieee=denorm
+CFLAGS = /include=($(INCDIR),[])/define=(PTHREADS=1,"__extension__=")/name=(as_is,short)/float=ieee/ieee=denorm
 
 SOURCES = \
 	atifragshader.c \
@@ -24,11 +26,16 @@ SOURCES = \
 	arbprogram.c \
 	nvfragparse.c \
 	nvprogram.c \
-	nvvertexec.c \
 	nvvertparse.c \
 	program.c \
-	shaderobjects.c \
-	shaderobjects_3dlabs.c
+	programopt.c \
+	prog_debug.c \
+	prog_execute.c \
+	prog_instruction.c \
+	prog_parameter.c \
+	prog_print.c \
+	prog_statevars.c \
+	shader_api.c prog_uniform.c
 
 OBJECTS = \
 	atifragshader.obj,\
@@ -36,12 +43,16 @@ OBJECTS = \
 	arbprogram.obj,\
 	nvfragparse.obj,\
 	nvprogram.obj,\
-	nvvertexec.obj,\
 	nvvertparse.obj,\
 	program.obj,\
-	shaderobjects.obj,\
-	shaderobjects_3dlabs.obj
-
+	programopt.obj,\
+	prog_debug.obj,\
+	prog_execute.obj,\
+	prog_instruction.obj,\
+	prog_parameter.obj,\
+	prog_print.obj,\
+	prog_statevars.obj,\
+	shader_api.obj,prog_uniform.obj
 
 ##### RULES #####
 
@@ -69,9 +80,14 @@ arbprogparse.obj : arbprogparse.c
 arbprogram.obj : arbprogram.c
 nvfragparse.obj : nvfragparse.c
 nvprogram.obj : nvprogram.c
-nvvertexec.obj : nvvertexec.c
 nvvertparse.obj : nvvertparse.c
 program.obj : program.c
-shaderobjects.obj : shaderobjects.c
-	cc$(CFLAGS)/nowarn shaderobjects.c
-shaderobjects_3dlabs.obj : shaderobjects_3dlabs.c
+programopt. obj : programopt.c
+prog_debug.obj : prog_debug.c
+prog_execute.obj : prog_execute.c
+prog_instruction.obj : prog_instruction.c
+prog_parameter.obj : prog_parameter.c
+prog_print.obj : prog_print.c
+prog_statevars.obj : prog_statevars.c
+shader_api.obj : shader_api.c
+prog_uniform.obj : prog_uniform.c

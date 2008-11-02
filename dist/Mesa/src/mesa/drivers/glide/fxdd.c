@@ -55,7 +55,7 @@
 #include "tnl/tnl.h"
 #include "tnl/t_context.h"
 #include "tnl/t_pipeline.h"
-#include "array_cache/acache.h"
+#include "vbo/vbo.h"
 
 
 
@@ -123,11 +123,19 @@ fxDDGetBufferSize(GLframebuffer *buffer, GLuint *width, GLuint *height)
 }
 
 
+/**
+ * We only implement this function as a mechanism to check if the
+ * framebuffer size has changed (and update corresponding state).
+ */
 static void
 fxDDViewport(GLcontext *ctx, GLint x, GLint y, GLsizei w, GLsizei h)
 {
-   /* poll for window size change and realloc software Z/stencil/etc if needed */
-   _mesa_ResizeBuffersMESA();
+   GLuint newWidth, newHeight;
+   GLframebuffer *buffer = ctx->WinSysDrawBuffer;
+   fxDDGetBufferSize( buffer, &newWidth, &newHeight );
+   if (buffer->Width != newWidth || buffer->Height != newHeight) {
+      _mesa_resize_framebuffer(ctx, buffer, newWidth, newHeight );
+   }
 }
 
 
@@ -154,9 +162,7 @@ fxDDClearColor(GLcontext * ctx, const GLfloat color[4])
 
 
 /* Clear the color and/or depth buffers */
-static void fxDDClear( GLcontext *ctx,
-			GLbitfield mask, GLboolean all,
-			GLint x, GLint y, GLint width, GLint height )
+static void fxDDClear( GLcontext *ctx, GLbitfield mask )
 {
    fxMesaContext fxMesa = FX_CONTEXT(ctx);
    GLbitfield softwareMask = mask & (BUFFER_BIT_ACCUM);
@@ -165,8 +171,7 @@ static void fxDDClear( GLcontext *ctx,
    const FxU8 clearS = (FxU8) (ctx->Stencil.Clear & 0xff);
 
    if ( TDFX_DEBUG & MESA_VERBOSE ) {
-      fprintf( stderr, "fxDDClear( %d, %d, %d, %d )\n",
-	               (int) x, (int) y, (int) width, (int) height );
+      fprintf( stderr, "fxDDClear\n");
    }
 
    /* we can't clear accum buffers nor stereo */
@@ -381,7 +386,7 @@ static void fxDDClear( GLcontext *ctx,
    grRenderBuffer(fxMesa->currentFB);
 
    if (softwareMask)
-      _swrast_Clear( ctx, softwareMask, all, x, y, width, height );
+      _swrast_Clear( ctx, softwareMask );
 }
 
 
@@ -1658,7 +1663,6 @@ static const struct tnl_pipeline_stage *fx_pipeline[] = {
    &_tnl_texture_transform_stage,
    &_tnl_point_attenuation_stage,
 #if defined(FEATURE_NV_vertex_program) || defined(FEATURE_ARB_vertex_program)
-   &_tnl_arb_vertex_program_stage,
    &_tnl_vertex_program_stage,
 #endif
    &_tnl_render_stage,
@@ -1778,7 +1782,7 @@ fxDDInitFxMesaContext(fxMesaContext fxMesa)
    /* Initialize the software rasterizer and helper modules.
     */
    _swrast_CreateContext(ctx);
-   _ac_CreateContext(ctx);
+   _vbo_CreateContext(ctx);
    _tnl_CreateContext(ctx);
    _swsetup_CreateContext(ctx);
 
@@ -1821,7 +1825,7 @@ fxDDDestroyFxMesaContext(fxMesaContext fxMesa)
 {
    _swsetup_DestroyContext(fxMesa->glCtx);
    _tnl_DestroyContext(fxMesa->glCtx);
-   _ac_DestroyContext(fxMesa->glCtx);
+   _vbo_DestroyContext(fxMesa->glCtx);
    _swrast_DestroyContext(fxMesa->glCtx);
 
    if (fxMesa->state)
@@ -1951,8 +1955,8 @@ fx_check_IsInHardware(GLcontext * ctx)
       return FX_FALLBACK_STENCIL;
    }
 
-   if (ctx->DrawBuffer->_ColorDrawBufferMask[0] != BUFFER_BIT_FRONT_LEFT &&
-       ctx->DrawBuffer->_ColorDrawBufferMask[0] != BUFFER_BIT_BACK_LEFT) {
+   if ((ctx->DrawBuffer->_ColorDrawBufferIndexes[0] != BUFFER_BIT_FRONT_LEFT) &&
+       (ctx->DrawBuffer->_ColorDrawBufferIndexes[0] != BUFFER_BIT_BACK_LEFT)) {
       return FX_FALLBACK_DRAW_BUFFER;
    }
 
@@ -2096,7 +2100,7 @@ fxDDUpdateDDPointers(GLcontext * ctx, GLuint new_state)
    }
 
    _swrast_InvalidateState(ctx, new_state);
-   _ac_InvalidateState(ctx, new_state);
+   _vbo_InvalidateState(ctx, new_state);
    _tnl_InvalidateState(ctx, new_state);
    _swsetup_InvalidateState(ctx, new_state);
 

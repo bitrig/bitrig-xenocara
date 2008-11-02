@@ -41,7 +41,7 @@
 #include "savage_bci.h"
 
 #include "swrast/swrast.h"
-#include "array_cache/acache.h"
+#include "vbo/vbo.h"
 #include "tnl/tnl.h"
 #include "swrast_setup/swrast_setup.h"
 
@@ -76,7 +76,7 @@
 static void savageBlendFunc_s4(GLcontext *);
 static void savageBlendFunc_s3d(GLcontext *);
 
-static __inline__ GLuint savagePackColor(GLuint format, 
+static INLINE GLuint savagePackColor(GLuint format, 
                                          GLubyte r, GLubyte g, 
                                          GLubyte b, GLubyte a)
 {
@@ -640,30 +640,29 @@ static void savageDDDrawBuffer(GLcontext *ctx, GLenum mode )
     savageContextPtr imesa = SAVAGE_CONTEXT(ctx);
     u_int32_t destCtrl = imesa->regs.s4.destCtrl.ui;
 
-    /*
-     * _DrawDestMask is easier to cope with than <mode>.
-     */
-    switch ( ctx->DrawBuffer->_ColorDrawBufferMask[0] ) {
-    case BUFFER_BIT_FRONT_LEFT:
+    if (ctx->DrawBuffer->_NumColorDrawBuffers != 1) {
+	FALLBACK( ctx, SAVAGE_FALLBACK_DRAW_BUFFER, GL_TRUE );
+        return;
+    }
+
+    switch ( ctx->DrawBuffer->_ColorDrawBufferIndexes[0] ) {
+    case BUFFER_FRONT_LEFT:
         imesa->IsDouble = GL_FALSE;
 	imesa->regs.s4.destCtrl.ni.offset = imesa->savageScreen->frontOffset>>11;
-
-        imesa->NotFirstFrame = GL_FALSE;
-        savageXMesaSetFrontClipRects( imesa );
-	FALLBACK( ctx, SAVAGE_FALLBACK_DRAW_BUFFER, GL_FALSE );
 	break;
-    case BUFFER_BIT_BACK_LEFT:
+    case BUFFER_BACK_LEFT:
         imesa->IsDouble = GL_TRUE;
 	imesa->regs.s4.destCtrl.ni.offset = imesa->savageScreen->backOffset>>11;
-        imesa->NotFirstFrame = GL_FALSE;
-        savageXMesaSetBackClipRects( imesa );
-	FALLBACK( ctx, SAVAGE_FALLBACK_DRAW_BUFFER, GL_FALSE );
 	break;
     default:
 	FALLBACK( ctx, SAVAGE_FALLBACK_DRAW_BUFFER, GL_TRUE );
 	return;
     }
     
+    imesa->NotFirstFrame = GL_FALSE;
+    savageXMesaSetClipRects(imesa);
+    FALLBACK(ctx, SAVAGE_FALLBACK_DRAW_BUFFER, GL_FALSE);
+
     if (destCtrl != imesa->regs.s4.destCtrl.ui)
         imesa->dirty |= SAVAGE_UPLOAD_GLOBAL;
 }
@@ -1676,7 +1675,7 @@ static void savageDDInvalidateState( GLcontext *ctx, GLuint new_state )
 {
    _swrast_InvalidateState( ctx, new_state );
    _swsetup_InvalidateState( ctx, new_state );
-   _ac_InvalidateState( ctx, new_state );
+   _vbo_InvalidateState( ctx, new_state );
    _tnl_InvalidateState( ctx, new_state );
    SAVAGE_CONTEXT(ctx)->new_gl_state |= new_state;
 }
@@ -1695,11 +1694,6 @@ void savageDDInitStateFuncs(GLcontext *ctx)
     ctx->Driver.CullFace = 0;
     ctx->Driver.FrontFace = 0;
 #endif /* end #if HW_CULL */
-    ctx->Driver.PolygonMode=NULL;
-    ctx->Driver.PolygonStipple = 0;
-    ctx->Driver.LineStipple = 0;
-    ctx->Driver.LineWidth = 0;
-    ctx->Driver.LogicOpcode = 0;
     ctx->Driver.DrawBuffer = savageDDDrawBuffer;
     ctx->Driver.ReadBuffer = savageDDReadBuffer;
     ctx->Driver.ClearColor = savageDDClearColor;
@@ -1707,9 +1701,6 @@ void savageDDInitStateFuncs(GLcontext *ctx)
     ctx->Driver.DepthRange = savageDepthRange;
     ctx->Driver.Viewport = savageViewport;
     ctx->Driver.RenderMode = savageRenderMode;
-
-    ctx->Driver.ClearIndex = 0;
-    ctx->Driver.IndexMask = 0;
 
     if (SAVAGE_CONTEXT( ctx )->savageScreen->chipset >= S3_SAVAGE4) {
 	ctx->Driver.Enable = savageDDEnable_s4;
@@ -1736,11 +1727,4 @@ void savageDDInitStateFuncs(GLcontext *ctx)
 	ctx->Driver.StencilMaskSeparate = NULL;
 	ctx->Driver.StencilOpSeparate = NULL;
     }
-
-   /* Swrast hooks for imaging extensions:
-    */
-   ctx->Driver.CopyColorTable = _swrast_CopyColorTable;
-   ctx->Driver.CopyColorSubTable = _swrast_CopyColorSubTable;
-   ctx->Driver.CopyConvolutionFilter1D = _swrast_CopyConvolutionFilter1D;
-   ctx->Driver.CopyConvolutionFilter2D = _swrast_CopyConvolutionFilter2D;
 }

@@ -1,8 +1,8 @@
 /*
  * Mesa 3-D graphics library
- * Version:  6.5.1
+ * Version:  7.2.1
  *
- * Copyright (C) 1999-2006  Brian Paul   All Rights Reserved.
+ * Copyright (C) 1999-2008  Brian Paul   All Rights Reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -503,7 +503,7 @@ depth_test_span32( GLcontext *ctx, GLuint n,
  * Apply depth test to span of fragments.
  */
 static GLuint
-depth_test_span( GLcontext *ctx, struct sw_span *span)
+depth_test_span( GLcontext *ctx, SWspan *span)
 {
    struct gl_framebuffer *fb = ctx->DrawBuffer;
    struct gl_renderbuffer *rb = fb->_DepthBuffer;
@@ -534,15 +534,15 @@ depth_test_span( GLcontext *ctx, struct sw_span *span)
       if (rb->DataType == GL_UNSIGNED_SHORT) {
          GLushort zbuffer[MAX_WIDTH];
          rb->GetRow(ctx, rb, count, x, y, zbuffer);
-         passed = depth_test_span16(ctx, count, zbuffer, zValues, mask );
-         rb->PutRow(ctx, rb, count, x, y, zbuffer, NULL);
+         passed = depth_test_span16(ctx, count, zbuffer, zValues, mask);
+         rb->PutRow(ctx, rb, count, x, y, zbuffer, mask);
       }
       else {
          GLuint zbuffer[MAX_WIDTH];
          ASSERT(rb->DataType == GL_UNSIGNED_INT);
          rb->GetRow(ctx, rb, count, x, y, zbuffer);
-         passed = depth_test_span32(ctx, count, zbuffer, zValues, mask );
-         rb->PutRow(ctx, rb, count, x, y, zbuffer, NULL);
+         passed = depth_test_span32(ctx, count, zbuffer, zValues, mask);
+         rb->PutRow(ctx, rb, count, x, y, zbuffer, mask);
       }
    }
 
@@ -1051,7 +1051,7 @@ direct_depth_test_pixels32(GLcontext *ctx, GLuint *zStart, GLuint stride,
 
 
 static GLuint
-depth_test_pixels( GLcontext *ctx, struct sw_span *span )
+depth_test_pixels( GLcontext *ctx, SWspan *span )
 {
    struct gl_framebuffer *fb = ctx->DrawBuffer;
    struct gl_renderbuffer *rb = fb->_DepthBuffer;
@@ -1080,15 +1080,15 @@ depth_test_pixels( GLcontext *ctx, struct sw_span *span )
       if (rb->DataType == GL_UNSIGNED_SHORT) {
          GLushort zbuffer[MAX_WIDTH];
          _swrast_get_values(ctx, rb, count, x, y, zbuffer, sizeof(GLushort));
-         depth_test_span16(ctx, count, zbuffer, z, mask );
-         rb->PutValues(ctx, rb, count, x, y, zbuffer, NULL);
+         depth_test_span16(ctx, count, zbuffer, z, mask);
+         rb->PutValues(ctx, rb, count, x, y, zbuffer, mask);
       }
       else {
          GLuint zbuffer[MAX_WIDTH];
          ASSERT(rb->DataType == GL_UNSIGNED_INT);
          _swrast_get_values(ctx, rb, count, x, y, zbuffer, sizeof(GLuint));
-         depth_test_span32(ctx, count, zbuffer, z, mask );
-         rb->PutValues(ctx, rb, count, x, y, zbuffer, NULL);
+         depth_test_span32(ctx, count, zbuffer, z, mask);
+         rb->PutValues(ctx, rb, count, x, y, zbuffer, mask);
       }
    }
 
@@ -1101,7 +1101,7 @@ depth_test_pixels( GLcontext *ctx, struct sw_span *span )
  * \return approx number of pixels that passed (only zero is reliable)
  */
 GLuint
-_swrast_depth_test_span( GLcontext *ctx, struct sw_span *span)
+_swrast_depth_test_span( GLcontext *ctx, SWspan *span)
 {
    if (span->arrayMask & SPAN_XY)
       return depth_test_pixels(ctx, span);
@@ -1118,7 +1118,7 @@ _swrast_depth_test_span( GLcontext *ctx, struct sw_span *span)
  * \return GL_TRUE if any fragments pass, GL_FALSE if no fragments pass
  */
 GLboolean
-_swrast_depth_bounds_test( GLcontext *ctx, struct sw_span *span )
+_swrast_depth_bounds_test( GLcontext *ctx, SWspan *span )
 {
    struct gl_framebuffer *fb = ctx->DrawBuffer;
    struct gl_renderbuffer *rb = fb->_DepthBuffer;
@@ -1289,7 +1289,7 @@ _swrast_read_depth_span_uint( GLcontext *ctx, struct gl_renderbuffer *rb,
       GLint dx = -x;
       GLint i;
       for (i = 0; i < dx; i++)
-         depth[i] = 0.0;
+         depth[i] = 0;
       x = 0;
       n -= dx;
       depth += dx;
@@ -1298,7 +1298,7 @@ _swrast_read_depth_span_uint( GLcontext *ctx, struct gl_renderbuffer *rb,
       GLint dx = x + n - (GLint) rb->Width;
       GLint i;
       for (i = 0; i < dx; i++)
-         depth[n - i - 1] = 0.0;
+         depth[n - i - 1] = 0;
       n -= dx;
    }
    if (n <= 0) {

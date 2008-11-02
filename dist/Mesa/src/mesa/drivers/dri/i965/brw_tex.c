@@ -36,123 +36,64 @@
 #include "simple_list.h"
 #include "enums.h"
 #include "image.h"
+#include "teximage.h"
 #include "texstore.h"
 #include "texformat.h"
 #include "texmem.h"
 
+#include "intel_context.h"
 #include "intel_ioctl.h"
+#include "intel_regions.h"
+#include "intel_tex.h"
 #include "brw_context.h"
 #include "brw_defines.h"
 
 
-
-
-static const struct gl_texture_format *
-brwChooseTextureFormat( GLcontext *ctx, GLint internalFormat,
-			 GLenum format, GLenum type )
+void brw_FrameBufferTexInit( struct brw_context *brw,
+			     struct intel_region *region )
 {
-   switch ( internalFormat ) {
-   case 4:
-   case GL_RGBA:
-   case GL_COMPRESSED_RGBA:
-   case GL_RGBA8:
-   case GL_RGB10_A2:
-   case GL_RGBA12:
-   case GL_RGBA16:
-   case GL_RGBA4:
-   case GL_RGBA2:
-   case GL_RGB5_A1:
-      return &_mesa_texformat_argb8888; 
-/*       return &_mesa_texformat_rgba8888_rev; */
+   struct intel_context *intel = &brw->intel;
+   GLcontext *ctx = &intel->ctx;
+   struct gl_texture_object *obj;
+   struct gl_texture_image *img;
+   
+   intel->frame_buffer_texobj = obj =
+      ctx->Driver.NewTextureObject( ctx, (GLuint) -1, GL_TEXTURE_2D );
 
-   case 3:
-   case GL_RGB:
-   case GL_COMPRESSED_RGB:
-   case GL_RGB8:
-   case GL_RGB10:
-   case GL_RGB12:
-   case GL_RGB16:
-   case GL_RGB5:
-   case GL_RGB4:
-   case GL_R3_G3_B2:
-/*       return &_mesa_texformat_rgb888; */
-      return &_mesa_texformat_argb8888;
+   obj->MinFilter = GL_NEAREST;
+   obj->MagFilter = GL_NEAREST;
 
-   case GL_ALPHA:
-   case GL_ALPHA4:
-   case GL_ALPHA8:
-   case GL_ALPHA12:
-   case GL_ALPHA16:
-   case GL_COMPRESSED_ALPHA:
-      return &_mesa_texformat_a8;
+   img = ctx->Driver.NewTextureImage( ctx );
 
-   case 1:
-   case GL_LUMINANCE:
-   case GL_LUMINANCE4:
-   case GL_LUMINANCE8:
-   case GL_LUMINANCE12:
-   case GL_LUMINANCE16:
-   case GL_COMPRESSED_LUMINANCE:
-      return &_mesa_texformat_l8;
-
-   case 2:
-   case GL_LUMINANCE_ALPHA:
-   case GL_LUMINANCE4_ALPHA4:
-   case GL_LUMINANCE6_ALPHA2:
-   case GL_LUMINANCE8_ALPHA8:
-   case GL_LUMINANCE12_ALPHA4:
-   case GL_LUMINANCE12_ALPHA12:
-   case GL_LUMINANCE16_ALPHA16:
-   case GL_COMPRESSED_LUMINANCE_ALPHA:
-      return &_mesa_texformat_al88;
-
-   case GL_INTENSITY:
-   case GL_INTENSITY4:
-   case GL_INTENSITY8:
-   case GL_INTENSITY12:
-   case GL_INTENSITY16:
-   case GL_COMPRESSED_INTENSITY:
-      return &_mesa_texformat_i8;
-
-   case GL_YCBCR_MESA:
-      if (type == GL_UNSIGNED_SHORT_8_8_MESA ||
-	  type == GL_UNSIGNED_BYTE)
-         return &_mesa_texformat_ycbcr;
-      else
-         return &_mesa_texformat_ycbcr_rev;
-
-   case GL_COMPRESSED_RGB_FXT1_3DFX:
-   case GL_COMPRESSED_RGBA_FXT1_3DFX:
-     return &_mesa_texformat_rgb_fxt1;
-
-   case GL_RGB_S3TC:
-   case GL_RGB4_S3TC:
-   case GL_RGBA_S3TC:
-   case GL_RGBA4_S3TC:
-   case GL_COMPRESSED_RGBA_S3TC_DXT3_EXT:
-   case GL_COMPRESSED_RGBA_S3TC_DXT5_EXT:
-   case GL_COMPRESSED_RGBA_S3TC_DXT1_EXT:
-   case GL_COMPRESSED_RGB_S3TC_DXT1_EXT:
-     return &_mesa_texformat_rgb_dxt1; /* there is no rgba support? */
-
-   case GL_DEPTH_COMPONENT:
-   case GL_DEPTH_COMPONENT16:
-   case GL_DEPTH_COMPONENT24:
-   case GL_DEPTH_COMPONENT32:
-      return &_mesa_texformat_z16;
-
-   default:
-      fprintf(stderr, "unexpected texture format %s in %s\n", 
-	      _mesa_lookup_enum_by_nr(internalFormat),
-	      __FUNCTION__);
-      return NULL;
-   }
-
-   return NULL; /* never get here */
+   _mesa_init_teximage_fields( ctx, GL_TEXTURE_2D, img,
+			       region->pitch, region->height, 1, 0,
+			       region->cpp == 4 ? GL_RGBA : GL_RGB );
+   
+   _mesa_set_tex_image( obj, GL_TEXTURE_2D, 0, img );
 }
 
-
-void brwInitTextureFuncs( struct dd_function_table *functions )
+void brw_FrameBufferTexDestroy( struct brw_context *brw )
 {
-   functions->ChooseTextureFormat = brwChooseTextureFormat;
+   if (brw->intel.frame_buffer_texobj != NULL)
+      brw->intel.ctx.Driver.DeleteTexture( &brw->intel.ctx,
+					   brw->intel.frame_buffer_texobj );
+   brw->intel.frame_buffer_texobj = NULL;
+}
+
+/**
+ * Finalizes all textures, completing any rendering that needs to be done
+ * to prepare them.
+ */
+void brw_validate_textures( struct brw_context *brw )
+{
+   struct intel_context *intel = &brw->intel;
+   int i;
+
+   for (i = 0; i < BRW_MAX_TEX_UNIT; i++) {
+      struct gl_texture_unit *texUnit = &brw->attribs.Texture->Unit[i];
+
+      if (texUnit->_ReallyEnabled) {
+	 intel_finalize_mipmap_tree(intel, i);
+      }
+   }
 }

@@ -40,7 +40,7 @@
 #include "enums.h"
 #include "colormac.h"
 #include "swrast/swrast.h"
-#include "array_cache/acache.h"
+#include "vbo/vbo.h"
 #include "tnl/tnl.h"
 #include "swrast_setup/swrast_setup.h"
 
@@ -726,24 +726,26 @@ static void mach64DDDrawBuffer( GLcontext *ctx, GLenum mode )
 
    FLUSH_BATCH( mmesa );
 
-   /*
-    * _DrawDestMask is easier to cope with than <mode>.
-    */
-   switch ( ctx->DrawBuffer->_ColorDrawBufferMask[0] ) {
-   case BUFFER_BIT_FRONT_LEFT:
+   if (ctx->DrawBuffer->_NumColorDrawBuffers != 1) {
+      /* GL_NONE or GL_FRONT_AND_BACK or stereo left&right, etc */
+      FALLBACK( mmesa, MACH64_FALLBACK_DRAW_BUFFER, GL_TRUE );
+      return;
+   }
+
+   switch ( ctx->DrawBuffer->_ColorDrawBufferIndexes[0] ) {
+   case BUFFER_FRONT_LEFT:
       FALLBACK( mmesa, MACH64_FALLBACK_DRAW_BUFFER, GL_FALSE );
       mach64SetCliprects( ctx, GL_FRONT_LEFT );
       if (MACH64_DEBUG & DEBUG_VERBOSE_MSG)
 	 fprintf(stderr,"%s: BUFFER_BIT_FRONT_LEFT\n", __FUNCTION__);
       break;
-   case BUFFER_BIT_BACK_LEFT:
+   case BUFFER_BACK_LEFT:
       FALLBACK( mmesa, MACH64_FALLBACK_DRAW_BUFFER, GL_FALSE );
       mach64SetCliprects( ctx, GL_BACK_LEFT );
       if (MACH64_DEBUG & DEBUG_VERBOSE_MSG)
 	 fprintf(stderr,"%s: BUFFER_BIT_BACK_LEFT\n", __FUNCTION__);
       break;
    default:
-      /* GL_NONE or GL_FRONT_AND_BACK or stereo left&right, etc */
       FALLBACK( mmesa, MACH64_FALLBACK_DRAW_BUFFER, GL_TRUE );
       if (MACH64_DEBUG & DEBUG_VERBOSE_MSG)
 	 fprintf(stderr,"%s: fallback (mode=%d)\n", __FUNCTION__, mode);
@@ -1023,7 +1025,7 @@ static void mach64DDInvalidateState( GLcontext *ctx, GLuint new_state )
 {
    _swrast_InvalidateState( ctx, new_state );
    _swsetup_InvalidateState( ctx, new_state );
-   _ac_InvalidateState( ctx, new_state );
+   _vbo_InvalidateState( ctx, new_state );
    _tnl_InvalidateState( ctx, new_state );
    MACH64_CONTEXT(ctx)->NewGLState |= new_state;
 }
@@ -1186,19 +1188,4 @@ void mach64DDInitStateFuncs( GLcontext *ctx )
    
    ctx->Driver.DepthRange		= mach64DepthRange;
    ctx->Driver.Viewport			= mach64Viewport;
-   
-   /* Pixel path fallbacks.
-    */
-   ctx->Driver.Accum = _swrast_Accum;
-   ctx->Driver.Bitmap = _swrast_Bitmap;
-   ctx->Driver.CopyPixels = _swrast_CopyPixels;
-   ctx->Driver.DrawPixels = _swrast_DrawPixels;
-   ctx->Driver.ReadPixels = _swrast_ReadPixels;
-
-   /* Swrast hooks for imaging extensions:
-    */
-   ctx->Driver.CopyColorTable = _swrast_CopyColorTable;
-   ctx->Driver.CopyColorSubTable = _swrast_CopyColorSubTable;
-   ctx->Driver.CopyConvolutionFilter1D = _swrast_CopyConvolutionFilter1D;
-   ctx->Driver.CopyConvolutionFilter2D = _swrast_CopyConvolutionFilter2D;
 }

@@ -47,12 +47,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "swrast/swrast.h"
 
 #include "radeon_screen.h"
-#include "r200_context.h"
 #include "radeon_ioctl.h"
 #include "radeon_macros.h"
 #include "radeon_reg.h"
-#include "r200_state.h"
 
+#include "radeon_state.h"
 #include "r300_state.h"
 
 #include "utils.h"
@@ -71,7 +70,10 @@ static const GLubyte *radeonGetString(GLcontext * ctx, GLenum name)
 
 	switch (name) {
 	case GL_VENDOR:
-		return (GLubyte *) "Tungsten Graphics, Inc.";
+		if (IS_R300_CLASS(radeon->radeonScreen))
+			return (GLubyte *) "DRI R300 Project";
+		else
+			return (GLubyte *) "Tungsten Graphics, Inc.";
 
 	case GL_RENDERER:
 	{
@@ -88,9 +90,15 @@ static const GLubyte *radeonGetString(GLcontext * ctx, GLenum name)
 		offset = driGetRendererString(buffer, chipname, DRIVER_DATE,
 					      agp_mode);
 
+		if (IS_R300_CLASS(radeon->radeonScreen)) {
 		sprintf(&buffer[offset], " %sTCL",
+			(radeon->radeonScreen->chip_flags & RADEON_CHIPSET_TCL)
+			? "" : "NO-");
+		} else {
+			sprintf(&buffer[offset], " %sTCL",
 			!(radeon->TclFallback & RADEON_TCL_FALLBACK_TCL_DISABLE)
 			? "" : "NO-");
+		}
 
 		return (GLubyte *) buffer;
 	}
@@ -100,28 +108,10 @@ static const GLubyte *radeonGetString(GLcontext * ctx, GLenum name)
 	}
 }
 
-
-/* Return the width and height of the given buffer.
- */
-static void radeonGetBufferSize(GLframebuffer * buffer,
-				GLuint * width, GLuint * height)
-{
-	GET_CURRENT_CONTEXT(ctx);
-	radeonContextPtr radeon = RADEON_CONTEXT(ctx);
-
-	LOCK_HARDWARE(radeon);
-	*width = radeon->dri.drawable->w;
-	*height = radeon->dri.drawable->h;
-	UNLOCK_HARDWARE(radeon);
-}
-
-
 /* Initialize the driver's misc functions.
  */
 static void radeonInitDriverFuncs(struct dd_function_table *functions)
 {
-	functions->GetBufferSize = radeonGetBufferSize;
-	functions->ResizeBuffers = _mesa_resize_framebuffer;
 	functions->GetString = radeonGetString;
 }
 
@@ -145,6 +135,7 @@ GLboolean radeonInitContext(radeonContextPtr radeon,
 	/* Fill in additional standard functions. */
 	radeonInitDriverFuncs(functions);
 
+	radeon->radeonScreen = screen;
 	/* Allocate and initialize the Mesa context */
 	if (sharedContextPrivate)
 		shareCtx = ((radeonContextPtr)sharedContextPrivate)->glCtx;
@@ -161,13 +152,13 @@ GLboolean radeonInitContext(radeonContextPtr radeon,
 	/* DRI fields */
 	radeon->dri.context = driContextPriv;
 	radeon->dri.screen = sPriv;
-	radeon->dri.drawable = NULL;	/* Set by XMesaMakeCurrent */
+	radeon->dri.drawable = NULL;
+	radeon->dri.readable = NULL;
 	radeon->dri.hwContext = driContextPriv->hHWContext;
 	radeon->dri.hwLock = &sPriv->pSAREA->lock;
 	radeon->dri.fd = sPriv->fd;
-	radeon->dri.drmMinor = sPriv->drmMinor;
+	radeon->dri.drmMinor = sPriv->drm_version.minor;
 
-	radeon->radeonScreen = screen;
 	radeon->sarea = (drm_radeon_sarea_t *) ((GLubyte *) sPriv->pSAREA +
 					       screen->sarea_priv_offset);
 
@@ -186,10 +177,7 @@ GLboolean radeonInitContext(radeonContextPtr radeon,
 			radeon->do_usleeps ? "usleeps" : "busy waits",
 			fthrottle_mode, radeon->radeonScreen->irq);
 
-	radeon->vblank_flags = (radeon->radeonScreen->irq != 0)
-	    ? driGetDefaultVBlankFlags(&radeon->optionCache) : VBLANK_FLAG_NO_IRQ;
-
-	(*dri_interface->getUST) (&radeon->swap_ust);
+	(*sPriv->systemTime->getUST) (&radeon->swap_ust);
 
 	return GL_TRUE;
 }
@@ -286,18 +274,25 @@ GLboolean radeonMakeCurrent(__DRIcontextPrivate * driContextPriv,
 				radeon->glCtx);
 
 		if (radeon->dri.drawable != driDrawPriv) {
-			driDrawableInitVBlank(driDrawPriv,
-					      radeon->vblank_flags);
-			radeon->dri.drawable = driDrawPriv;
-			
-			r300UpdateWindow(radeon->glCtx);
-			r300UpdateViewportOffset(radeon->glCtx);
-#if R200_MERGED
-			if (IS_R200_CLASS(radeon->radeonScreen)) {
-				r200UpdateWindow(radeon->glCtx);
-				r200UpdateViewportOffset(radeon->glCtx);
+			if (driDrawPriv->swap_interval == (unsigned)-1) {
+				driDrawPriv->vblFlags =
+					(radeon->radeonScreen->irq != 0)
+					? driGetDefaultVBlankFlags(&radeon->
+								   optionCache)
+					: VBLANK_FLAG_NO_IRQ;
+
+				driDrawableInitVBlank(driDrawPriv);
 			}
-#endif
+		}
+
+		radeon->dri.readable = driReadPriv;
+
+		if (radeon->dri.drawable != driDrawPriv ||
+		    radeon->lastStamp != driDrawPriv->lastStamp) {
+			radeon->dri.drawable = driDrawPriv;
+
+			radeonSetCliprects(radeon);
+			r300UpdateViewportOffset(radeon->glCtx);
 		}
 
 		_mesa_make_current(radeon->glCtx,
@@ -306,18 +301,9 @@ GLboolean radeonMakeCurrent(__DRIcontextPrivate * driContextPriv,
 				    (GLframebuffer *) driReadPriv->
 				    driverPrivate);
 
-		if (!radeon->glCtx->Viewport.Width) {
-			_mesa_set_viewport(radeon->glCtx, 0, 0,
-					   driDrawPriv->w, driDrawPriv->h);
-		}
+		_mesa_update_state(radeon->glCtx);		
 
-		_mesa_update_state(radeon->glCtx);
-
-#if R200_MERGED
-		if (IS_R200_CLASS(radeon->radeonScreen))
-			r200ValidateState(radeon->glCtx);
-#endif
-		
+		radeonUpdatePageFlipping(radeon);
 	} else {
 		if (RADEON_DEBUG & DEBUG_DRI)
 			fprintf(stderr, "%s ctx is null\n", __FUNCTION__);

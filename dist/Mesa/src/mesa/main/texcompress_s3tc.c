@@ -1,8 +1,8 @@
 /*
  * Mesa 3-D graphics library
- * Version:  6.5.1
+ * Version:  6.5.3
  *
- * Copyright (C) 1999-2006  Brian Paul   All Rights Reserved.
+ * Copyright (C) 1999-2007  Brian Paul   All Rights Reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -48,6 +48,8 @@
 
 #ifdef __MINGW32__
 #define DXTN_LIBNAME "dxtn.dll"
+#define RTLD_LAZY 0
+#define RTLD_GLOBAL 0
 #elif defined(__DJGPP__)
 #define DXTN_LIBNAME "dxtn.dxe"
 #else
@@ -89,7 +91,7 @@ _mesa_dlopen(const char *libname, int flags)
    return dlopen(libname, flags);
 #endif
 #else
-   return (GenericFunc) NULL;
+   return NULL;
 #endif /* USE_EXTERNAL_DXTN_LIB */
 }
 
@@ -104,7 +106,7 @@ _mesa_dlsym(void *handle, const char *fname)
 {
 #if USE_EXTERNAL_DXTN_LIB
 #ifdef __MINGW32__
-   return (GenericFunc) GetProcAddress(handle, fname)
+   return (GenericFunc) GetProcAddress(handle, fname);
 #elif defined(__DJGPP__)
    /* need '_' prefix on symbol names */
    char fname2[1000];
@@ -243,7 +245,7 @@ texstore_rgb_dxt1(TEXSTORE_PARAMS)
                               dst, dstRowStride);
    }
    else {
-      _mesa_problem(ctx, "external dxt library not available");
+      _mesa_warning(ctx, "external dxt library not available");
    }
 
    if (tempImage)
@@ -305,7 +307,7 @@ texstore_rgba_dxt1(TEXSTORE_PARAMS)
                               dst, dstRowStride);
    }
    else {
-      _mesa_problem(ctx, "external dxt library not available");
+      _mesa_warning(ctx, "external dxt library not available");
    }
 
    if (tempImage)
@@ -366,7 +368,7 @@ texstore_rgba_dxt3(TEXSTORE_PARAMS)
                               dst, dstRowStride);
    }
    else {
-      _mesa_problem(ctx, "external dxt library not available");
+      _mesa_warning(ctx, "external dxt library not available");
    }
 
    if (tempImage)
@@ -427,7 +429,7 @@ texstore_rgba_dxt5(TEXSTORE_PARAMS)
                               dst, dstRowStride);
    }
    else {
-      _mesa_problem(ctx, "external dxt library not available");
+      _mesa_warning(ctx, "external dxt library not available");
    }
 
    if (tempImage)
@@ -574,6 +576,32 @@ const struct gl_texture_format _mesa_texformat_rgb_dxt1 = {
    NULL, /*impossible*/ 		/* FetchTexel3Df */
    NULL					/* StoreTexel */
 };
+
+#if FEATURE_EXT_texture_sRGB
+const struct gl_texture_format _mesa_texformat_srgb_dxt1 = {
+   MESA_FORMAT_SRGB_DXT1,		/* MesaFormat */
+   GL_RGB,				/* BaseFormat */
+   GL_UNSIGNED_NORMALIZED_ARB,		/* DataType */
+   4, /*approx*/			/* RedBits */
+   4, /*approx*/			/* GreenBits */
+   4, /*approx*/			/* BlueBits */
+   0,					/* AlphaBits */
+   0,					/* LuminanceBits */
+   0,					/* IntensityBits */
+   0,					/* IndexBits */
+   0,					/* DepthBits */
+   0,					/* StencilBits */
+   0,					/* TexelBytes */
+   texstore_rgb_dxt1,			/* StoreTexImageFunc */
+   NULL, /*impossible*/ 		/* FetchTexel1D */
+   fetch_texel_2d_rgb_dxt1, 		/* FetchTexel2D */
+   NULL, /*impossible*/ 		/* FetchTexel3D */
+   NULL, /*impossible*/ 		/* FetchTexel1Df */
+   fetch_texel_2d_f_rgb_dxt1, 		/* FetchTexel2Df */
+   NULL, /*impossible*/ 		/* FetchTexel3Df */
+   NULL					/* StoreTexel */
+};
+#endif
 
 const struct gl_texture_format _mesa_texformat_rgba_dxt1 = {
    MESA_FORMAT_RGBA_DXT1,		/* MesaFormat */

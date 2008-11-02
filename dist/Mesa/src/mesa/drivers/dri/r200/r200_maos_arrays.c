@@ -1,4 +1,3 @@
-/* $XFree86: xc/lib/GL/mesa/src/drv/r200/r200_maos_arrays.c,v 1.3 2003/02/23 23:59:01 dawes Exp $ */
 /*
 Copyright (C) The Weather Channel, Inc.  2002.  All Rights Reserved.
 
@@ -376,7 +375,7 @@ static void emit_vector( GLcontext *ctx,
 /* Emit any changed arrays to new GART memory, re-emit a packet to
  * update the arrays.  
  */
-void r200EmitArrays( GLcontext *ctx, GLuint inputs )
+void r200EmitArrays( GLcontext *ctx, GLubyte *vimap_rev )
 {
    r200ContextPtr rmesa = R200_CONTEXT( ctx );
    struct vertex_buffer *VB = &TNL_CONTEXT( ctx )->vb;
@@ -384,147 +383,130 @@ void r200EmitArrays( GLcontext *ctx, GLuint inputs )
    GLuint nr = 0;
    GLuint vfmt0 = 0, vfmt1 = 0;
    GLuint count = VB->Count;
-   GLuint i;
-   
-   if (1) {
-      if (!rmesa->tcl.obj.buf) 
-	 emit_vector( ctx, 
-		      &rmesa->tcl.obj, 
-		      (char *)VB->ObjPtr->data,
-		      VB->ObjPtr->size,
-		      VB->ObjPtr->stride,
-		      count);
+   GLuint i, emitsize;
 
-      switch( VB->ObjPtr->size ) {
-      case 4: vfmt0 |= R200_VTX_W0;
-      case 3: vfmt0 |= R200_VTX_Z0;
-      case 2: 
-      default:
-	 break;
-      }
-      component[nr++] = &rmesa->tcl.obj;
-   }
-   
-
-   if (inputs & VERT_BIT_NORMAL) {
-      if (!rmesa->tcl.norm.buf)
-	 emit_vector( ctx, 
-		      &(rmesa->tcl.norm), 
-		      (char *)VB->NormalPtr->data,
-		      3,
-		      VB->NormalPtr->stride,
-		      count);
-
-      vfmt0 |= R200_VTX_N0;
-      component[nr++] = &rmesa->tcl.norm;
-   }
-
-   if (inputs & VERT_BIT_FOG) {
-      if (!rmesa->tcl.fog.buf)
-	 emit_vecfog( ctx, 
-		      &(rmesa->tcl.fog), 
-		      (char *)VB->FogCoordPtr->data,
-		      VB->FogCoordPtr->stride,
-		      count);
-
-      vfmt0 |= R200_VTX_DISCRETE_FOG;
-      component[nr++] = &rmesa->tcl.fog;
-   }
- 
-   if (inputs & VERT_BIT_COLOR0) {
-      int emitsize;
-
-      if (VB->ColorPtr[0]->size == 4 &&
-	  (VB->ColorPtr[0]->stride != 0 ||
-	   VB->ColorPtr[0]->data[0][3] != 1.0)) { 
-	 vfmt0 |= R200_VTX_FP_RGBA << R200_VTX_COLOR_0_SHIFT; 
-	 emitsize = 4;
-      }
-      else { 
-	 vfmt0 |= R200_VTX_FP_RGB << R200_VTX_COLOR_0_SHIFT; 
-	 emitsize = 3;
-      }
-
-      if (!rmesa->tcl.rgba.buf)
-	 emit_vector( ctx, 
-		      &(rmesa->tcl.rgba), 
-		      (char *)VB->ColorPtr[0]->data,
-		      emitsize,
-		      VB->ColorPtr[0]->stride,
-		      count);
-
-      component[nr++] = &rmesa->tcl.rgba;
-   }
-
-
-   if (inputs & VERT_BIT_COLOR1) {
-      if (!rmesa->tcl.spec.buf) {
-	 emit_vector( ctx, 
-		      &rmesa->tcl.spec, 
-		      (char *)VB->SecondaryColorPtr[0]->data,
-		      3,
-		      VB->SecondaryColorPtr[0]->stride,
-		      count);
-      }
-
-      /* How does this work?
-       */
-      vfmt0 |= R200_VTX_FP_RGB << R200_VTX_COLOR_1_SHIFT; 
-      component[nr++] = &rmesa->tcl.spec;
-   }
-      
-   for ( i = 0 ; i < ctx->Const.MaxTextureUnits ; i++ ) {
-      if (inputs & (VERT_BIT_TEX0 << i)) {
-	 if (!rmesa->tcl.tex[i].buf)
-	     emit_vector( ctx, 
-			  &(rmesa->tcl.tex[i]),
-			  (char *)VB->TexCoordPtr[i]->data,
-			  VB->TexCoordPtr[i]->size,
-			  VB->TexCoordPtr[i]->stride,
-			  count );
-
-	 vfmt1 |= VB->TexCoordPtr[i]->size << (i * 3);
-	 component[nr++] = &rmesa->tcl.tex[i];
+   for ( i = 0; i < 15; i++ ) {
+      GLubyte attrib = vimap_rev[i];
+      if (attrib != 255) {
+	 switch (i) {
+	 case 0:
+	    emitsize = (VB->AttribPtr[attrib]->size);
+	    switch (emitsize) {
+	    case 4:
+	       vfmt0 |= R200_VTX_W0;
+	       /* fallthrough */
+	    case 3:
+	       vfmt0 |= R200_VTX_Z0;
+	       break;
+	    case 2:
+	       break;
+	    default: assert(0);
+	    }
+	    break;
+	 case 1:
+	    assert(attrib == VERT_ATTRIB_WEIGHT);
+	    emitsize = (VB->AttribPtr[attrib]->size);
+	    vfmt0 |= emitsize << R200_VTX_WEIGHT_COUNT_SHIFT;
+	    break;
+	 case 2:
+	    assert(attrib == VERT_ATTRIB_NORMAL);
+	    emitsize = 3;
+	    vfmt0 |= R200_VTX_N0;
+	    break;
+	 case 3:
+	    /* special handling to fix up fog. Will get us into trouble with vbos...*/
+	    assert(attrib == VERT_ATTRIB_FOG);
+	    if (!rmesa->tcl.vertex_data[i].buf) {
+	       if (ctx->VertexProgram._Enabled)
+		  emit_vector( ctx,
+			 &(rmesa->tcl.vertex_data[i]),
+			 (char *)VB->AttribPtr[attrib]->data,
+			 1,
+			 VB->AttribPtr[attrib]->stride,
+			 count);
+	       else
+		  emit_vecfog( ctx,
+			 &(rmesa->tcl.vertex_data[i]),
+			 (char *)VB->AttribPtr[attrib]->data,
+			 VB->AttribPtr[attrib]->stride,
+			 count);
+	    }
+	    vfmt0 |= R200_VTX_DISCRETE_FOG;
+	    goto after_emit;
+	    break;
+	 case 4:
+	 case 5:
+	 case 6:
+	 case 7:
+	    if (VB->AttribPtr[attrib]->size == 4 &&
+	       (VB->AttribPtr[attrib]->stride != 0 ||
+		VB->AttribPtr[attrib]->data[0][3] != 1.0)) emitsize = 4;
+	    else emitsize = 3;
+	    if (emitsize == 4)
+	       vfmt0 |= R200_VTX_FP_RGBA << (R200_VTX_COLOR_0_SHIFT + (i - 4) * 2);
+	    else {
+	       vfmt0 |= R200_VTX_FP_RGB << (R200_VTX_COLOR_0_SHIFT + (i - 4) * 2);
+	    }
+	    break;
+	 case 8:
+	 case 9:
+	 case 10:
+	 case 11:
+	 case 12:
+	 case 13:
+	    emitsize = VB->AttribPtr[attrib]->size;
+	    vfmt1 |= emitsize << (R200_VTX_TEX0_COMP_CNT_SHIFT + (i - 8) * 3);
+	    break;
+	 case 14:
+	    emitsize = VB->AttribPtr[attrib]->size >= 2 ? VB->AttribPtr[attrib]->size : 2;
+	    switch (emitsize) {
+	    case 2:
+	       vfmt0 |= R200_VTX_XY1;
+	       /* fallthrough */
+	    case 3:
+	       vfmt0 |= R200_VTX_Z1;
+	       /* fallthrough */
+	    case 4:
+	       vfmt0 |= R200_VTX_W1;
+	    break;
+	    }
+	 default:
+	    assert(0);
+	 }
+	 if (!rmesa->tcl.vertex_data[i].buf) {
+	    emit_vector( ctx,
+			 &(rmesa->tcl.vertex_data[i]),
+			 (char *)VB->AttribPtr[attrib]->data,
+			 emitsize,
+			 VB->AttribPtr[attrib]->stride,
+			 count );
+	 }
+after_emit:
+	 assert(nr < 12);
+	 component[nr++] = &rmesa->tcl.vertex_data[i];
       }
    }
 
    if (vfmt0 != rmesa->hw.vtx.cmd[VTX_VTXFMT_0] ||
-       vfmt1 != rmesa->hw.vtx.cmd[VTX_VTXFMT_1]) { 
-      R200_STATECHANGE( rmesa, vtx ); 
+       vfmt1 != rmesa->hw.vtx.cmd[VTX_VTXFMT_1]) {
+      R200_STATECHANGE( rmesa, vtx );
       rmesa->hw.vtx.cmd[VTX_VTXFMT_0] = vfmt0;
       rmesa->hw.vtx.cmd[VTX_VTXFMT_1] = vfmt1;
-   } 
+   }
 
    rmesa->tcl.nr_aos_components = nr;
-   rmesa->tcl.vertex_format = vfmt0;
 }
 
 
 void r200ReleaseArrays( GLcontext *ctx, GLuint newinputs )
 {
-   GLuint unit;
    r200ContextPtr rmesa = R200_CONTEXT( ctx );
 
-/*    if (R200_DEBUG & DEBUG_VERTS)  */
-/*       _tnl_print_vert_flags( __FUNCTION__, newinputs ); */
-
-   if (newinputs & VERT_BIT_POS) 
-     r200ReleaseDmaRegion( rmesa, &rmesa->tcl.obj, __FUNCTION__ );
-
-   if (newinputs & VERT_BIT_NORMAL) 
-      r200ReleaseDmaRegion( rmesa, &rmesa->tcl.norm, __FUNCTION__ );
-      
-   if (newinputs & VERT_BIT_FOG) 
-      r200ReleaseDmaRegion( rmesa, &rmesa->tcl.fog, __FUNCTION__ );
-
-   if (newinputs & VERT_BIT_COLOR0) 
-      r200ReleaseDmaRegion( rmesa, &rmesa->tcl.rgba, __FUNCTION__ );
-
-   if (newinputs & VERT_BIT_COLOR1) 
-      r200ReleaseDmaRegion( rmesa, &rmesa->tcl.spec, __FUNCTION__ );
-
-   for (unit = 0 ; unit < ctx->Const.MaxTextureUnits; unit++) {
-      if (newinputs & VERT_BIT_TEX(unit))
-	 r200ReleaseDmaRegion( rmesa, &rmesa->tcl.tex[unit], __FUNCTION__ );
+   /* only do it for changed inputs ? */
+   int i;
+   for (i = 0; i < 15; i++) {
+      if (newinputs & (1 << i))
+	 r200ReleaseDmaRegion( rmesa,
+	    &rmesa->tcl.vertex_data[i], __FUNCTION__ );
    }
 }

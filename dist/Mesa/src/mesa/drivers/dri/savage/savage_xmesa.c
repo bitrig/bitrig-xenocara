@@ -40,7 +40,7 @@
 #include "swrast/swrast.h"
 #include "swrast_setup/swrast_setup.h"
 #include "tnl/tnl.h"
-#include "array_cache/acache.h"
+#include "vbo/vbo.h"
 
 #include "tnl/t_pipeline.h"
 
@@ -61,6 +61,7 @@
 
 #define need_GL_ARB_multisample
 #define need_GL_ARB_texture_compression
+#define need_GL_ARB_vertex_buffer_object
 #define need_GL_EXT_secondary_color
 #include "extension_helper.h"
 
@@ -135,6 +136,7 @@ static const struct dri_extension card_extensions[] =
     { "GL_ARB_multisample",                GL_ARB_multisample_functions },
     { "GL_ARB_multitexture",               NULL },
     { "GL_ARB_texture_compression",        GL_ARB_texture_compression_functions },
+    { "GL_ARB_vertex_buffer_object",       GL_ARB_vertex_buffer_object_functions },
     { "GL_EXT_stencil_wrap",               NULL },
     { "GL_EXT_texture_lod_bias",           NULL },
     { "GL_EXT_secondary_color",            GL_EXT_secondary_color_functions },
@@ -166,7 +168,11 @@ static const struct tnl_pipeline_stage *savage_pipeline[] = {
 };
 
 
-/* this is first function called in dirver*/
+PUBLIC const __DRIextension *savageScreenExtensions[] = {
+    &driCoreExtension.base,
+    &driLegacyExtension.base,
+    &driReadDrawableExtension,
+};
 
 static GLboolean
 savageInitDriver(__DRIscreenPrivate *sPriv)
@@ -260,6 +266,8 @@ savageInitDriver(__DRIscreenPrivate *sPriv)
    driParseOptionInfo (&savageScreen->optionCache,
 		       __driConfigOptions, __driNConfigOptions);
 
+   sPriv->extensions = savageScreenExtensions;
+
 #if 0
    savageDDFastPathInit();
    savageDDTrifuncInit();
@@ -284,34 +292,6 @@ savageDestroyScreen(__DRIscreenPrivate *sPriv)
    Xfree(savageScreen);
    sPriv->private = NULL;
 }
-
-#if 0
-GLvisual *XMesaCreateVisual(Display *dpy,
-                            __DRIscreenPrivate *driScrnPriv,
-                            const XVisualInfo *visinfo,
-                            const __GLXvisualConfig *config)
-{
-   /* Drivers may change the args to _mesa_create_visual() in order to
-    * setup special visuals.
-    */
-   return _mesa_create_visual( config->rgba,
-                               config->doubleBuffer,
-                               config->stereo,
-                               _mesa_bitcount(visinfo->red_mask),
-                               _mesa_bitcount(visinfo->green_mask),
-                               _mesa_bitcount(visinfo->blue_mask),
-                               config->alphaSize,
-                               0, /* index bits */
-                               config->depthSize,
-                               config->stencilSize,
-                               config->accumRedSize,
-                               config->accumGreenSize,
-                               config->accumBlueSize,
-                               config->accumAlphaSize,
-                               0 /* num samples */ );
-}
-#endif
-
 
 static GLboolean
 savageCreateContext( const __GLcontextModes *mesaVis,
@@ -501,7 +481,7 @@ savageCreateContext( const __GLcontextModes *mesaVis,
    /* Initialize the software rasterizer and helper modules.
     */
    _swrast_CreateContext( ctx );
-   _ac_CreateContext( ctx );
+   _vbo_CreateContext( ctx );
    _tnl_CreateContext( ctx );
    
    _swsetup_CreateContext( ctx );
@@ -515,7 +495,7 @@ savageCreateContext( const __GLcontextModes *mesaVis,
 					    "enable_fastpath");
    /* DRM versions before 2.1.3 would only render triangle lists. ELTS
     * support was added in 2.2.0. */
-   if (imesa->enable_fastpath && sPriv->drmMinor < 2) {
+   if (imesa->enable_fastpath && sPriv->drm_version.minor < 2) {
       fprintf (stderr,
 	       "*** Disabling fast path because your DRM version is buggy "
 	       "or doesn't\n*** support ELTS. You need at least Savage DRM "
@@ -591,7 +571,7 @@ savageDestroyContext(__DRIcontextPrivate *driContextPriv)
 
       _swsetup_DestroyContext(imesa->glCtx );
       _tnl_DestroyContext( imesa->glCtx );
-      _ac_DestroyContext( imesa->glCtx );
+      _vbo_DestroyContext( imesa->glCtx );
       _swrast_DestroyContext( imesa->glCtx );
 
       /* free the Mesa context */
@@ -702,7 +682,7 @@ savageCreateBuffer( __DRIscreenPrivate *driScrnPriv,
 static void
 savageDestroyBuffer(__DRIdrawablePrivate *driDrawPriv)
 {
-   _mesa_destroy_framebuffer((GLframebuffer *) (driDrawPriv->driverPrivate));
+   _mesa_unreference_framebuffer((GLframebuffer **)(&(driDrawPriv->driverPrivate)));
 }
 
 #if 0
@@ -716,34 +696,18 @@ void XMesaSwapBuffers(__DRIdrawablePrivate *driDrawPriv)
 }
 #endif
 
-void savageXMesaSetFrontClipRects( savageContextPtr imesa )
+
+void savageXMesaSetClipRects(savageContextPtr imesa)
 {
    __DRIdrawablePrivate *dPriv = imesa->driDrawable;
 
-   imesa->numClipRects = dPriv->numClipRects;
-   imesa->pClipRects = dPriv->pClipRects;
-   imesa->drawX = dPriv->x;
-   imesa->drawY = dPriv->y;
-
-   savageCalcViewport( imesa->glCtx );
-}
-
-
-void savageXMesaSetBackClipRects( savageContextPtr imesa )
-{
-   __DRIdrawablePrivate *dPriv = imesa->driDrawable;
-
-   if (dPriv->numBackClipRects == 0) 
-   {
-
-
+   if ((dPriv->numBackClipRects == 0)
+       || (imesa->glCtx->DrawBuffer->_ColorDrawBufferIndexes[0] == BUFFER_FRONT_LEFT)) {
       imesa->numClipRects = dPriv->numClipRects;
       imesa->pClipRects = dPriv->pClipRects;
       imesa->drawX = dPriv->x;
       imesa->drawY = dPriv->y;
    } else {
-
-
       imesa->numClipRects = dPriv->numBackClipRects;
       imesa->pClipRects = dPriv->pBackClipRects;
       imesa->drawX = dPriv->backX;
@@ -756,18 +720,17 @@ void savageXMesaSetBackClipRects( savageContextPtr imesa )
 
 static void savageXMesaWindowMoved( savageContextPtr imesa ) 
 {
+   __DRIdrawablePrivate *const drawable = imesa->driDrawable;
+   __DRIdrawablePrivate *const readable = imesa->driReadable;
+
    if (0)
       fprintf(stderr, "savageXMesaWindowMoved\n\n");
 
-   switch (imesa->glCtx->DrawBuffer->_ColorDrawBufferMask[0]) {
-   case BUFFER_BIT_FRONT_LEFT:
-      savageXMesaSetFrontClipRects( imesa );
-      break;
-   case BUFFER_BIT_BACK_LEFT:
-      savageXMesaSetBackClipRects( imesa );
-      break;
-   default:
-       break;
+   savageXMesaSetClipRects(imesa);
+
+   driUpdateFramebufferSize(imesa->glCtx, drawable);
+   if (drawable != readable) {
+      driUpdateFramebufferSize(imesa->glCtx, readable);
    }
 }
 
@@ -858,11 +821,12 @@ savageMakeCurrent(__DRIcontextPrivate *driContextPriv,
 
 void savageGetLock( savageContextPtr imesa, GLuint flags ) 
 {
-   __DRIdrawablePrivate *dPriv = imesa->driDrawable;
+   __DRIdrawablePrivate *const drawable = imesa->driDrawable;
+   __DRIdrawablePrivate *const readable = imesa->driReadable;
    __DRIscreenPrivate *sPriv = imesa->driScreen;
    drm_savage_sarea_t *sarea = imesa->sarea;
    int me = imesa->hHWContext;
-   int stamp = dPriv->lastStamp; 
+   int stamp = drawable->lastStamp; 
    int heap;
    unsigned int timestamp = 0;
 
@@ -882,10 +846,11 @@ void savageGetLock( savageContextPtr imesa, GLuint flags )
     * NOTE: This releases and regains the hw lock, so all state
     * checking must be done *after* this call:
     */
-   DRI_VALIDATE_DRAWABLE_INFO(sPriv, dPriv);		
+   DRI_VALIDATE_DRAWABLE_INFO(sPriv, drawable);
+   if (drawable != readable) {
+      DRI_VALIDATE_DRAWABLE_INFO(sPriv, readable);
+   }
 
-
-  
 
    /* If we lost context, need to dump all registers to hardware.
     * Note that we don't care about 2d contexts, even if they perform
@@ -916,38 +881,24 @@ void savageGetLock( savageContextPtr imesa, GLuint flags )
       DRI_AGE_TEXTURES( imesa->textureHeaps[heap] );
    }
 
-   if (dPriv->lastStamp != stamp) {
-      driUpdateFramebufferSize(imesa->glCtx, dPriv);
+   if (drawable->lastStamp != stamp) {
+      driUpdateFramebufferSize(imesa->glCtx, drawable);
       savageXMesaWindowMoved( imesa );
    }
 }
 
-
-
-static const struct __DriverAPIRec savageAPI = {
-   savageInitDriver,
-   savageDestroyScreen,
-   savageCreateContext,
-   savageDestroyContext,
-   savageCreateBuffer,
-   savageDestroyBuffer,
-   savageSwapBuffers,
-   savageMakeCurrent,
-   savageUnbindContext
-};
-
-
-static __GLcontextModes *
-savageFillInModes( unsigned pixel_bits, unsigned depth_bits,
+static const  __DRIconfig **
+savageFillInModes( __DRIscreenPrivate *psp,
+		   unsigned pixel_bits, unsigned depth_bits,
 		   unsigned stencil_bits, GLboolean have_back_buffer )
 {
-    __GLcontextModes * modes;
+    __DRIconfig **configs;
     __GLcontextModes * m;
-    unsigned num_modes;
     unsigned depth_buffer_factor;
     unsigned back_buffer_factor;
     GLenum fb_format;
     GLenum fb_type;
+    int i;
 
     /* Right now GLX_SWAP_COPY_OML isn't supported, but it would be easy
      * enough to add support.  Basically, if a context is created with an
@@ -978,8 +929,6 @@ savageFillInModes( unsigned pixel_bits, unsigned depth_bits,
     depth_buffer_factor = ((depth_bits != 0) || (stencil_bits != 0)) ? 2 : 1;
     back_buffer_factor  = (have_back_buffer) ? 2 : 1;
 
-    num_modes = depth_buffer_factor * back_buffer_factor * 4;
-
     if ( pixel_bits == 16 ) {
         fb_format = GL_RGB;
         fb_type = GL_UNSIGNED_SHORT_5_6_5;
@@ -989,21 +938,11 @@ savageFillInModes( unsigned pixel_bits, unsigned depth_bits,
         fb_type = GL_UNSIGNED_INT_8_8_8_8_REV;
     }
 
-    modes = (*dri_interface->createContextModes)( num_modes, sizeof( __GLcontextModes ) );
-    m = modes;
-    if ( ! driFillInModes( & m, fb_format, fb_type,
-			   depth_bits_array, stencil_bits_array, depth_buffer_factor,
-			   back_buffer_modes, back_buffer_factor,
-			   GLX_TRUE_COLOR ) ) {
-	fprintf( stderr, "[%s:%u] Error creating FBConfig!\n",
-		 __func__, __LINE__ );
-	return NULL;
-    }
-
-    if ( ! driFillInModes( & m, fb_format, fb_type,
-			   depth_bits_array, stencil_bits_array, depth_buffer_factor,
-			   back_buffer_modes, back_buffer_factor,
-			   GLX_DIRECT_COLOR ) ) {
+    configs = driCreateConfigs(fb_format, fb_type,
+			       depth_bits_array, stencil_bits_array,
+			       depth_buffer_factor,
+			       back_buffer_modes, back_buffer_factor);
+    if (configs == NULL) {
 	fprintf( stderr, "[%s:%u] Error creating FBConfig!\n",
 		 __func__, __LINE__ );
 	return NULL;
@@ -1011,74 +950,68 @@ savageFillInModes( unsigned pixel_bits, unsigned depth_bits,
 
     /* Mark the visual as slow if there are "fake" stencil bits.
      */
-    for ( m = modes ; m != NULL ; m = m->next ) {
-	if ( (m->stencilBits != 0) && (m->stencilBits != stencil_bits) ) {
+    for (i = 0; configs[i]; i++) {
+	m = &configs[i]->modes;
+	if ((m->stencilBits != 0) && (m->stencilBits != stencil_bits)) {
 	    m->visualRating = GLX_SLOW_CONFIG;
 	}
     }
 
-    return modes;
+    return (const __DRIconfig **) configs;
 }
 
 
 /**
- * This is the bootstrap function for the driver.  libGL supplies all of the
- * requisite information about the system, and the driver initializes itself.
- * This routine also fills in the linked list pointed to by \c driver_modes
- * with the \c __GLcontextModes that the driver can support for windows or
- * pbuffers.
+ * This is the driver specific part of the createNewScreen entry point.
  * 
- * \return A pointer to a \c __DRIscreenPrivate on success, or \c NULL on 
- *         failure.
+ * \todo maybe fold this into intelInitDriver
+ *
+ * \return the __GLcontextModes supported by this driver
  */
-PUBLIC
-void * __driCreateNewScreen_20050727( __DRInativeDisplay *dpy, int scrn, __DRIscreen *psc,
-			     const __GLcontextModes * modes,
-			     const __DRIversion * ddx_version,
-			     const __DRIversion * dri_version,
-			     const __DRIversion * drm_version,
-			     const __DRIframebuffer * frame_buffer,
-			     drmAddress pSAREA, int fd, 
-			     int internal_api_version,
-			     const __DRIinterfaceMethods * interface,
-			     __GLcontextModes ** driver_modes )
-			     
+static const __DRIconfig **
+savageInitScreen(__DRIscreenPrivate *psp)
 {
-   __DRIscreenPrivate *psp;
    static const __DRIversion ddx_expected = { 2, 0, 0 };
    static const __DRIversion dri_expected = { 4, 0, 0 };
    static const __DRIversion drm_expected = { 2, 1, 0 };
-
-   dri_interface = interface;
+   SAVAGEDRIPtr dri_priv = (SAVAGEDRIPtr)psp->pDevPriv;
 
    if ( ! driCheckDriDdxDrmVersions2( "Savage",
-				      dri_version, & dri_expected,
-				      ddx_version, & ddx_expected,
-				      drm_version, & drm_expected ) ) {
+				      &psp->dri_version, & dri_expected,
+				      &psp->ddx_version, & ddx_expected,
+				      &psp->drm_version, & drm_expected ) )
       return NULL;
-   }
-      
-   psp = __driUtilCreateNewScreen(dpy, scrn, psc, NULL,
-				  ddx_version, dri_version, drm_version,
-				  frame_buffer, pSAREA, fd,
-				  internal_api_version, &savageAPI);
-   if ( psp != NULL ) {
-      SAVAGEDRIPtr dri_priv = (SAVAGEDRIPtr)psp->pDevPriv;
-      *driver_modes = savageFillInModes( dri_priv->cpp*8,
-					 (dri_priv->cpp == 2) ? 16 : 24,
-					 (dri_priv->cpp == 2) ? 0  : 8,
-					 (dri_priv->backOffset != dri_priv->depthOffset) );
 
-      /* Calling driInitExtensions here, with a NULL context pointer, does not actually
-       * enable the extensions.  It just makes sure that all the dispatch offsets for all
-       * the extensions that *might* be enables are known.  This is needed because the
-       * dispatch offsets need to be known when _mesa_context_create is called, but we can't
-       * enable the extensions until we have a context pointer.
-       *
-       * Hello chicken.  Hello egg.  How are you two today?
-       */
-      driInitExtensions( NULL, card_extensions, GL_FALSE );
-   }
+   /* Calling driInitExtensions here, with a NULL context pointer,
+    * does not actually enable the extensions.  It just makes sure
+    * that all the dispatch offsets for all the extensions that
+    * *might* be enables are known.  This is needed because the
+    * dispatch offsets need to be known when _mesa_context_create is
+    * called, but we can't enable the extensions until we have a
+    * context pointer.
+    *
+    * Hello chicken.  Hello egg.  How are you two today?
+    */
+   driInitExtensions( NULL, card_extensions, GL_FALSE );
 
-   return (void *) psp;
+   if (!savageInitDriver(psp))
+       return NULL;
+
+   return savageFillInModes( psp,
+			     dri_priv->cpp*8,
+			     (dri_priv->cpp == 2) ? 16 : 24,
+			     (dri_priv->cpp == 2) ? 0  : 8,
+			     (dri_priv->backOffset != dri_priv->depthOffset) );
 }
+
+const struct __DriverAPIRec driDriverAPI = {
+   savageInitScreen, 
+   savageDestroyScreen,
+   savageCreateContext,
+   savageDestroyContext,
+   savageCreateBuffer,
+   savageDestroyBuffer,
+   savageSwapBuffers,
+   savageMakeCurrent,
+   savageUnbindContext
+};

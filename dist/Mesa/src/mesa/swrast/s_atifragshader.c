@@ -23,11 +23,22 @@
 #include "glheader.h"
 #include "colormac.h"
 #include "context.h"
-#include "atifragshader.h"
 #include "macros.h"
-#include "program.h"
+#include "shader/program.h"
+#include "shader/atifragshader.h"
+#include "swrast/s_atifragshader.h"
 
-#include "s_atifragshader.h"
+
+/**
+ * State for executing ATI fragment shader.
+ */
+struct atifs_machine
+{
+   GLfloat Registers[6][4];         /** six temporary registers */
+   GLfloat PrevPassRegisters[6][4];
+   GLfloat Inputs[2][4];   /** Primary, secondary input colors */
+};
+
 
 
 /**
@@ -230,17 +241,6 @@ finish_pass(struct atifs_machine *machine)
    }
 }
 
-/**
- * Execute the given fragment shader
- * NOTE: we do everything in single-precision floating point; we don't
- * currently observe the single/half/fixed-precision qualifiers.
- * \param ctx - rendering context
- * \param program - the fragment program to execute
- * \param machine - machine state (register file)
- * \param maxInst - max number of instructions to execute
- * \return GL_TRUE if program completed or GL_FALSE if program executed KIL.
- */
-
 struct ati_fs_opcode_st ati_fs_opcodes[] = {
    {GL_ADD_ATI, 2},
    {GL_SUB_ATI, 2},
@@ -259,7 +259,7 @@ struct ati_fs_opcode_st ati_fs_opcodes[] = {
 
 static void
 handle_pass_op(struct atifs_machine *machine, struct atifs_setupinst *texinst,
-	       const struct sw_span *span, GLuint column, GLuint idx)
+	       const SWspan *span, GLuint column, GLuint idx)
 {
    GLuint swizzle = texinst->swizzle;
    GLuint pass_tex = texinst->src;
@@ -267,7 +267,7 @@ handle_pass_op(struct atifs_machine *machine, struct atifs_setupinst *texinst,
    if (pass_tex >= GL_TEXTURE0_ARB && pass_tex <= GL_TEXTURE7_ARB) {
       pass_tex -= GL_TEXTURE0_ARB;
       COPY_4V(machine->Registers[idx],
-	      span->array->texcoords[pass_tex][column]);
+	      span->array->attribs[FRAG_ATTRIB_TEX0 + pass_tex][column]);
    }
    else if (pass_tex >= GL_REG_0_ATI && pass_tex <= GL_REG_5_ATI) {
       pass_tex -= GL_REG_0_ATI;
@@ -279,7 +279,7 @@ handle_pass_op(struct atifs_machine *machine, struct atifs_setupinst *texinst,
 
 static void
 handle_sample_op(GLcontext * ctx, struct atifs_machine *machine,
-		 struct atifs_setupinst *texinst, const struct sw_span *span,
+		 struct atifs_setupinst *texinst, const SWspan *span,
 		 GLuint column, GLuint idx)
 {
 /* sample from unit idx using texinst->src as coords */
@@ -289,7 +289,8 @@ handle_sample_op(GLcontext * ctx, struct atifs_machine *machine,
 
    if (coord_source >= GL_TEXTURE0_ARB && coord_source <= GL_TEXTURE7_ARB) {
       coord_source -= GL_TEXTURE0_ARB;
-      COPY_4V(tex_coords, span->array->texcoords[coord_source][column]);
+      COPY_4V(tex_coords,
+              span->array->attribs[FRAG_ATTRIB_TEX0 + coord_source][column]);
    }
    else if (coord_source >= GL_REG_0_ATI && coord_source <= GL_REG_5_ATI) {
       coord_source -= GL_REG_0_ATI;
@@ -304,17 +305,28 @@ do {						\
    COPY_4V(src[optype][i], x); 			\
 } while (0)
 
-static GLboolean
-execute_shader(GLcontext * ctx,
-	       const struct ati_fragment_shader *shader, GLuint maxInst,
-	       struct atifs_machine *machine, const struct sw_span *span,
-	       GLuint column)
+
+
+/**
+ * Execute the given fragment shader.
+ * NOTE: we do everything in single-precision floating point
+ * \param ctx - rendering context
+ * \param shader - the shader to execute
+ * \param machine - virtual machine state
+ * \param span - the SWspan we're operating on
+ * \param column - which pixel [i] we're operating on in the span
+ */
+static void
+execute_shader(GLcontext *ctx, const struct ati_fragment_shader *shader,
+	       struct atifs_machine *machine, const SWspan *span,
+               GLuint column)
 {
    GLuint pc;
    struct atifs_instruction *inst;
    struct atifs_setupinst *texinst;
    GLint optype;
-   GLint i, j, pass;
+   GLuint i;
+   GLint j, pass;
    GLint dstreg;
    GLfloat src[2][3][4];
    GLfloat zeros[4] = { 0.0, 0.0, 0.0, 0.0 };
@@ -337,7 +349,7 @@ execute_shader(GLcontext * ctx,
 
 	 /* setup the source registers for color and alpha ops */
 	 for (optype = 0; optype < 2; optype++) {
-	    for (i = 0; i < inst->ArgCount[optype]; i++) {
+ 	    for (i = 0; i < inst->ArgCount[optype]; i++) {
 	       GLint index = inst->SrcReg[optype][i].Index;
 
 	       if (index >= GL_REG_0_ATI && index <= GL_REG_5_ATI)
@@ -542,73 +554,58 @@ execute_shader(GLcontext * ctx,
 	 }
       }
    }
-   return GL_TRUE;
 }
 
+
+/**
+ * Init fragment shader virtual machine state.
+ */
 static void
 init_machine(GLcontext * ctx, struct atifs_machine *machine,
 	     const struct ati_fragment_shader *shader,
-	     const struct sw_span *span, GLuint col)
+	     const SWspan *span, GLuint col)
 {
+   GLfloat (*inputs)[4] = machine->Inputs;
    GLint i, j;
 
    for (i = 0; i < 6; i++) {
       for (j = 0; j < 4; j++)
-	 ctx->ATIFragmentShader.Machine.Registers[i][j] = 0.0;
+	 machine->Registers[i][j] = 0.0;
    }
 
-   ctx->ATIFragmentShader.Machine.Inputs[ATI_FS_INPUT_PRIMARY][0] =
-      CHAN_TO_FLOAT(span->array->rgba[col][0]);
-   ctx->ATIFragmentShader.Machine.Inputs[ATI_FS_INPUT_PRIMARY][1] =
-      CHAN_TO_FLOAT(span->array->rgba[col][1]);
-   ctx->ATIFragmentShader.Machine.Inputs[ATI_FS_INPUT_PRIMARY][2] =
-      CHAN_TO_FLOAT(span->array->rgba[col][2]);
-   ctx->ATIFragmentShader.Machine.Inputs[ATI_FS_INPUT_PRIMARY][3] =
-      CHAN_TO_FLOAT(span->array->rgba[col][3]);
-
-   ctx->ATIFragmentShader.Machine.Inputs[ATI_FS_INPUT_SECONDARY][0] =
-      CHAN_TO_FLOAT(span->array->spec[col][0]);
-   ctx->ATIFragmentShader.Machine.Inputs[ATI_FS_INPUT_SECONDARY][1] =
-      CHAN_TO_FLOAT(span->array->spec[col][1]);
-   ctx->ATIFragmentShader.Machine.Inputs[ATI_FS_INPUT_SECONDARY][2] =
-      CHAN_TO_FLOAT(span->array->spec[col][2]);
-   ctx->ATIFragmentShader.Machine.Inputs[ATI_FS_INPUT_SECONDARY][3] =
-      CHAN_TO_FLOAT(span->array->spec[col][3]);
+   COPY_4V(inputs[ATI_FS_INPUT_PRIMARY], span->array->attribs[FRAG_ATTRIB_COL0][col]);
+   COPY_4V(inputs[ATI_FS_INPUT_SECONDARY], span->array->attribs[FRAG_ATTRIB_COL1][col]);
 }
 
 
 
 /**
- * Execute the current fragment program, operating on the given span.
+ * Execute the current ATI shader program, operating on the given span.
  */
 void
-_swrast_exec_fragment_shader(GLcontext * ctx, struct sw_span *span)
+_swrast_exec_fragment_shader(GLcontext * ctx, SWspan *span)
 {
    const struct ati_fragment_shader *shader = ctx->ATIFragmentShader.Current;
+   struct atifs_machine machine;
    GLuint i;
+
+   /* incoming colors should be floats */
+   ASSERT(span->array->ChanType == GL_FLOAT);
 
    ctx->_CurrentProgram = GL_FRAGMENT_SHADER_ATI;
 
    for (i = 0; i < span->end; i++) {
       if (span->array->mask[i]) {
-	 init_machine(ctx, &ctx->ATIFragmentShader.Machine,
-		      ctx->ATIFragmentShader.Current, span, i);
-	 /* can't really happen... */
-	 if (!execute_shader(ctx, shader, ~0,
-			    &ctx->ATIFragmentShader.Machine, span, i)) {
-	    span->array->mask[i] = GL_FALSE;
-            span->writeAll = GL_FALSE;
-	 }
+	 init_machine(ctx, &machine, shader, span, i);
 
+	 execute_shader(ctx, shader, &machine, span, i);
+
+         /* store result color */
 	 {
-	    const GLfloat *colOut =
-	       ctx->ATIFragmentShader.Machine.Registers[0];
-
-	    /*fprintf(stderr,"outputs %f %f %f %f\n", colOut[0], colOut[1], colOut[2], colOut[3]); */
-	    UNCLAMPED_FLOAT_TO_CHAN(span->array->rgba[i][RCOMP], colOut[0]);
-	    UNCLAMPED_FLOAT_TO_CHAN(span->array->rgba[i][GCOMP], colOut[1]);
-	    UNCLAMPED_FLOAT_TO_CHAN(span->array->rgba[i][BCOMP], colOut[2]);
-	    UNCLAMPED_FLOAT_TO_CHAN(span->array->rgba[i][ACOMP], colOut[3]);
+	    const GLfloat *colOut = machine.Registers[0];
+            /*fprintf(stderr,"outputs %f %f %f %f\n",
+              colOut[0], colOut[1], colOut[2], colOut[3]); */
+            COPY_4V(span->array->attribs[FRAG_ATTRIB_COL0][i], colOut);
 	 }
       }
    }

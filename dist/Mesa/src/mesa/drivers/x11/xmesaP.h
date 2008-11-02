@@ -1,8 +1,8 @@
 /*
  * Mesa 3-D graphics library
- * Version:  6.5
+ * Version:  7.1
  *
- * Copyright (C) 1999-2006  Brian Paul   All Rights Reserved.
+ * Copyright (C) 1999-2007  Brian Paul   All Rights Reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -27,21 +27,20 @@
 #define XMESAP_H
 
 
-#ifdef XFree86Server
-# include "xf86glx_util.h"
-#elif defined(USE_XSHM)
-# include <X11/extensions/XShm.h>
-#endif
 #include "GL/xmesa.h"
 #include "mtypes.h"
 #if defined(FX)
 #include "GL/fxmesa.h"
-#include "../glide/fxdrv.h"
+#include "xm_glide.h"
+#endif
+#ifdef XFree86Server
+#include "xm_image.h"
 #endif
 
 
 extern _glthread_Mutex _xmesa_lock;
 
+extern XMesaBuffer XMesaBufferList;
 
 /* for PF_8R8G8B24 pixel format */
 typedef struct {
@@ -56,8 +55,7 @@ struct xmesa_renderbuffer;
 
 /* Function pointer for clearing color buffers */
 typedef void (*ClearFunc)( GLcontext *ctx, struct xmesa_renderbuffer *xrb,
-                            GLboolean all, GLint x, GLint y,
-                            GLint width, GLint height );
+                           GLint x, GLint y, GLint width, GLint height );
 
 
 
@@ -67,22 +65,23 @@ enum pixel_format {
    PF_Index,		/**< Color Index mode */
    PF_Truecolor,	/**< TrueColor or DirectColor, any depth */
    PF_Dither_True,	/**< TrueColor with dithering */
-   PF_8A8B8G8R,		/**< 32-bit TrueColor:  8-A, 8-B, 8-G, 8-R */
+   PF_8A8R8G8B,		/**< 32-bit TrueColor:  8-A, 8-R, 8-G, 8-B bits */
+   PF_8A8B8G8R,		/**< 32-bit TrueColor:  8-A, 8-B, 8-G, 8-R bits */
    PF_8R8G8B,		/**< 32-bit TrueColor:  8-R, 8-G, 8-B bits */
+   PF_8R8G8B24,		/**< 24-bit TrueColor:  8-R, 8-G, 8-B bits */
    PF_5R6G5B,		/**< 16-bit TrueColor:  5-R, 6-G, 5-B bits */
    PF_Dither,		/**< Color-mapped RGB with dither */
    PF_Lookup,		/**< Color-mapped RGB without dither */
    PF_HPCR,		/**< HP Color Recovery (ad@lms.be 30/08/95) */
    PF_1Bit,		/**< monochrome dithering of RGB */
    PF_Grayscale,	/**< Grayscale or StaticGray */
-   PF_8R8G8B24,		/**< 24-bit TrueColor: 8-R, 8-G, 8-B bits */
-   PF_Dither_5R6G5B,	/**< 16-bit dithered TrueColor: 5-R, 6-G, 5-B */
-   PF_8A8R8G8B		/**< 32-bit TrueColor:  8-A, 8-R, 8-G, 8-B */
+   PF_Dither_5R6G5B	/**< 16-bit dithered TrueColor: 5-R, 6-G, 5-B */
 };
 
 
-/*
- * "Derived" from GLvisual.  Basically corresponds to an XVisualInfo.
+/**
+ * Visual inforation, derived from GLvisual.
+ * Basically corresponds to an XVisualInfo.
  */
 struct xmesa_visual {
    GLvisual mesa_visual;	/* Device independent visual parameters */
@@ -127,8 +126,9 @@ struct xmesa_visual {
 };
 
 
-/*
- * "Derived" from __GLcontextRec.  Basically corresponds to a GLXContext.
+/**
+ * Context info, derived from GLcontext.
+ * Basically corresponds to a GLXContext.
  */
 struct xmesa_context {
    GLcontext mesa;		/* the core library context (containment) */
@@ -146,7 +146,9 @@ struct xmesa_context {
 };
 
 
-
+/**
+ * Types of X/GLX drawables we might render into.
+ */
 typedef enum {
    WINDOW,          /* An X window */
    GLXWINDOW,       /* GLX window */
@@ -155,9 +157,11 @@ typedef enum {
 } BufferType;
 
 
-/* Values for db_mode: */
+/** Values for db_mode: */
+/*@{*/
 #define BACK_PIXMAP	1
 #define BACK_XIMAGE	2
+/*@}*/
 
 
 /**
@@ -175,6 +179,7 @@ struct xmesa_renderbuffer
 {
    struct gl_renderbuffer Base;  /* Base class */
 
+   XMesaBuffer Parent;  /**< The XMesaBuffer this renderbuffer belongs to */
    XMesaDrawable drawable;	/* Usually the X window ID */
    XMesaPixmap pixmap;	/* Back color buffer */
    XMesaImage *ximage;	/* The back buffer, if not using a Pixmap */
@@ -194,8 +199,9 @@ struct xmesa_renderbuffer
 };
 
 
-/*
- * "Derived" from GLframebuffer.  Basically corresponds to a GLXDrawable.
+/**
+ * Framebuffer information, derived from.
+ * Basically corresponds to a GLXDrawable.
  */
 struct xmesa_buffer {
    GLframebuffer mesa_buffer;	/* depth, stencil, accum, etc buffers */
@@ -216,6 +222,7 @@ struct xmesa_buffer {
    GLint db_mode;		/* 0 = single buffered */
 				/* BACK_PIXMAP = use Pixmap for back buffer */
 				/* BACK_XIMAGE = use XImage for back buffer */
+   GLboolean swAlpha;
 
    GLuint shm;			/* X Shared Memory extension status:	*/
 				/*    0 = not available			*/
@@ -260,11 +267,16 @@ struct xmesa_buffer {
    fxMesaContext FXctx;
 #endif
 
+   /* GLX_EXT_texture_from_pixmap */
+   GLint TextureTarget; /** GLX_TEXTURE_1D_EXT, for example */
+   GLint TextureFormat; /** GLX_TEXTURE_FORMAT_RGB_EXT, for example */
+   GLint TextureMipmap; /** 0 or 1 */
+
    struct xmesa_buffer *Next;	/* Linked list pointer: */
 };
 
 
-/*
+/**
  * If pixelformat==PF_TRUECOLOR:
  */
 #define PACK_TRUECOLOR( PIXEL, R, G, B )	\
@@ -273,7 +285,7 @@ struct xmesa_buffer {
          | xmesa->xm_visual->BtoPixel[B];	\
 
 
-/*
+/**
  * If pixelformat==PF_TRUEDITHER:
  */
 #define PACK_TRUEDITHER( PIXEL, X, Y, R, G, B )			\
@@ -286,14 +298,14 @@ struct xmesa_buffer {
 
 
 
-/*
+/**
  * If pixelformat==PF_8A8B8G8R:
  */
 #define PACK_8A8B8G8R( R, G, B, A )	\
 	( ((A) << 24) | ((B) << 16) | ((G) << 8) | (R) )
 
 
-/*
+/**
  * Like PACK_8A8B8G8R() but don't use alpha.  This is usually an acceptable
  * shortcut.
  */
@@ -301,19 +313,19 @@ struct xmesa_buffer {
 
 
 
-/*
+/**
  * If pixelformat==PF_8R8G8B:
  */
 #define PACK_8R8G8B( R, G, B)	 ( ((R) << 16) | ((G) << 8) | (B) )
 
 
-/*
+/**
  * If pixelformat==PF_5R6G5B:
  */
 #define PACK_5R6G5B( R, G, B)	 ( (((R) & 0xf8) << 8) | (((G) & 0xfc) << 3) | ((B) >> 3) )
 
 
-/*
+/**
  * If pixelformat==PF_8A8R8G8B:
  */
 #define PACK_8A8R8G8B( R, G, B, A )	\
@@ -321,7 +333,7 @@ struct xmesa_buffer {
 
 
 
-/*
+/**
  * If pixelformat==PF_DITHER:
  *
  * Improved 8-bit RGB dithering code contributed by Bob Mercier
@@ -398,7 +410,7 @@ extern const int xmesa_kernel8[DITH_DY * DITH_DX];
 
 
 
-/*
+/**
  * If pixelformat==PF_LOOKUP:
  */
 #define _dither_lookup(C, c)   (((unsigned)((DITH_N * (C - 1) + 1) * c)) >> 12)
@@ -412,8 +424,7 @@ extern const int xmesa_kernel8[DITH_DY * DITH_DX];
 		        _dither_lookup(DITH_B, (B)))]
 
 
-
-/*
+/**
  * If pixelformat==PF_HPCR:
  *
  *      HP Color Recovery dithering               (ad@lms.be 30/08/95)
@@ -433,7 +444,7 @@ extern const short xmesa_HPCR_DRGB[3][2][16];
 
 
 
-/*
+/**
  * If pixelformat==PF_1BIT:
  */
 extern const int xmesa_kernel1[16];
@@ -444,20 +455,20 @@ extern const int xmesa_kernel1[16];
 
 
 
-/*
+/**
  * If pixelformat==PF_GRAYSCALE:
  */
 #define GRAY_RGB( R, G, B )   XMESA_BUFFER(ctx->DrawBuffer)->color_table[((R) + (G) + (B))/3]
 
 
 
-/*
+/**
  * Converts a GL window Y coord to an X window Y coord:
  */
 #define YFLIP(XRB, Y)  ((XRB)->bottom - (Y))
 
 
-/*
+/**
  * Return the address of a 1, 2 or 4-byte pixel in the buffer's XImage:
  * X==0 is left, Y==0 is bottom.
  */
@@ -475,23 +486,6 @@ extern const int xmesa_kernel1[16];
 
 
 
-
-/*
- * Return pointer to XMesaContext corresponding to a Mesa GLcontext.
- * Since we're using structure containment, it's just a cast!.
- * XXX should use inlined function for better type safety.
- */
-#define XMESA_CONTEXT(MESACTX)  ((XMesaContext) (MESACTX))
-
-/*
- * Return pointer to XMesaBuffer corresponding to a Mesa GLframebuffer.
- * Since we're using structure containment, it's just a cast!.
- * XXX should use inlined function for better type safety.
- */
-#define XMESA_BUFFER(MESABUFF)  ((XMesaBuffer) (MESABUFF))
-
-
-
 /*
  * External functions:
  */
@@ -500,27 +494,37 @@ extern struct xmesa_renderbuffer *
 xmesa_new_renderbuffer(GLcontext *ctx, GLuint name, const GLvisual *visual,
                        GLboolean backBuffer);
 
+extern void
+xmesa_delete_framebuffer(struct gl_framebuffer *fb);
+
+extern XMesaBuffer
+xmesa_find_buffer(XMesaDisplay *dpy, XMesaColormap cmap, XMesaBuffer notThis);
+
 extern unsigned long
 xmesa_color_to_pixel( GLcontext *ctx,
                       GLubyte r, GLubyte g, GLubyte b, GLubyte a,
                       GLuint pixelFormat );
 
 extern void
-xmesa_alloc_back_buffer(XMesaBuffer b, GLuint width, GLuint height);
+xmesa_get_window_size(XMesaDisplay *dpy, XMesaBuffer b,
+                      GLuint *width, GLuint *height);
 
-extern void xmesa_resize_buffers(GLcontext *ctx, GLframebuffer *buffer,
-                                 GLuint width, GLuint height);
+extern void
+xmesa_check_and_update_buffer_size(XMesaContext xmctx, XMesaBuffer drawBuffer);
 
-extern void xmesa_init_driver_functions( XMesaVisual xmvisual,
-                                         struct dd_function_table *driver );
+extern void
+xmesa_init_driver_functions( XMesaVisual xmvisual,
+                             struct dd_function_table *driver );
 
-extern void xmesa_update_state( GLcontext *ctx, GLbitfield new_state );
+extern void
+xmesa_update_state( GLcontext *ctx, GLbitfield new_state );
 
 extern void
 xmesa_set_renderbuffer_funcs(struct xmesa_renderbuffer *xrb,
                              enum pixel_format pixelformat, GLint depth);
 
-extern void xmesa_destroy_buffers_on_display(XMesaDisplay *dpy);
+extern void
+xmesa_destroy_buffers_on_display(XMesaDisplay *dpy);
 
 
 /**
@@ -530,6 +534,28 @@ static INLINE struct xmesa_renderbuffer *
 xmesa_renderbuffer(struct gl_renderbuffer *rb)
 {
    return (struct xmesa_renderbuffer *) rb;
+}
+
+
+/**
+ * Return pointer to XMesaContext corresponding to a Mesa GLcontext.
+ * Since we're using structure containment, it's just a cast!.
+ */
+static INLINE XMesaContext
+XMESA_CONTEXT(GLcontext *ctx)
+{
+   return (XMesaContext) ctx;
+}
+
+
+/**
+ * Return pointer to XMesaBuffer corresponding to a Mesa GLframebuffer.
+ * Since we're using structure containment, it's just a cast!.
+ */
+static INLINE XMesaBuffer
+XMESA_BUFFER(GLframebuffer *b)
+{
+   return (XMesaBuffer) b;
 }
 
 
@@ -543,21 +569,6 @@ extern void xmesa_choose_triangle( GLcontext *ctx );
 
 extern void xmesa_register_swrast_functions( GLcontext *ctx );
 
-
-
-/* XXX this is a hack to implement shared display lists with 3Dfx */
-extern XMesaBuffer XMesaCreateWindowBuffer2( XMesaVisual v,
-					     XMesaWindow w,
-					     XMesaContext c );
-
-/*
- * These are the extra routines required for integration with XFree86.
- * None of these routines should be user visible. -KEM
- */
-extern void XMesaSetVisualDisplay( XMesaDisplay *dpy, XMesaVisual v );
-extern GLboolean XMesaForceCurrent(XMesaContext c);
-extern GLboolean XMesaLoseCurrent(XMesaContext c);
-extern void XMesaReset( void );
 
 
 #define ENABLE_EXT_texure_compression_s3tc 0 /* SW texture compression */

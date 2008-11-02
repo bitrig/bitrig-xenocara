@@ -40,16 +40,9 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "macros.h"
 #include "context.h"
 #include "swrast/swrast.h"
-#include "r200_context.h"
 #include "r300_context.h"
-#include "r200_state.h"
 #include "radeon_ioctl.h"
-#include "r200_ioctl.h"
 #include "r300_ioctl.h"
-#if R200_MERGED
-#include "r200_tcl.h"
-#include "r200_sanity.h"
-#endif
 #include "r300_state.h"
 #include "radeon_reg.h"
 
@@ -164,13 +157,14 @@ static void radeonWaitForFrameCompletion(radeonContextPtr radeon)
 
 /* Copy the back color buffer to the front color buffer.
  */
-void radeonCopyBuffer(const __DRIdrawablePrivate * dPriv,
+void radeonCopyBuffer(__DRIdrawablePrivate * dPriv,
 		      const drm_clip_rect_t	 * rect)
 {
 	radeonContextPtr radeon;
 	GLint nbox, i, ret;
 	GLboolean missed_target;
 	int64_t ust;
+	__DRIscreenPrivate *psp = dPriv->driScreenPriv;
 
 	assert(dPriv);
 	assert(dPriv->driContextPriv);
@@ -194,8 +188,7 @@ void radeonCopyBuffer(const __DRIdrawablePrivate * dPriv,
 	if (!rect)
 	{
 	    UNLOCK_HARDWARE(radeon);
-	    driWaitForVBlank(dPriv, &radeon->vbl_seq, radeon->vblank_flags,
-			     &missed_target);
+	    driWaitForVBlank(dPriv, &missed_target);
 	    LOCK_HARDWARE(radeon);
 	}
 
@@ -222,15 +215,17 @@ void radeonCopyBuffer(const __DRIdrawablePrivate * dPriv,
 			if (rect->y2 < b->y2)
 			    b->y2 = rect->y2;
 
-			if (b->x1 < b->x2 && b->y1 < b->y2)
-			    b++;
+			if (b->x1 >= b->x2 || b->y1 >= b->y2)
+			    continue;
 		    }
-		    else
-			b++;
 
+		    b++;
 		    n++;
 		}
 		radeon->sarea->nbox = n;
+
+		if (!n)
+		   continue;
 
 		ret = drmCommandNone(radeon->dri.fd, DRM_RADEON_SWAP);
 
@@ -245,13 +240,10 @@ void radeonCopyBuffer(const __DRIdrawablePrivate * dPriv,
 	UNLOCK_HARDWARE(radeon);
 	if (!rect)
 	{
-	    if (IS_R200_CLASS(radeon->radeonScreen))
-		((r200ContextPtr)radeon)->hw.all_dirty = GL_TRUE;
-	    else
-		((r300ContextPtr)radeon)->hw.all_dirty = GL_TRUE;
+	    ((r300ContextPtr)radeon)->hw.all_dirty = GL_TRUE;
 
 	    radeon->swap_count++;
-	    (*dri_interface->getUST) (&ust);
+	    (*psp->systemTime->getUST) (&ust);
 	    if (missed_target) {
 		radeon->swap_missed_count++;
 		radeon->swap_missed_ust = ust - radeon->swap_ust;
@@ -263,11 +255,12 @@ void radeonCopyBuffer(const __DRIdrawablePrivate * dPriv,
 	}
 }
 
-void radeonPageFlip(const __DRIdrawablePrivate * dPriv)
+void radeonPageFlip(__DRIdrawablePrivate * dPriv)
 {
 	radeonContextPtr radeon;
 	GLint ret;
 	GLboolean missed_target;
+	__DRIscreenPrivate *psp = dPriv->driScreenPriv;
 
 	assert(dPriv);
 	assert(dPriv->driContextPriv);
@@ -303,11 +296,10 @@ void radeonPageFlip(const __DRIdrawablePrivate * dPriv)
 	 */
 	radeonWaitForFrameCompletion(radeon);
 	UNLOCK_HARDWARE(radeon);
-	driWaitForVBlank(dPriv, &radeon->vbl_seq, radeon->vblank_flags,
-			 &missed_target);
+	driWaitForVBlank(dPriv, &missed_target);
 	if (missed_target) {
 		radeon->swap_missed_count++;
-		(void)(*dri_interface->getUST) (&radeon->swap_missed_ust);
+		(void)(*psp->systemTime->getUST) (&radeon->swap_missed_ust);
 	}
 	LOCK_HARDWARE(radeon);
 
@@ -321,7 +313,7 @@ void radeonPageFlip(const __DRIdrawablePrivate * dPriv)
 	}
 
 	radeon->swap_count++;
-	(void)(*dri_interface->getUST) (&radeon->swap_ust);
+	(void)(*psp->systemTime->getUST) (&radeon->swap_ust);
 
         driFlipRenderbuffers(radeon->glCtx->WinSysDrawBuffer, 
                              radeon->sarea->pfCurrentPage);
@@ -334,14 +326,6 @@ void radeonPageFlip(const __DRIdrawablePrivate * dPriv)
 		radeon->state.color.drawPitch = radeon->radeonScreen->backPitch;
 	}
 
-	if (IS_R200_CLASS(radeon->radeonScreen)) {
-		r200ContextPtr r200 = (r200ContextPtr)radeon;
-
-		R200_STATECHANGE(r200, ctx);
-		r200->hw.ctx.cmd[CTX_RB3D_COLOROFFSET] = radeon->state.color.drawOffset
-			+ radeon->radeonScreen->fbLocation;
-		r200->hw.ctx.cmd[CTX_RB3D_COLORPITCH] = radeon->state.color.drawPitch;
-	}
 	if (IS_R300_CLASS(radeon->radeonScreen)) {
 		r300ContextPtr r300 = (r300ContextPtr)radeon;
 		R300_STATECHANGE(r300, cb);
@@ -372,7 +356,7 @@ void radeonWaitForIdleLocked(radeonContextPtr radeon)
 
 	if (ret < 0) {
 		UNLOCK_HARDWARE(radeon);
-		fprintf(stderr, "Error: R200 timed out... exiting\n");
+		fprintf(stderr, "Error: R300 timed out... exiting\n");
 		exit(-1);
 	}
 }
@@ -390,10 +374,6 @@ void radeonFlush(GLcontext * ctx)
 
 	if (IS_R300_CLASS(radeon->radeonScreen))
 		r300Flush(ctx);
-#if R200_MERGED
-	else
-		r200Flush(ctx);
-#endif	
 }
 
 

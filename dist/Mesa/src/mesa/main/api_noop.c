@@ -31,7 +31,7 @@
 #include "light.h"
 #include "macros.h"
 #include "dlist.h"
-#include "dispatch.h"
+#include "glapi/dispatch.h"
 
 
 /**
@@ -45,7 +45,7 @@
 static void GLAPIENTRY _mesa_noop_EdgeFlag( GLboolean b )
 {
    GET_CURRENT_CONTEXT(ctx);
-   ctx->Current.EdgeFlag = b;
+   ctx->Current.Attrib[VERT_ATTRIB_EDGEFLAG][0] = (GLfloat)b;
 }
 
 static void GLAPIENTRY _mesa_noop_Indexf( GLfloat f )

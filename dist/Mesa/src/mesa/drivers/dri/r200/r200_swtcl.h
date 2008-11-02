@@ -1,4 +1,3 @@
-/* $XFree86: xc/lib/GL/mesa/src/drv/r200/r200_swtcl.h,v 1.3 2003/05/06 23:52:08 daenzer Exp $ */
 /*
 Copyright (C) The Weather Channel, Inc.  2002.  All Rights Reserved.
 
@@ -42,7 +41,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 extern void r200InitSwtcl( GLcontext *ctx );
 extern void r200DestroySwtcl( GLcontext *ctx );
 
-extern void r200FlushVertices( GLcontext *ctx, GLuint flags );
 extern void r200ChooseRenderState( GLcontext *ctx );
 extern void r200ChooseVertexState( GLcontext *ctx );
 

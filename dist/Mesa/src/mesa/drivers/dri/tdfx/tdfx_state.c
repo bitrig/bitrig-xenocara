@@ -46,7 +46,7 @@
 #include "teximage.h"
 
 #include "swrast/swrast.h"
-#include "array_cache/acache.h"
+#include "vbo/vbo.h"
 #include "tnl/tnl.h"
 #include "tnl/t_pipeline.h"
 #include "swrast_setup/swrast_setup.h"
@@ -1033,21 +1033,23 @@ static void tdfxDDDrawBuffer( GLcontext *ctx, GLenum mode )
 
    FLUSH_BATCH( fxMesa );
 
-   /*
-    * _ColorDrawBufferMask is easier to cope with than <mode>.
-    */
-   switch ( ctx->DrawBuffer->_ColorDrawBufferMask[0] ) {
-   case BUFFER_BIT_FRONT_LEFT:
+   if (ctx->DrawBuffer->_NumColorDrawBuffers > 1) {
+      FALLBACK( fxMesa, TDFX_FALLBACK_DRAW_BUFFER, GL_TRUE );
+      return;
+   }
+
+   switch ( ctx->DrawBuffer->_ColorDrawBufferIndexes[0] ) {
+   case BUFFER_FRONT_LEFT:
       fxMesa->DrawBuffer = fxMesa->ReadBuffer = GR_BUFFER_FRONTBUFFER;
       fxMesa->new_state |= TDFX_NEW_RENDER;
       FALLBACK( fxMesa, TDFX_FALLBACK_DRAW_BUFFER, GL_FALSE );
       break;
-   case BUFFER_BIT_BACK_LEFT:
+   case BUFFER_BACK_LEFT:
       fxMesa->DrawBuffer = fxMesa->ReadBuffer = GR_BUFFER_BACKBUFFER;
       fxMesa->new_state |= TDFX_NEW_RENDER;
       FALLBACK( fxMesa, TDFX_FALLBACK_DRAW_BUFFER, GL_FALSE );
       break;
-   case 0:
+   case -1:
       FX_grColorMaskv( ctx, false4 );
       FALLBACK( fxMesa, TDFX_FALLBACK_DRAW_BUFFER, GL_FALSE );
       break;
@@ -1234,7 +1236,7 @@ static void tdfxDDInvalidateState( GLcontext *ctx, GLuint new_state )
 {
    _swrast_InvalidateState( ctx, new_state );
    _swsetup_InvalidateState( ctx, new_state );
-   _ac_InvalidateState( ctx, new_state );
+   _vbo_InvalidateState( ctx, new_state );
    _tnl_InvalidateState( ctx, new_state );
    TDFX_CONTEXT(ctx)->new_gl_state |= new_state;
 }
@@ -1400,19 +1402,15 @@ void tdfxDDInitStateFuncs( GLcontext *ctx )
 
    ctx->Driver.UpdateState		= tdfxDDInvalidateState;
 
-
-   /* State notification callbacks:
-    */
    ctx->Driver.ClearColor		= tdfxDDClearColor;
    ctx->Driver.DrawBuffer		= tdfxDDDrawBuffer;
    ctx->Driver.ReadBuffer		= tdfxDDReadBuffer;
-
-   ctx->Driver.ColorMask		= tdfxDDColorMask;
 
    ctx->Driver.AlphaFunc		= tdfxDDAlphaFunc;
    ctx->Driver.BlendEquationSeparate	= tdfxDDBlendEquationSeparate;
    ctx->Driver.BlendFuncSeparate	= tdfxDDBlendFuncSeparate;
    ctx->Driver.ClearDepth		= tdfxDDClearDepth;
+   ctx->Driver.ColorMask		= tdfxDDColorMask;
    ctx->Driver.CullFace			= tdfxDDCullFace;
    ctx->Driver.FrontFace		= tdfxDDFrontFace;
    ctx->Driver.DepthFunc		= tdfxDDDepthFunc;
@@ -1434,11 +1432,4 @@ void tdfxDDInitStateFuncs( GLcontext *ctx )
    }
 
    ctx->Driver.Viewport			= tdfxDDViewport;
-
-   /* Swrast hooks for imaging extensions:
-    */
-   ctx->Driver.CopyColorTable = _swrast_CopyColorTable;
-   ctx->Driver.CopyColorSubTable = _swrast_CopyColorSubTable;
-   ctx->Driver.CopyConvolutionFilter1D = _swrast_CopyConvolutionFilter1D;
-   ctx->Driver.CopyConvolutionFilter2D = _swrast_CopyConvolutionFilter2D;
 }

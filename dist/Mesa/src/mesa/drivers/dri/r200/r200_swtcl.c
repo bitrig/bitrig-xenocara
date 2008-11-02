@@ -1,4 +1,3 @@
-/* $XFree86: xc/lib/GL/mesa/src/drv/r200/r200_swtcl.c,v 1.5 2003/05/06 23:52:08 daenzer Exp $ */
 /*
 Copyright (C) The Weather Channel, Inc.  2002.  All Rights Reserved.
 
@@ -48,7 +47,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "tnl/tnl.h"
 #include "tnl/t_context.h"
 #include "tnl/t_pipeline.h"
-#include "tnl/t_vtx_api.h"
 
 #include "r200_context.h"
 #include "r200_ioctl.h"
@@ -115,6 +113,11 @@ static void r200SetVertexFormat( GLcontext *ctx )
    else {
       EMIT_ATTR( _TNL_ATTRIB_POS, EMIT_3F, R200_VTX_XY | R200_VTX_Z0 );
       offset = 3;
+   }
+
+   if (RENDERINPUTS_TEST( index_bitset, _TNL_ATTRIB_POINTSIZE )) {
+      EMIT_ATTR( _TNL_ATTRIB_POINTSIZE, EMIT_1F, R200_VTX_POINT_SIZE );
+      offset += 1;
    }
 
    rmesa->swtcl.coloroffset = offset;
@@ -349,7 +352,9 @@ static INLINE GLuint reduced_hw_prim( GLcontext *ctx, GLuint prim)
 {
    switch (prim) {
    case GL_POINTS:
-      return (ctx->_TriangleCaps & DD_POINT_SIZE) ?
+      return (ctx->Point.PointSprite ||
+	 ((ctx->_TriangleCaps & (DD_POINT_SIZE | DD_POINT_ATTEN)) &&
+	 !(ctx->_TriangleCaps & (DD_POINT_SMOOTH)))) ?
 	 R200_VF_PRIM_POINT_SPRITES : R200_VF_PRIM_POINTS;
    case GL_LINES:
    /* fallthrough */
@@ -632,6 +637,17 @@ static void r200RasterPrimitive( GLcontext *ctx, GLuint hwprim )
    r200ContextPtr rmesa = R200_CONTEXT(ctx);
 
    if (rmesa->swtcl.hw_primitive != hwprim) {
+      /* need to disable perspective-correct texturing for point sprites */
+      if ((hwprim & 0xf) == R200_VF_PRIM_POINT_SPRITES && ctx->Point.PointSprite) {
+	 if (rmesa->hw.set.cmd[SET_RE_CNTL] & R200_PERSPECTIVE_ENABLE) {
+	    R200_STATECHANGE( rmesa, set );
+	    rmesa->hw.set.cmd[SET_RE_CNTL] &= ~R200_PERSPECTIVE_ENABLE;
+	 }
+      }
+      else if (!(rmesa->hw.set.cmd[SET_RE_CNTL] & R200_PERSPECTIVE_ENABLE)) {
+	 R200_STATECHANGE( rmesa, set );
+	 rmesa->hw.set.cmd[SET_RE_CNTL] |= R200_PERSPECTIVE_ENABLE;
+      }
       R200_NEWPRIM( rmesa );
       rmesa->swtcl.hw_primitive = hwprim;
    }
@@ -918,13 +934,6 @@ r200PointsBitmap( GLcontext *ctx, GLint px, GLint py,
 }
 
 
-void r200FlushVertices( GLcontext *ctx, GLuint flags )
-{
-   _tnl_FlushVertices( ctx, flags );
-
-   if (flags & FLUSH_STORED_VERTICES)
-      R200_NEWPRIM( R200_CONTEXT( ctx ) );
-}
 
 /**********************************************************************/
 /*                            Initialization.                         */

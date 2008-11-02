@@ -40,7 +40,7 @@
 #include "via_3d_reg.h"
 
 #include "swrast/swrast.h"
-#include "array_cache/acache.h"
+#include "vbo/vbo.h"
 #include "tnl/tnl.h"
 #include "swrast_setup/swrast_setup.h"
 
@@ -328,8 +328,8 @@ void viaEmitState(struct via_context *vmesa)
 	 /* KW:  This test never succeeds:
 	  */
 	 if (t->regTexFM == HC_HTXnFM_Index8) {
-	    struct gl_color_table *table = &texObj->Palette;
-	    GLfloat *tableF = (GLfloat *)table->Table;
+	    const struct gl_color_table *table = &texObj->Palette;
+	    const GLfloat *tableF = table->TableF;
 
 	    BEGIN_RING(2 + table->Size);
 	    OUT_RING( HC_HEADER2 );
@@ -453,8 +453,8 @@ void viaEmitState(struct via_context *vmesa)
 	 /* KW:  This test never succeeds:
 	  */
 	 if (t->regTexFM == HC_HTXnFM_Index8) {
-	    struct gl_color_table *table = &texObj->Palette;
-	    GLfloat *tableF = (GLfloat *)table->Table;
+	    const struct gl_color_table *table = &texObj->Palette;
+	    const GLfloat *tableF = table->TableF;
 
 	    BEGIN_RING(2 + table->Size);
 	    OUT_RING( HC_HEADER2 );
@@ -476,6 +476,9 @@ void viaEmitState(struct via_context *vmesa)
     */
    if (ctx->Polygon.StippleFlag) {
       GLuint *stipple = &ctx->PolygonStipple[0];
+      __DRIdrawablePrivate *dPriv = vmesa->driDrawable;
+      struct via_renderbuffer *const vrb = 
+	(struct via_renderbuffer *) dPriv->driverPrivate;
       GLint i;
         
       BEGIN_RING(38);
@@ -497,10 +500,8 @@ void viaEmitState(struct via_context *vmesa)
 
       OUT_RING( HC_HEADER2 );                     
       OUT_RING( (HC_ParaType_NotTex << 16) );
-      OUT_RING( (HC_SubA_HSPXYOS << 24) | 
-		(((32- vmesa->drawXoff) & 0x1f) << HC_HSPXOS_SHIFT));
-      OUT_RING( (HC_SubA_HSPXYOS << 24) | 
-		(((32 - vmesa->drawXoff) & 0x1f) << HC_HSPXOS_SHIFT));
+      OUT_RING( (HC_SubA_HSPXYOS << 24) );
+      OUT_RING( (HC_SubA_HSPXYOS << 24) );
 
       ADVANCE_RING();
    }
@@ -510,9 +511,9 @@ void viaEmitState(struct via_context *vmesa)
 }
 
 
-static __inline__ GLuint viaPackColor(GLuint bpp,
-                                      GLubyte r, GLubyte g,
-                                      GLubyte b, GLubyte a)
+static INLINE GLuint viaPackColor(GLuint bpp,
+                                  GLubyte r, GLubyte g,
+                                  GLubyte b, GLubyte a)
 {
     switch (bpp) {
     case 16:
@@ -655,13 +656,18 @@ static void viaDrawBuffer(GLcontext *ctx, GLenum mode)
    if (!ctx->DrawBuffer)
       return;
 
-   switch ( ctx->DrawBuffer->_ColorDrawBufferMask[0] ) {
-   case BUFFER_BIT_FRONT_LEFT:
+   if (ctx->DrawBuffer->_NumColorDrawBuffers != 1) {
+      FALLBACK(vmesa, VIA_FALLBACK_DRAW_BUFFER, GL_TRUE);
+      return;
+   }
+
+   switch ( ctx->DrawBuffer->_ColorDrawBufferIndexes[0] ) {
+   case BUFFER_FRONT_LEFT:
       VIA_FLUSH_DMA(vmesa);
       vmesa->drawBuffer = &vmesa->front;
       FALLBACK(vmesa, VIA_FALLBACK_DRAW_BUFFER, GL_FALSE);
       break;
-   case BUFFER_BIT_BACK_LEFT:
+   case BUFFER_BACK_LEFT:
       VIA_FLUSH_DMA(vmesa);
       vmesa->drawBuffer = &vmesa->back;
       FALLBACK(vmesa, VIA_FALLBACK_DRAW_BUFFER, GL_FALSE);
@@ -709,26 +715,23 @@ static void viaColorMask(GLcontext *ctx,
 }
 
 
-/* =============================================================
- */
 
-
-/* Using drawXoff like this is incorrect outside of locked regions.
- * This hardware just isn't capable of private back buffers without
+/* This hardware just isn't capable of private back buffers without
  * glitches and/or a hefty locking scheme.
  */
 void viaCalcViewport(GLcontext *ctx)
 {
     struct via_context *vmesa = VIA_CONTEXT(ctx);
+    __DRIdrawablePrivate *dPriv = vmesa->driDrawable;
+    struct via_renderbuffer *const vrb = 
+      (struct via_renderbuffer *) dPriv->driverPrivate;
     const GLfloat *v = ctx->Viewport._WindowMap.m;
     GLfloat *m = vmesa->ViewportMatrix.m;
     
-    /* See also via_translate_vertex.
-     */
     m[MAT_SX] =   v[MAT_SX];
-    m[MAT_TX] =   v[MAT_TX] + SUBPIXEL_X + vmesa->drawXoff;
+    m[MAT_TX] =   v[MAT_TX] + vrb->drawX + SUBPIXEL_X;
     m[MAT_SY] = - v[MAT_SY];
-    m[MAT_TY] = - v[MAT_TY] + vmesa->driDrawable->h + SUBPIXEL_Y;
+    m[MAT_TY] = - v[MAT_TY] + vrb->drawY + SUBPIXEL_Y + vrb->drawH;
     m[MAT_SZ] =   v[MAT_SZ] * (1.0 / vmesa->depth_max);
     m[MAT_TZ] =   v[MAT_TZ] * (1.0 / vmesa->depth_max);
 }
@@ -1501,7 +1504,7 @@ static void viaInvalidateState(GLcontext *ctx, GLuint newState)
 
     _swrast_InvalidateState(ctx, newState);
     _swsetup_InvalidateState(ctx, newState);
-    _ac_InvalidateState(ctx, newState);
+    _vbo_InvalidateState(ctx, newState);
     _tnl_InvalidateState(ctx, newState);
 }
 
@@ -1524,19 +1527,6 @@ void viaInitStateFuncs(GLcontext *ctx)
     ctx->Driver.Viewport = viaViewport;
     ctx->Driver.Enable = viaEnable;
 
-    /* Pixel path fallbacks.
-     */
-    ctx->Driver.Accum = _swrast_Accum;
-    ctx->Driver.Bitmap = _swrast_Bitmap;
-    ctx->Driver.CopyPixels = _swrast_CopyPixels;
-    ctx->Driver.DrawPixels = _swrast_DrawPixels;
-    ctx->Driver.ReadPixels = _swrast_ReadPixels;
+    /* XXX this should go away */
     ctx->Driver.ResizeBuffers = viaReAllocateBuffers;
-
-    /* Swrast hooks for imaging extensions:
-     */
-    ctx->Driver.CopyColorTable = _swrast_CopyColorTable;
-    ctx->Driver.CopyColorSubTable = _swrast_CopyColorSubTable;
-    ctx->Driver.CopyConvolutionFilter1D = _swrast_CopyConvolutionFilter1D;
-    ctx->Driver.CopyConvolutionFilter2D = _swrast_CopyConvolutionFilter2D;
 }

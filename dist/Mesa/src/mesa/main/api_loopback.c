@@ -30,14 +30,14 @@
 
 
 #include "glheader.h"
-#include "glapi.h"
-#include "glapitable.h"
 #include "macros.h"
 #include "colormac.h"
 #include "api_loopback.h"
-#include "glthread.h"
 #include "mtypes.h"
-#include "dispatch.h"
+#include "glapi/glapi.h"
+#include "glapi/glapitable.h"
+#include "glapi/glthread.h"
+#include "glapi/dispatch.h"
 
 /* KW: A set of functions to convert unusual Color/Normal/Vertex/etc
  * calls to a smaller set of driver-provided formats.  Currently just
@@ -146,7 +146,7 @@ static void GLAPIENTRY
 loopback_Color3iv_f( const GLint *v )
 {
    COLORF( INT_TO_FLOAT(v[0]), INT_TO_FLOAT(v[1]),
-	   INT_TO_FLOAT(v[2]), INT_TO_FLOAT(v[3]) );
+	   INT_TO_FLOAT(v[2]), 1.0 );
 }
 
 static void GLAPIENTRY
@@ -510,7 +510,7 @@ loopback_TexCoord2sv( const GLshort *v )
 static void GLAPIENTRY
 loopback_TexCoord3dv( const GLdouble *v )
 {
-   TEXCOORD2((GLfloat) v[0],(GLfloat) v[1]);
+   TEXCOORD3((GLfloat) v[0],(GLfloat) v[1],(GLfloat) v[2]);
 }
 
 static void GLAPIENTRY

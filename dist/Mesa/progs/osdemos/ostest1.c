@@ -407,7 +407,12 @@ test(GLenum type, GLint bits, const char *filename)
    glGetIntegerv(GL_ALPHA_BITS, &cBits);
    assert(cBits == bits);
 
-   printf("Rendering %d bit/channel image: %s\n", bits, filename);
+   if (WriteFiles)
+      printf("Rendering %d bit/channel image: %s\n", bits, filename);
+   else
+      printf("Rendering %d bit/channel image\n", bits);
+
+   OSMesaColorClamp(GL_TRUE);
 
    init_context();
    render_image();
@@ -421,7 +426,7 @@ test(GLenum type, GLint bits, const char *filename)
    if (WriteFiles && filename != NULL) {
       if (type == GL_UNSIGNED_SHORT) {
          GLushort *buffer16 = (GLushort *) buffer;
-         GLubyte *buffer8 = malloc(WIDTH * HEIGHT * 4);
+         GLubyte *buffer8 = (GLubyte *) malloc(WIDTH * HEIGHT * 4);
          int i;
          for (i = 0; i < WIDTH * HEIGHT * 4; i++)
             buffer8[i] = buffer16[i] >> 8;
@@ -430,8 +435,9 @@ test(GLenum type, GLint bits, const char *filename)
       }
       else if (type == GL_FLOAT) {
          GLfloat *buffer32 = (GLfloat *) buffer;
-         GLubyte *buffer8 = malloc(WIDTH * HEIGHT * 4);
+         GLubyte *buffer8 = (GLubyte *) malloc(WIDTH * HEIGHT * 4);
          int i;
+         /* colors may be outside [0,1] so we need to clamp */
          for (i = 0; i < WIDTH * HEIGHT * 4; i++)
             buffer8[i] = (GLubyte) (buffer32[i] * 255.0);
          write_ppm(filename, buffer8, WIDTH, HEIGHT);
@@ -454,6 +460,8 @@ int
 main( int argc, char *argv[] )
 {
    int i;
+
+   printf("Use -f to write image files\n");
 
    for (i = 1; i < argc; i++) {
       if (strcmp(argv[i], "-f") == 0)

@@ -113,7 +113,7 @@ do {									\
 #define COPY_VERTEX_OOA( vb, vertsize, v, n )	DO_COPY_VERTEX( vb, vertsize, v, n, 1 )
 
 
-static __inline void mach64_draw_quad( mach64ContextPtr mmesa,
+static INLINE void mach64_draw_quad( mach64ContextPtr mmesa,
 				       mach64VertexPtr v0,
 				       mach64VertexPtr v1,
 				       mach64VertexPtr v2,
@@ -419,7 +419,7 @@ static __inline void mach64_draw_quad( mach64ContextPtr mmesa,
 #endif
 }
 
-static __inline void mach64_draw_triangle( mach64ContextPtr mmesa,
+static INLINE void mach64_draw_triangle( mach64ContextPtr mmesa,
 					   mach64VertexPtr v0,
 					   mach64VertexPtr v1,
 					   mach64VertexPtr v2 )
@@ -666,14 +666,17 @@ static __inline void mach64_draw_triangle( mach64ContextPtr mmesa,
 #endif
 }
 
-static __inline void mach64_draw_line( mach64ContextPtr mmesa,
+static INLINE void mach64_draw_line( mach64ContextPtr mmesa,
 				     mach64VertexPtr v0,
 				     mach64VertexPtr v1 )
 {
 #if MACH64_NATIVE_VTXFMT
    GLcontext *ctx = mmesa->glCtx;
    const GLuint vertsize = mmesa->vertex_size;
-   GLint width = (GLint)(mmesa->glCtx->Line._Width * 2.0); /* 2 fractional bits for hardware */
+   /* 2 fractional bits for hardware: */
+   const int width = (int) (2.0 * CLAMP(mmesa->glCtx->Line.Width,
+                                        mmesa->glCtx->Const.MinLineWidth,
+                                        mmesa->glCtx->Const.MaxLineWidth));
    GLfloat ooa;
    GLuint *pxy0, *pxy1;
    GLuint xy0old, xy0, xy1old, xy1;
@@ -691,9 +694,6 @@ static __inline void mach64_draw_line( mach64ContextPtr mmesa,
       mach64_print_vertex( ctx, v1 );
    }
   
-   if( !width )
-      width = 1;	/* round to the nearest supported width */
-      
    pxy0 = &v0->ui[xyoffset];
    xy0old = *pxy0;
    xy0 = LE32_IN( &xy0old );
@@ -955,13 +955,16 @@ static __inline void mach64_draw_line( mach64ContextPtr mmesa,
 #endif
 }
 
-static __inline void mach64_draw_point( mach64ContextPtr mmesa,
+static INLINE void mach64_draw_point( mach64ContextPtr mmesa,
 				      mach64VertexPtr v0 )
 {
 #if MACH64_NATIVE_VTXFMT
    GLcontext *ctx = mmesa->glCtx;
    const GLuint vertsize = mmesa->vertex_size;
-   GLint sz = (GLint)(mmesa->glCtx->Point._Size * 2.0); /* 2 fractional bits for hardware */
+   /* 2 fractional bits for hardware: */
+   GLint sz = (GLint) (2.0 * CLAMP(mmesa->glCtx->Point.Size,
+                                   ctx->Const.MinPointSize,
+                                   ctx->Const.MaxPointSize));
    GLfloat ooa;
    GLuint *pxy;
    GLuint xyold, xy;
@@ -1583,7 +1586,10 @@ static void mach64FastRenderClippedPoly( GLcontext *ctx, const GLuint *elts,
    mach64ContextPtr mmesa = MACH64_CONTEXT( ctx );
    const GLuint vertsize = mmesa->vertex_size;
    GLint a;
-   GLfloat ooa;
+   union {
+      GLfloat f;
+      CARD32 u;
+   } ooa;
    GLuint xy;
    const GLuint xyoffset = 9;
    GLint xx[3], yy[3]; /* 2 fractional bits for hardware */
@@ -1621,7 +1627,7 @@ static void mach64FastRenderClippedPoly( GLcontext *ctx, const GLuint *elts,
       return;
    }
    
-   ooa = 16.0 / a;
+   ooa.f = 16.0 / a;
    
    vb = (CARD32 *)mach64AllocDmaLow( mmesa, vbsiz * sizeof(CARD32) );
    vbchk = vb + vbsiz;
@@ -1629,7 +1635,7 @@ static void mach64FastRenderClippedPoly( GLcontext *ctx, const GLuint *elts,
    COPY_VERTEX( vb, vertsize, v0, 1 );
    COPY_VERTEX( vb, vertsize, v1, 2 );
    COPY_VERTEX_OOA( vb, vertsize, v2, 3 );
-   LE32_OUT( vb++, *(CARD32 *)&ooa );
+   LE32_OUT( vb++, ooa.u );
 
    i = 3;
    while (1) {
@@ -1644,10 +1650,10 @@ static void mach64FastRenderClippedPoly( GLcontext *ctx, const GLuint *elts,
 	      
       a = (xx[0] - xx[2]) * (yy[1] - yy[2]) -
 	  (yy[0] - yy[2]) * (xx[1] - xx[2]);
-      ooa = 16.0 / a;
+      ooa.f = 16.0 / a;
    
       COPY_VERTEX_OOA( vb, vertsize, v0, 1 );
-      LE32_OUT( vb++, *(CARD32 *)&ooa );
+      LE32_OUT( vb++, ooa.u );
       
       if (i >= n)
 	 break;
@@ -1660,10 +1666,10 @@ static void mach64FastRenderClippedPoly( GLcontext *ctx, const GLuint *elts,
 	      
       a = (xx[0] - xx[2]) * (yy[1] - yy[2]) -
 	  (yy[0] - yy[2]) * (xx[1] - xx[2]);
-      ooa = 16.0 / a;
+      ooa.f = 16.0 / a;
    
       COPY_VERTEX_OOA( vb, vertsize, v1, 2 );
-      LE32_OUT( vb++, *(CARD32 *)&ooa );
+      LE32_OUT( vb++, ooa.u );
    }
 
    assert( vb == vbchk );

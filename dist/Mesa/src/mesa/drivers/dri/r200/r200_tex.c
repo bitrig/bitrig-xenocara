@@ -1,4 +1,3 @@
-/* $XFree86: xc/lib/GL/mesa/src/drv/r200/r200_tex.c,v 1.2 2002/11/05 17:46:08 tsi Exp $ */
 /*
 Copyright (C) The Weather Channel, Inc.  2002.  All Rights Reserved.
 
@@ -103,37 +102,39 @@ static void r200SetTexWrap( r200TexObjPtr t, GLenum swrap, GLenum twrap, GLenum 
       _mesa_problem(NULL, "bad S wrap mode in %s", __FUNCTION__);
    }
 
-   switch ( twrap ) {
-   case GL_REPEAT:
-      t->pp_txfilter |= R200_CLAMP_T_WRAP;
-      break;
-   case GL_CLAMP:
-      t->pp_txfilter |= R200_CLAMP_T_CLAMP_GL;
-      is_clamp = GL_TRUE;
-      break;
-   case GL_CLAMP_TO_EDGE:
-      t->pp_txfilter |= R200_CLAMP_T_CLAMP_LAST;
-      break;
-   case GL_CLAMP_TO_BORDER:
-      t->pp_txfilter |= R200_CLAMP_T_CLAMP_GL | R200_BORDER_MODE_D3D;
-      is_clamp_to_border = GL_TRUE;
-      break;
-   case GL_MIRRORED_REPEAT:
-      t->pp_txfilter |= R200_CLAMP_T_MIRROR;
-      break;
-   case GL_MIRROR_CLAMP_EXT:
-      t->pp_txfilter |= R200_CLAMP_T_MIRROR_CLAMP_GL;
-      is_clamp = GL_TRUE;
-      break;
-   case GL_MIRROR_CLAMP_TO_EDGE_EXT:
-      t->pp_txfilter |= R200_CLAMP_T_MIRROR_CLAMP_LAST;
-      break;
-   case GL_MIRROR_CLAMP_TO_BORDER_EXT:
-      t->pp_txfilter |= R200_CLAMP_T_MIRROR_CLAMP_GL;
-      is_clamp_to_border = GL_TRUE;
-      break;
-   default:
-      _mesa_problem(NULL, "bad T wrap mode in %s", __FUNCTION__);
+   if (t->base.tObj->Target != GL_TEXTURE_1D) {
+      switch ( twrap ) {
+      case GL_REPEAT:
+         t->pp_txfilter |= R200_CLAMP_T_WRAP;
+         break;
+      case GL_CLAMP:
+         t->pp_txfilter |= R200_CLAMP_T_CLAMP_GL;
+         is_clamp = GL_TRUE;
+         break;
+      case GL_CLAMP_TO_EDGE:
+         t->pp_txfilter |= R200_CLAMP_T_CLAMP_LAST;
+         break;
+      case GL_CLAMP_TO_BORDER:
+         t->pp_txfilter |= R200_CLAMP_T_CLAMP_GL;
+         is_clamp_to_border = GL_TRUE;
+         break;
+      case GL_MIRRORED_REPEAT:
+         t->pp_txfilter |= R200_CLAMP_T_MIRROR;
+         break;
+      case GL_MIRROR_CLAMP_EXT:
+         t->pp_txfilter |= R200_CLAMP_T_MIRROR_CLAMP_GL;
+         is_clamp = GL_TRUE;
+         break;
+      case GL_MIRROR_CLAMP_TO_EDGE_EXT:
+         t->pp_txfilter |= R200_CLAMP_T_MIRROR_CLAMP_LAST;
+         break;
+      case GL_MIRROR_CLAMP_TO_BORDER_EXT:
+         t->pp_txfilter |= R200_CLAMP_T_MIRROR_CLAMP_GL;
+         is_clamp_to_border = GL_TRUE;
+         break;
+      default:
+         _mesa_problem(NULL, "bad T wrap mode in %s", __FUNCTION__);
+      }
    }
 
    t->pp_txformat_x &= ~R200_CLAMP_Q_MASK;
@@ -182,7 +183,7 @@ static void r200SetTexMaxAnisotropy( r200TexObjPtr t, GLfloat max )
 {
    t->pp_txfilter &= ~R200_MAX_ANISO_MASK;
 
-   if ( max == 1.0 ) {
+   if ( max <= 1.0 ) {
       t->pp_txfilter |= R200_MAX_ANISO_1_TO_1;
    } else if ( max <= 2.0 ) {
       t->pp_txfilter |= R200_MAX_ANISO_2_TO_1;
@@ -305,6 +306,27 @@ static r200TexObjPtr r200AllocTexObj( struct gl_texture_object *texObj )
    return t;
 }
 
+/* try to find a format which will only need a memcopy */
+static const struct gl_texture_format *
+r200Choose8888TexFormat( GLenum srcFormat, GLenum srcType )
+{
+   const GLuint ui = 1;
+   const GLubyte littleEndian = *((const GLubyte *) &ui);
+
+   if ((srcFormat == GL_RGBA && srcType == GL_UNSIGNED_INT_8_8_8_8) ||
+       (srcFormat == GL_RGBA && srcType == GL_UNSIGNED_BYTE && !littleEndian) ||
+       (srcFormat == GL_ABGR_EXT && srcType == GL_UNSIGNED_INT_8_8_8_8_REV) ||
+       (srcFormat == GL_ABGR_EXT && srcType == GL_UNSIGNED_BYTE && littleEndian)) {
+      return &_mesa_texformat_rgba8888;
+   }
+   else if ((srcFormat == GL_RGBA && srcType == GL_UNSIGNED_INT_8_8_8_8_REV) ||
+       (srcFormat == GL_RGBA && srcType == GL_UNSIGNED_BYTE && littleEndian) ||
+       (srcFormat == GL_ABGR_EXT && srcType == GL_UNSIGNED_INT_8_8_8_8) ||
+       (srcFormat == GL_ABGR_EXT && srcType == GL_UNSIGNED_BYTE && !littleEndian)) {
+      return &_mesa_texformat_rgba8888_rev;
+   }
+   else return _dri_texformat_argb8888;
+}
 
 static const struct gl_texture_format *
 r200ChooseTextureFormat( GLcontext *ctx, GLint internalFormat,
@@ -332,7 +354,8 @@ r200ChooseTextureFormat( GLcontext *ctx, GLint internalFormat,
       case GL_UNSIGNED_SHORT_1_5_5_5_REV:
 	 return _dri_texformat_argb1555;
       default:
-         return do32bpt ? _dri_texformat_rgba8888 : _dri_texformat_argb4444;
+         return do32bpt ?
+	    r200Choose8888TexFormat(format, type) : _dri_texformat_argb4444;
       }
 
    case 3:
@@ -349,7 +372,7 @@ r200ChooseTextureFormat( GLcontext *ctx, GLint internalFormat,
       case GL_UNSIGNED_SHORT_5_6_5_REV:
 	 return _dri_texformat_rgb565;
       default:
-         return do32bpt ? _dri_texformat_rgba8888 : _dri_texformat_rgb565;
+         return do32bpt ? _dri_texformat_argb8888 : _dri_texformat_rgb565;
       }
 
    case GL_RGBA8:
@@ -357,7 +380,7 @@ r200ChooseTextureFormat( GLcontext *ctx, GLint internalFormat,
    case GL_RGBA12:
    case GL_RGBA16:
       return !force16bpt ?
-	  _dri_texformat_rgba8888 : _dri_texformat_argb4444;
+	  r200Choose8888TexFormat(format, type) : _dri_texformat_argb4444;
 
    case GL_RGBA4:
    case GL_RGBA2:
@@ -370,7 +393,7 @@ r200ChooseTextureFormat( GLcontext *ctx, GLint internalFormat,
    case GL_RGB10:
    case GL_RGB12:
    case GL_RGB16:
-      return !force16bpt ? _dri_texformat_rgba8888 : _dri_texformat_rgb565;
+      return !force16bpt ? _dri_texformat_argb8888 : _dri_texformat_rgb565;
 
    case GL_RGB5:
    case GL_RGB4:
@@ -383,7 +406,9 @@ r200ChooseTextureFormat( GLcontext *ctx, GLint internalFormat,
    case GL_ALPHA12:
    case GL_ALPHA16:
    case GL_COMPRESSED_ALPHA:
-      return _dri_texformat_a8;
+   /* can't use a8 format since interpreting hw I8 as a8 would result
+      in wrong rgb values (same as alpha value instead of 0). */
+      return _dri_texformat_al88;
 
    case 1:
    case GL_LUMINANCE:
@@ -459,7 +484,7 @@ r200ValidateClientStorage( GLcontext *ctx, GLenum target,
 {
    r200ContextPtr rmesa = R200_CONTEXT(ctx);
 
-   if (0)
+   if ( R200_DEBUG & DEBUG_TEXTURE )
       fprintf(stderr, "intformat %s format %s type %s\n",
 	      _mesa_lookup_enum_by_nr( internalFormat ),
 	      _mesa_lookup_enum_by_nr( format ),
@@ -525,7 +550,7 @@ r200ValidateClientStorage( GLcontext *ctx, GLenum target,
 						  format, type);
 
       
-      if (0)
+      if ( R200_DEBUG & DEBUG_TEXTURE )
 	 fprintf(stderr, "%s: srcRowStride %d/%x\n", 
 		 __FUNCTION__, srcRowStride, srcRowStride);
 
@@ -983,7 +1008,16 @@ static void r200TexEnv( GLcontext *ctx, GLenum target,
       }
       break;
    }
-
+   case GL_COORD_REPLACE_ARB:
+      if (ctx->Point.PointSprite) {
+	 R200_STATECHANGE( rmesa, spr );
+	 if ((GLenum)param[0]) {
+	    rmesa->hw.spr.cmd[SPR_POINT_SPRITE_CNTL] |= R200_PS_GEN_TEX_0 << unit;
+	 } else {
+	    rmesa->hw.spr.cmd[SPR_POINT_SPRITE_CNTL] &= ~(R200_PS_GEN_TEX_0 << unit);
+	 }
+      }
+      break;
    default:
       return;
    }

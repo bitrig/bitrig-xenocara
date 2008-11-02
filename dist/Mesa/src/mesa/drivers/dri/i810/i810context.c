@@ -40,11 +40,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "extensions.h"
 #include "framebuffer.h"
 #include "imports.h"
+#include "points.h"
 
 #include "swrast/swrast.h"
 #include "swrast_setup/swrast_setup.h"
 #include "tnl/tnl.h"
-#include "array_cache/acache.h"
+#include "vbo/vbo.h"
 
 #include "tnl/t_pipeline.h"
 
@@ -65,6 +66,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define need_GL_ARB_multisample
 #define need_GL_ARB_texture_compression
+#define need_GL_ARB_vertex_buffer_object
 #include "extension_helper.h"
 
 #ifndef I810_DEBUG
@@ -129,6 +131,7 @@ const struct dri_extension card_extensions[] =
     { "GL_ARB_texture_env_combine",        NULL },
     { "GL_ARB_texture_env_crossbar",       NULL },
     { "GL_ARB_texture_mirrored_repeat",    NULL },
+    { "GL_ARB_vertex_buffer_object",       GL_ARB_vertex_buffer_object_functions },
     { "GL_EXT_stencil_wrap",               NULL },
     { "GL_EXT_texture_edge_clamp",         NULL },
     { "GL_EXT_texture_env_combine",        NULL },
@@ -276,8 +279,12 @@ i810CreateContext( const __GLcontextModes *mesaVis,
    ctx->Const.MaxPointSizeAA = 3.0;
    ctx->Const.PointSizeGranularity = 1.0;
 
+   /* reinitialize the context point state.
+    * It depend on constants in __GLcontextRec::Const
+    */
+   _mesa_init_point(ctx);
+
    ctx->Driver.GetBufferSize = i810BufferSize;
-   ctx->Driver.ResizeBuffers = _mesa_resize_framebuffer;
    ctx->Driver.GetString = i810GetString;
 
    /* Who owns who?
@@ -288,7 +295,7 @@ i810CreateContext( const __GLcontextModes *mesaVis,
    /* Initialize the software rasterizer and helper modules.
     */
    _swrast_CreateContext( ctx );
-   _ac_CreateContext( ctx );
+   _vbo_CreateContext( ctx );
    _tnl_CreateContext( ctx );
    _swsetup_CreateContext( ctx );
 
@@ -351,7 +358,7 @@ i810DestroyContext(__DRIcontextPrivate *driContextPriv)
       release_texture_heaps = (imesa->glCtx->Shared->RefCount == 1);
       _swsetup_DestroyContext( imesa->glCtx );
       _tnl_DestroyContext( imesa->glCtx );
-      _ac_DestroyContext( imesa->glCtx );
+      _vbo_DestroyContext( imesa->glCtx );
       _swrast_DestroyContext( imesa->glCtx );
 
       i810FreeVB( imesa->glCtx );
@@ -417,11 +424,11 @@ void i810XMesaSetBackClipRects( i810ContextPtr imesa )
 static void i810XMesaWindowMoved( i810ContextPtr imesa )
 {
    /* Determine current color drawing buffer */
-   switch (imesa->glCtx->DrawBuffer->_ColorDrawBufferMask[0]) {
-   case BUFFER_BIT_FRONT_LEFT:
+   switch (imesa->glCtx->DrawBuffer->_ColorDrawBufferIndexes[0]) {
+   case BUFFER_FRONT_LEFT:
       i810XMesaSetFrontClipRects( imesa );
       break;
-   case BUFFER_BIT_BACK_LEFT:
+   case BUFFER_BACK_LEFT:
       i810XMesaSetBackClipRects( imesa );
       break;
    default:
@@ -479,11 +486,11 @@ i810UpdatePageFlipping( i810ContextPtr imesa )
    int front = 0;
 
    /* Determine current color drawing buffer */
-   switch (ctx->DrawBuffer->_ColorDrawBufferMask[0]) {
-   case BUFFER_BIT_FRONT_LEFT:
+   switch (ctx->DrawBuffer->_ColorDrawBufferIndexes[0]) {
+   case BUFFER_FRONT_LEFT:
       front = 1;
       break;
-   case BUFFER_BIT_BACK_LEFT:
+   case BUFFER_BACK_LEFT:
       front = 0;
       break;
    default:

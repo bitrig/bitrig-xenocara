@@ -31,10 +31,10 @@
 ** published by SGI, but has not been independently verified as being
 ** compliant with the OpenGL(R) version 1.2.1 Specification.
 **
-** $Date: 2006/11/25 18:54:48 $ $Revision: 1.1 $
+** $Date: 2008/11/02 14:58:10 $ $Revision: 1.2 $
 */
 /*
-** $Header: /home/thib/scm/openbsd-cvs/xenocara/dist/Mesa/src/glu/sgi/libnurbs/interface/incurveeval.cc,v 1.1 2006/11/25 18:54:48 matthieu Exp $
+** $Header: /home/thib/scm/openbsd-cvs/xenocara/dist/Mesa/src/glu/sgi/libnurbs/interface/incurveeval.cc,v 1.2 2008/11/02 14:58:10 matthieu Exp $
 */
 
 #include <stdlib.h>

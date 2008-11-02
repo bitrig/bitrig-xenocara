@@ -1,8 +1,8 @@
 /*
  * Mesa 3-D graphics library
- * Version:  6.5
+ * Version:  7.1
  * 
- * Copyright (C) 1999-2006  Brian Paul   All Rights Reserved.
+ * Copyright (C) 1999-2007  Brian Paul   All Rights Reserved.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -34,8 +34,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "glheader.h"
-#include "glapi.h"
+#include "main/glheader.h"
+#include "glapi/glapi.h"
 #include "glxapi.h"
 
 
@@ -124,9 +124,30 @@ get_dispatch(Display *dpy)
    
 
 
-/* Set by glXMakeCurrent() and glXMakeContextCurrent() only */
+/**
+ * GLX API current context.
+ */
+#if defined(GLX_USE_TLS)
+PUBLIC __thread void * CurrentContext
+    __attribute__((tls_model("initial-exec")));
+#elif defined(THREADS)
+static _glthread_TSD ContextTSD;         /**< Per-thread context pointer */
+#else
 static GLXContext CurrentContext = 0;
-#define __glXGetCurrentContext() CurrentContext;
+#endif
+
+
+static void
+SetCurrentContext(GLXContext c)
+{
+#if defined(GLX_USE_TLS)
+   CurrentContext = c;
+#elif defined(THREADS)
+   _glthread_SetTSD(&ContextTSD, c);
+#else
+   CurrentContext = c;
+#endif
+}
 
 
 /*
@@ -186,6 +207,8 @@ glXDestroyContext(Display *dpy, GLXContext ctx)
    GET_DISPATCH(dpy, t);
    if (!t)
       return;
+   if (glXGetCurrentContext() == ctx)
+      SetCurrentContext(NULL);
    (t->DestroyContext)(dpy, ctx);
 }
 
@@ -215,7 +238,13 @@ glXGetConfig(Display *dpy, XVisualInfo *visinfo, int attrib, int *value)
 GLXContext PUBLIC
 glXGetCurrentContext(void)
 {
+#if defined(GLX_USE_TLS)
    return CurrentContext;
+#elif defined(THREADS)
+   return (GLXContext) _glthread_GetTSD(&ContextTSD);
+#else
+   return CurrentContext;
+#endif
 }
 
 
@@ -249,7 +278,7 @@ glXMakeCurrent(Display *dpy, GLXDrawable drawable, GLXContext ctx)
    }
    b = (*t->MakeCurrent)(dpy, drawable, ctx);
    if (b) {
-      CurrentContext = ctx;
+      SetCurrentContext(ctx);
    }
    return b;
 }
@@ -524,7 +553,7 @@ glXMakeContextCurrent(Display *dpy, GLXDrawable draw, GLXDrawable read, GLXConte
       return False;
    b = (t->MakeContextCurrent)(dpy, draw, read, ctx);
    if (b) {
-      CurrentContext = ctx;
+      SetCurrentContext(ctx);
    }
    return b;
 }
@@ -1075,6 +1104,27 @@ glXGetMemoryOffsetMESA(Display *dpy, int scrn, const void *pointer)
 }
 
 
+/*** GLX_EXT_texture_from_pixmap */
+
+void
+glXBindTexImageEXT(Display *dpy, GLXDrawable drawable, int buffer,
+                   const int *attrib_list)
+{
+   struct _glxapi_table *t;
+   GET_DISPATCH(dpy, t);
+   if (t)
+      t->BindTexImageEXT(dpy, drawable, buffer, attrib_list);
+}
+
+void
+glXReleaseTexImageEXT(Display *dpy, GLXDrawable drawable, int buffer)
+{
+   struct _glxapi_table *t;
+   GET_DISPATCH(dpy, t);
+   if (t)
+      t->ReleaseTexImageEXT(dpy, drawable, buffer);
+}
+
 
 /**********************************************************************/
 /* GLX API management functions                                       */
@@ -1118,6 +1168,9 @@ _glxapi_get_extensions(void)
 #endif
 #ifdef GLX_SGIX_pbuffer
       "GLX_SGIX_pbuffer",
+#endif
+#ifdef GLX_EXT_texture_from_pixmap
+      "GLX_EXT_texture_from_pixmap",
 #endif
       NULL
    };
@@ -1303,6 +1356,10 @@ static struct name_address_pair GLX_functions[] = {
    { "glXAllocateMemoryMESA", (__GLXextFuncPtr) glXAllocateMemoryMESA },
    { "glXFreeMemoryMESA", (__GLXextFuncPtr) glXFreeMemoryMESA },
    { "glXGetMemoryOffsetMESA", (__GLXextFuncPtr) glXGetMemoryOffsetMESA },
+
+   /*** GLX_EXT_texture_from_pixmap ***/
+   { "glXBindTexImageEXT", (__GLXextFuncPtr) glXBindTexImageEXT },
+   { "glXReleaseTexImageEXT", (__GLXextFuncPtr) glXReleaseTexImageEXT },
 
    { NULL, NULL }   /* end of list */
 };

@@ -84,7 +84,8 @@
 #include <windows.h>
 #endif
 
-#if defined(_WIN32) && !defined(_WINGDI_) && !defined(_GNU_H_WINDOWS32_DEFINES) && !defined(OPENSTEP) && !defined(__CYGWIN__)
+#if defined(_WIN32) && !defined(_WINGDI_) && !defined(_GNU_H_WINDOWS32_DEFINES) \
+     && !defined(OPENSTEP) && !defined(__CYGWIN__) || defined(__MINGW32__)
 #include <GL/mesa_wgl.h>
 #endif
 
@@ -2161,46 +2162,15 @@ typedef void (APIENTRYP PFNGLMULTITEXCOORD4SVARBPROC) (GLenum target, const GLsh
 #define GL_DEBUG_PRINT_MESA               0x875A
 #define GL_DEBUG_ASSERT_MESA              0x875B
 
-GLAPI GLhandleARB APIENTRY glCreateDebugObjectMESA (void);
-GLAPI GLvoid APIENTRY glClearDebugLogMESA (GLhandleARB obj, GLenum logType, GLenum shaderType);
-GLAPI GLvoid APIENTRY glGetDebugLogMESA (GLhandleARB obj, GLenum logType, GLenum shaderType, GLsizei maxLength,
+GLAPI GLhandleARB GLAPIENTRY glCreateDebugObjectMESA (void);
+GLAPI void GLAPIENTRY glClearDebugLogMESA (GLhandleARB obj, GLenum logType, GLenum shaderType);
+GLAPI void GLAPIENTRY glGetDebugLogMESA (GLhandleARB obj, GLenum logType, GLenum shaderType, GLsizei maxLength,
                                          GLsizei *length, GLcharARB *debugLog);
-GLAPI GLsizei APIENTRY glGetDebugLogLengthMESA (GLhandleARB obj, GLenum logType, GLenum shaderType);
+GLAPI GLsizei GLAPIENTRY glGetDebugLogLengthMESA (GLhandleARB obj, GLenum logType, GLenum shaderType);
 
 #endif /* GL_MESA_shader_debug */
 
 #endif /* GL_ARB_shader_objects */
-
-
-/*
- * ???. GL_MESA_trace
- * XXX obsolete
- */
-#ifndef GL_MESA_trace
-#define GL_MESA_trace 1
-
-#define GL_TRACE_ALL_BITS_MESA			0xFFFF
-#define GL_TRACE_OPERATIONS_BIT_MESA		0x0001
-#define GL_TRACE_PRIMITIVES_BIT_MESA		0x0002
-#define GL_TRACE_ARRAYS_BIT_MESA		0x0004
-#define GL_TRACE_TEXTURES_BIT_MESA		0x0008
-#define GL_TRACE_PIXELS_BIT_MESA		0x0010
-#define GL_TRACE_ERRORS_BIT_MESA		0x0020
-#define GL_TRACE_MASK_MESA			0x8755
-#define GL_TRACE_NAME_MESA			0x8756
-
-GLAPI void GLAPIENTRY glEnableTraceMESA( GLbitfield mask );
-GLAPI void GLAPIENTRY glDisableTraceMESA( GLbitfield mask );
-GLAPI void GLAPIENTRY glNewTraceMESA( GLbitfield mask, const GLubyte * traceName );
-GLAPI void GLAPIENTRY glEndTraceMESA( void );
-GLAPI void GLAPIENTRY glTraceAssertAttribMESA( GLbitfield attribMask );
-GLAPI void GLAPIENTRY glTraceCommentMESA( const GLubyte * comment );
-GLAPI void GLAPIENTRY glTraceTextureMESA( GLuint name, const GLubyte* comment );
-GLAPI void GLAPIENTRY glTraceListMESA( GLuint name, const GLubyte* comment );
-GLAPI void GLAPIENTRY glTracePointerMESA( GLvoid* pointer, const GLubyte* comment );
-GLAPI void GLAPIENTRY glTracePointerRangeMESA( const GLvoid* first, const GLvoid* last, const GLubyte* comment );
-
-#endif /* GL_MESA_trace */
 
 
 /*
@@ -2238,6 +2208,39 @@ GLAPI void GLAPIENTRY glProgramCallbackMESA(GLenum target, GLprogramcallbackMESA
 GLAPI void GLAPIENTRY glGetProgramRegisterfvMESA(GLenum target, GLsizei len, const GLubyte *name, GLfloat *v);
 
 #endif /* GL_MESA_program_debug */
+
+
+#ifndef GL_MESA_texture_array
+#define GL_MESA_texture_array 1
+
+/* GL_MESA_texture_array uses the same enum values as GL_EXT_texture_array.
+ */
+#ifndef GL_EXT_texture_array
+
+#ifdef GL_GLEXT_PROTOTYPES
+GLAPI void APIENTRY glFramebufferTextureLayerEXT(GLenum target,
+    GLenum attachment, GLuint texture, GLint level, GLint layer);
+#endif /* GL_GLEXT_PROTOTYPES */
+
+#if 0
+/* (temporarily) disabled because of collision with typedef in glext.h
+ * that happens if apps include both gl.h and glext.h
+ */
+typedef void (APIENTRYP PFNGLFRAMEBUFFERTEXTURELAYEREXTPROC) (GLenum target,
+    GLenum attachment, GLuint texture, GLint level, GLint layer);
+#endif
+
+#define GL_TEXTURE_1D_ARRAY_EXT         0x8C18
+#define GL_PROXY_TEXTURE_1D_ARRAY_EXT   0x8C19
+#define GL_TEXTURE_2D_ARRAY_EXT         0x8C1A
+#define GL_PROXY_TEXTURE_2D_ARRAY_EXT   0x8C1B
+#define GL_TEXTURE_BINDING_1D_ARRAY_EXT 0x8C1C
+#define GL_TEXTURE_BINDING_2D_ARRAY_EXT 0x8C1D
+#define GL_MAX_ARRAY_TEXTURE_LAYERS_EXT 0x88FF
+#define GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_LAYER_EXT 0x8CD4
+#endif
+
+#endif
 
 
 #ifndef GL_ATI_blend_equation_separate

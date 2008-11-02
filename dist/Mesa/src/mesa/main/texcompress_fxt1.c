@@ -1,8 +1,8 @@
 /*
  * Mesa 3-D graphics library
- * Version:  6.5
+ * Version:  7.1
  *
- * Copyright (C) 1999-2005  Brian Paul   All Rights Reserved.
+ * Copyright (C) 1999-2008  Brian Paul   All Rights Reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -35,6 +35,7 @@
 #include "context.h"
 #include "convolve.h"
 #include "image.h"
+#include "mipmap.h"
 #include "texcompress.h"
 #include "texformat.h"
 #include "texstore.h"
@@ -104,7 +105,7 @@ texstore_rgb_fxt1(TEXSTORE_PARAMS)
    }
 
    dst = _mesa_compressed_image_address(dstXoffset, dstYoffset, 0,
-                                        GL_COMPRESSED_RGB_FXT1_3DFX,
+                                        dstFormat->MesaFormat,
                                         texWidth, (GLubyte *) dstAddr);
 
    fxt1_encode(srcWidth, srcHeight, 3, pixels, srcRowStride,
@@ -161,7 +162,7 @@ texstore_rgba_fxt1(TEXSTORE_PARAMS)
    }
 
    dst = _mesa_compressed_image_address(dstXoffset, dstYoffset, 0,
-                                        GL_COMPRESSED_RGBA_FXT1_3DFX,
+                                        dstFormat->MesaFormat,
                                         texWidth, (GLubyte *) dstAddr);
 
    fxt1_encode(srcWidth, srcHeight, 4, pixels, srcRowStride,
@@ -297,17 +298,17 @@ const struct gl_texture_format _mesa_texformat_rgba_fxt1 = {
 /*
  * Define a 64-bit unsigned integer type and macros
  */
-#if defined(__GNUC__) && !defined(__cplusplus)
+#ifdef GL_EXT_timer_query  /* this extensions defines the GLuint64EXT type */
 
 #define FX64_NATIVE 1
 
-typedef unsigned long long Fx64;
+typedef GLuint64EXT Fx64;
 
 #define FX64_MOV32(a, b) a = b
 #define FX64_OR32(a, b)  a |= b
 #define FX64_SHL(a, c)   a <<= c
 
-#else  /* !__GNUC__ */
+#else  /* !GL_EXT_timer_query */
 
 #define FX64_NATIVE 0
 
@@ -329,7 +330,7 @@ typedef struct {
        }                                               \
    } while (0)
 
-#endif /* !__GNUC__ */
+#endif  /* !GL_EXT_timer_query */
 
 
 #define F(i) (GLfloat)1 /* can be used to obtain an oblong metric: 0.30 / 0.59 / 0.11 */
@@ -751,44 +752,55 @@ fxt1_quantize_ALPHA1 (GLuint *cc,
    GLint minColL = 0, maxColL = 0;
    GLint minColR = 0, maxColR = 0;
    GLint sumL = 0, sumR = 0;
-
+   GLint nn_comp;
    /* Our solution here is to find the darkest and brightest colors in
     * the 4x4 tile and use those as the two representative colors.
     * There are probably better algorithms to use (histogram-based).
     */
-   minSum = 2000; /* big enough */
-   maxSum = -1; /* small enough */
-   for (k = 0; k < N_TEXELS / 2; k++) {
-      GLint sum = 0;
-      for (i = 0; i < n_comp; i++) {
-         sum += input[k][i];
-      }
-      if (minSum > sum) {
-         minSum = sum;
-         minColL = k;
-      }
-      if (maxSum < sum) {
-         maxSum = sum;
-         maxColL = k;
-      }
-      sumL += sum;
+   nn_comp = n_comp;
+   while ((minColL == maxColL) && nn_comp) {
+       minSum = 2000; /* big enough */
+       maxSum = -1; /* small enough */
+       for (k = 0; k < N_TEXELS / 2; k++) {
+           GLint sum = 0;
+           for (i = 0; i < nn_comp; i++) {
+               sum += input[k][i];
+           }
+           if (minSum > sum) {
+               minSum = sum;
+               minColL = k;
+           }
+           if (maxSum < sum) {
+               maxSum = sum;
+               maxColL = k;
+           }
+           sumL += sum;
+       }
+       
+       nn_comp--;
    }
-   minSum = 2000; /* big enough */
-   maxSum = -1; /* small enough */
-   for (; k < N_TEXELS; k++) {
-      GLint sum = 0;
-      for (i = 0; i < n_comp; i++) {
-         sum += input[k][i];
-      }
-      if (minSum > sum) {
-         minSum = sum;
-         minColR = k;
-      }
-      if (maxSum < sum) {
-         maxSum = sum;
-         maxColR = k;
-      }
-      sumR += sum;
+
+   nn_comp = n_comp;
+   while ((minColR == maxColR) && nn_comp) {
+       minSum = 2000; /* big enough */
+       maxSum = -1; /* small enough */
+       for (k = N_TEXELS / 2; k < N_TEXELS; k++) {
+           GLint sum = 0;
+           for (i = 0; i < nn_comp; i++) {
+               sum += input[k][i];
+           }
+           if (minSum > sum) {
+               minSum = sum;
+               minColR = k;
+           }
+           if (maxSum < sum) {
+               maxSum = sum;
+               maxColR = k;
+           }
+           sumR += sum;
+       }
+
+       nn_comp--;
    }
 
    /* choose the common vector (yuck!) */

@@ -1,4 +1,3 @@
-/* $XFree86: xc/lib/GL/mesa/src/drv/r200/r200_context.c,v 1.3 2003/05/06 23:52:08 daenzer Exp $ */
 /*
 Copyright (C) The Weather Channel, Inc.  2002.  All Rights Reserved.
 
@@ -45,7 +44,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "swrast/swrast.h"
 #include "swrast_setup/swrast_setup.h"
-#include "array_cache/acache.h"
+#include "vbo/vbo.h"
 
 #include "tnl/tnl.h"
 #include "tnl/t_pipeline.h"
@@ -60,7 +59,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "r200_tex.h"
 #include "r200_swtcl.h"
 #include "r200_tcl.h"
-#include "r200_vtxfmt.h"
 #include "r200_maos.h"
 #include "r200_vertprog.h"
 
@@ -71,10 +69,12 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define need_GL_ATI_fragment_shader
 #define need_GL_EXT_blend_minmax
 #define need_GL_EXT_fog_coord
+#define need_GL_EXT_multi_draw_arrays
 #define need_GL_EXT_secondary_color
 #define need_GL_EXT_blend_equation_separate
 #define need_GL_EXT_blend_func_separate
 #define need_GL_NV_vertex_program
+#define need_GL_ARB_point_parameters
 #include "extension_helper.h"
 
 #define DRIVER_DATE	"20060602"
@@ -85,21 +85,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef R200_DEBUG
 int R200_DEBUG = (0);
 #endif
-
-
-/* Return the width and height of the given buffer.
- */
-static void r200GetBufferSize( GLframebuffer *buffer,
-			       GLuint *width, GLuint *height )
-{
-   GET_CURRENT_CONTEXT(ctx);
-   r200ContextPtr rmesa = R200_CONTEXT(ctx);
-
-   LOCK_HARDWARE( rmesa );
-   *width  = rmesa->dri.drawable->w;
-   *height = rmesa->dri.drawable->h;
-   UNLOCK_HARDWARE( rmesa );
-}
 
 /* Return various strings for glGetString().
  */
@@ -148,6 +133,7 @@ const struct dri_extension card_extensions[] =
     { "GL_EXT_blend_minmax",               GL_EXT_blend_minmax_functions },
     { "GL_EXT_blend_subtract",             NULL },
     { "GL_EXT_fog_coord",                  GL_EXT_fog_coord_functions },
+    { "GL_EXT_multi_draw_arrays",          GL_EXT_multi_draw_arrays_functions },
     { "GL_EXT_secondary_color",            GL_EXT_secondary_color_functions },
     { "GL_EXT_stencil_wrap",               NULL },
     { "GL_EXT_texture_edge_clamp",         NULL },
@@ -170,7 +156,7 @@ const struct dri_extension blend_extensions[] = {
     { "GL_EXT_blend_func_separate",        GL_EXT_blend_func_separate_functions },
     { NULL,                                NULL }
 };
-							 
+
 const struct dri_extension ARB_vp_extension[] = {
     { "GL_ARB_vertex_program",             GL_ARB_vertex_program_functions }
 };
@@ -181,6 +167,12 @@ const struct dri_extension NV_vp_extension[] = {
 
 const struct dri_extension ATI_fs_extension[] = {
     { "GL_ATI_fragment_shader",            GL_ATI_fragment_shader_functions }
+};
+
+const struct dri_extension point_extensions[] = {
+    { "GL_ARB_point_sprite",               NULL },
+    { "GL_ARB_point_parameters",           GL_ARB_point_parameters_functions },
+    { NULL,                                NULL }
 };
 
 extern const struct tnl_pipeline_stage _r200_render_stage;
@@ -200,9 +192,8 @@ static const struct tnl_pipeline_stage *r200_pipeline[] = {
    &_tnl_fog_coordinate_stage,
    &_tnl_texgen_stage,
    &_tnl_texture_transform_stage,
-   &_tnl_arb_vertex_program_stage,
+   &_tnl_point_attenuation_stage,
    &_tnl_vertex_program_stage,
-
    /* Try again to go to tcl? 
     *     - no good for asymmetric-twoside (do with multipass)
     *     - no good for asymmetric-unfilled (do with multipass)
@@ -226,13 +217,8 @@ static const struct tnl_pipeline_stage *r200_pipeline[] = {
  */
 static void r200InitDriverFuncs( struct dd_function_table *functions )
 {
-    functions->GetBufferSize		= r200GetBufferSize;
-    functions->ResizeBuffers            = _mesa_resize_framebuffer;
+    functions->GetBufferSize		= NULL; /* OBSOLETE */
     functions->GetString		= r200GetString;
-
-    functions->Error			= NULL;
-    functions->DrawPixels		= NULL;
-    functions->Bitmap			= NULL;
 }
 
 static const struct dri_debug_control debug_control[] =
@@ -293,14 +279,14 @@ GLboolean r200CreateContext( const __GLcontextModes *glVisual,
                                                  "def_max_anisotropy");
 
    if ( driQueryOptionb( &rmesa->optionCache, "hyperz" ) ) {
-      if ( sPriv->drmMinor < 13 )
+      if ( sPriv->drm_version.minor < 13 )
 	 fprintf( stderr, "DRM version 1.%d too old to support HyperZ, "
-			  "disabling.\n",sPriv->drmMinor );
+			  "disabling.\n", sPriv->drm_version.minor );
       else
 	 rmesa->using_hyperz = GL_TRUE;
    }
  
-   if ( sPriv->drmMinor >= 15 )
+   if ( sPriv->drm_version.minor >= 15 )
       rmesa->texmicrotile = GL_TRUE;
 
    /* Init default driver functions then plug in our R200-specific functions
@@ -333,7 +319,7 @@ GLboolean r200CreateContext( const __GLcontextModes *glVisual,
    rmesa->dri.hwContext = driContextPriv->hHWContext;
    rmesa->dri.hwLock = &sPriv->pSAREA->lock;
    rmesa->dri.fd = sPriv->fd;
-   rmesa->dri.drmMinor = sPriv->drmMinor;
+   rmesa->dri.drmMinor = sPriv->drm_version.minor;
 
    rmesa->r200Screen = screen;
    rmesa->sarea = (drm_radeon_sarea_t *)((GLubyte *)sPriv->pSAREA +
@@ -428,7 +414,7 @@ GLboolean r200CreateContext( const __GLcontextModes *glVisual,
    /* Initialize the software rasterizer and helper modules.
     */
    _swrast_CreateContext( ctx );
-   _ac_CreateContext( ctx );
+   _vbo_CreateContext( ctx );
    _tnl_CreateContext( ctx );
    _swsetup_CreateContext( ctx );
    _ae_create_context( ctx );
@@ -437,11 +423,10 @@ GLboolean r200CreateContext( const __GLcontextModes *glVisual,
     */
    _tnl_destroy_pipeline( ctx );
    _tnl_install_pipeline( ctx, r200_pipeline );
-   ctx->Driver.FlushVertices = r200FlushVertices;
 
    /* Try and keep materials and vertices separate:
     */
-   _tnl_isolate_materials( ctx, GL_TRUE );
+/*    _tnl_isolate_materials( ctx, GL_TRUE ); */
 
 
    /* Configure swrast and TNL to match hardware characteristics:
@@ -485,6 +470,8 @@ GLboolean r200CreateContext( const __GLcontextModes *glVisual,
 
    if ((ctx->Const.MaxTextureUnits == 6) && rmesa->r200Screen->drmSupportsFragShader)
       driInitSingleExtension( ctx, ATI_fs_extension );
+   if (rmesa->r200Screen->drmSupportsPointSprites)
+      driInitExtensions( ctx, point_extensions, GL_FALSE );
 #if 0
    r200InitDriverFuncs( ctx );
    r200InitIoctlFuncs( ctx );
@@ -514,13 +501,10 @@ GLboolean r200CreateContext( const __GLcontextModes *glVisual,
 	      fthrottle_mode,
 	      rmesa->r200Screen->irq);
 
-   rmesa->vblank_flags = (rmesa->r200Screen->irq != 0)
-       ? driGetDefaultVBlankFlags(&rmesa->optionCache) : VBLANK_FLAG_NO_IRQ;
-
    rmesa->prefer_gart_client_texturing = 
       (getenv("R200_GART_CLIENT_TEXTURES") != 0);
 
-   (*dri_interface->getUST)( & rmesa->swap_ust );
+   (*sPriv->systemTime->getUST)( & rmesa->swap_ust );
 
 
 #if DO_DEBUG
@@ -544,12 +528,6 @@ GLboolean r200CreateContext( const __GLcontextModes *glVisual,
       TCL_FALLBACK(rmesa->glCtx, R200_TCL_FALLBACK_TCL_DISABLE, 1);
    }
 
-   if (rmesa->r200Screen->chip_flags & RADEON_CHIPSET_TCL) {
-      if (tcl_mode >= DRI_CONF_TCL_VTXFMT)
-	 r200VtxfmtInit( ctx, tcl_mode >= DRI_CONF_TCL_CODEGEN );
-
-      _tnl_need_dlist_norm_lengths( ctx, GL_FALSE );
-   }
    return GL_TRUE;
 }
 
@@ -579,7 +557,7 @@ void r200DestroyContext( __DRIcontextPrivate *driContextPriv )
       release_texture_heaps = (rmesa->glCtx->Shared->RefCount == 1);
       _swsetup_DestroyContext( rmesa->glCtx );
       _tnl_DestroyContext( rmesa->glCtx );
-      _ac_DestroyContext( rmesa->glCtx );
+      _vbo_DestroyContext( rmesa->glCtx );
       _swrast_DestroyContext( rmesa->glCtx );
 
       r200DestroySwtcl( rmesa->glCtx );
@@ -588,12 +566,6 @@ void r200DestroyContext( __DRIcontextPrivate *driContextPriv )
       if (rmesa->dma.current.buf) {
 	 r200ReleaseDmaRegion( rmesa, &rmesa->dma.current, __FUNCTION__ );
 	 r200FlushCmdBuf( rmesa, __FUNCTION__ );
-      }
-
-      if (!(rmesa->TclFallback & R200_TCL_FALLBACK_TCL_DISABLE)) {
-	 int tcl_mode = driQueryOptioni(&rmesa->optionCache, "tcl_mode");
-	 if (tcl_mode >= DRI_CONF_TCL_VTXFMT)
-	    r200VtxfmtDestroy( rmesa->glCtx );
       }
 
       if (rmesa->state.scissor.pClipRects) {
@@ -693,19 +665,27 @@ r200MakeCurrent( __DRIcontextPrivate *driContextPriv,
       if (R200_DEBUG & DEBUG_DRI)
 	 fprintf(stderr, "%s ctx %p\n", __FUNCTION__, (void *)newCtx->glCtx);
 
-      if ( newCtx->dri.drawable != driDrawPriv ) {
-	 driDrawableInitVBlank( driDrawPriv, newCtx->vblank_flags );
+      newCtx->dri.readable = driReadPriv;
+
+      if ( newCtx->dri.drawable != driDrawPriv ||
+           newCtx->lastStamp != driDrawPriv->lastStamp ) {
+	 if (driDrawPriv->swap_interval == (unsigned)-1) {
+	    driDrawPriv->vblFlags = (newCtx->r200Screen->irq != 0)
+	       ? driGetDefaultVBlankFlags(&newCtx->optionCache)
+	       : VBLANK_FLAG_NO_IRQ;
+
+	    driDrawableInitVBlank( driDrawPriv );
+	 }
+
 	 newCtx->dri.drawable = driDrawPriv;
-	 r200UpdateWindow( newCtx->glCtx );
+
+	 r200SetCliprects(newCtx);
 	 r200UpdateViewportOffset( newCtx->glCtx );
       }
 
       _mesa_make_current( newCtx->glCtx,
 			  (GLframebuffer *) driDrawPriv->driverPrivate,
 			  (GLframebuffer *) driReadPriv->driverPrivate );
-
-      if (newCtx->vb.enabled)
-	 r200VtxfmtMakeCurrent( newCtx->glCtx );
 
       _mesa_update_state( newCtx->glCtx );
       r200ValidateState( newCtx->glCtx );
@@ -731,6 +711,5 @@ r200UnbindContext( __DRIcontextPrivate *driContextPriv )
    if (R200_DEBUG & DEBUG_DRI)
       fprintf(stderr, "%s ctx %p\n", __FUNCTION__, (void *)rmesa->glCtx);
 
-   r200VtxfmtUnbindContext( rmesa->glCtx );
    return GL_TRUE;
 }

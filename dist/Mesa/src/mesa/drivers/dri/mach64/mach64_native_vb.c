@@ -44,7 +44,7 @@ void TAG(translate_vertex)(GLcontext *ctx,
    UNVIEWPORT_VARS;
    CARD32 *p = (CARD32 *)src + 10 - mmesa->vertex_size;
 
-   dst->win[3] = 1.0;
+   dst->attrib[FRAG_ATTRIB_WPOS][3] = 1.0;
    
    switch ( format ) {
       case TEX1_VERTEX_FORMAT:
@@ -52,14 +52,14 @@ void TAG(translate_vertex)(GLcontext *ctx,
 	 {
 	    float rhw = 1.0 / LE32_IN_FLOAT( p + 2 );
 	    
-	    dst->texcoord[1][0] = rhw*LE32_IN_FLOAT( p++ );
-	    dst->texcoord[1][1] = rhw*LE32_IN_FLOAT( p++ );
+	    dst->attrib[FRAG_ATTRIB_TEX1][0] = rhw*LE32_IN_FLOAT( p++ );
+	    dst->attrib[FRAG_ATTRIB_TEX1][1] = rhw*LE32_IN_FLOAT( p++ );
 	 }
 #else
-	 dst->texcoord[1][0] = LE32_IN_FLOAT( p++ );
-	 dst->texcoord[1][1] = LE32_IN_FLOAT( p++ );
+	 dst->attrib[FRAG_ATTRIB_TEX1][0] = LE32_IN_FLOAT( p++ );
+	 dst->attrib[FRAG_ATTRIB_TEX1][1] = LE32_IN_FLOAT( p++ );
 #endif
-	 dst->texcoord[1][3] = 1.0;
+	 dst->attrib[FRAG_ATTRIB_TEX1][3] = 1.0;
 	 p++;
 
       case TEX0_VERTEX_FORMAT:
@@ -67,25 +67,25 @@ void TAG(translate_vertex)(GLcontext *ctx,
 	 {
 	    float rhw = 1.0 / LE32_IN_FLOAT( p + 2 );
 	    
-	    dst->texcoord[0][0] = rhw*LE32_IN_FLOAT( p++ );
-	    dst->texcoord[0][1] = rhw*LE32_IN_FLOAT( p++ );
+	    dst->attrib[FRAG_ATTRIB_TEX0][0] = rhw*LE32_IN_FLOAT( p++ );
+	    dst->attrib[FRAG_ATTRIB_TEX0][1] = rhw*LE32_IN_FLOAT( p++ );
 	 }
 #else
-	 dst->texcoord[0][0] = LE32_IN_FLOAT( p++ );
-	 dst->texcoord[0][1] = LE32_IN_FLOAT( p++ );
+	 dst->attrib[FRAG_ATTRIB_TEX0][0] = LE32_IN_FLOAT( p++ );
+	 dst->attrib[FRAG_ATTRIB_TEX0][1] = LE32_IN_FLOAT( p++ );
 #endif
-	 dst->texcoord[0][3] = 1.0;
-	 dst->win[3] = LE32_IN_FLOAT( p++ );
+	 dst->attrib[FRAG_ATTRIB_TEX0][3] = 1.0;
+	 dst->attrib[FRAG_ATTRIB_WPOS][3] = LE32_IN_FLOAT( p++ );
 	
       case NOTEX_VERTEX_FORMAT:
-	 dst->specular[2] = ((GLubyte *)p)[0];
-	 dst->specular[1] = ((GLubyte *)p)[1];
-	 dst->specular[0] = ((GLubyte *)p)[2];
-	 dst->fog = ((GLubyte *)p)[3];
+	 dst->attrib[FRAG_ATTRIB_COL1][2] = UBYTE_TO_FLOAT(((GLubyte *)p)[0]);
+	 dst->attrib[FRAG_ATTRIB_COL1][1] = UBYTE_TO_FLOAT(((GLubyte *)p)[1]);
+	 dst->attrib[FRAG_ATTRIB_COL1][0] = UBYTE_TO_FLOAT(((GLubyte *)p)[2]);
+	 dst->attrib[FRAG_ATTRIB_FOGC][0] = ((GLubyte *)p)[3]; /*XXX int->float?*/
 	 p++;
 
       case TINY_VERTEX_FORMAT:
-	 dst->win[2] = UNVIEWPORT_Z( LE32_IN( p++ ) );
+	 dst->attrib[FRAG_ATTRIB_WPOS][2] = UNVIEWPORT_Z( LE32_IN( p++ ) );
 
 	 dst->color[2] = ((GLubyte *)p)[0];
 	 dst->color[1] = ((GLubyte *)p)[1];
@@ -96,14 +96,14 @@ void TAG(translate_vertex)(GLcontext *ctx,
 	 {
 	    GLuint xy = LE32_IN( p );
 	    
-	    dst->win[0] = UNVIEWPORT_X( (GLfloat)(GLshort)( xy >> 16 ) );
-	    dst->win[1] = UNVIEWPORT_Y( (GLfloat)(GLshort)( xy & 0xffff ) );
+	    dst->attrib[FRAG_ATTRIB_WPOS][0] = UNVIEWPORT_X( (GLfloat)(GLshort)( xy >> 16 ) );
+	    dst->attrib[FRAG_ATTRIB_WPOS][1] = UNVIEWPORT_Y( (GLfloat)(GLshort)( xy & 0xffff ) );
 	 }
    }
 
    assert( p + 1 - (CARD32 *)src == 10 );
 	 
-   dst->pointSize = ctx->Point._Size;
+   dst->pointSize = ctx->Point.Size;
 }
 
 

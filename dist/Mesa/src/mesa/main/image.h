@@ -1,8 +1,8 @@
 /*
  * Mesa 3-D graphics library
- * Version:  6.5
+ * Version:  7.1
  *
- * Copyright (C) 1999-2006  Brian Paul   All Rights Reserved.
+ * Copyright (C) 1999-2007  Brian Paul   All Rights Reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -112,23 +112,25 @@ _mesa_pack_bitmap( GLint width, GLint height, const GLubyte *source,
 
 
 extern void
-_mesa_apply_rgba_transfer_ops(GLcontext *ctx, GLuint transferOps,
+_mesa_apply_rgba_transfer_ops(GLcontext *ctx, GLbitfield transferOps,
                               GLuint n, GLfloat rgba[][4]);
 
+
 extern void
-_mesa_pack_rgba_span_float( GLcontext *ctx,
-                            GLuint n, CONST GLfloat rgba[][4],
+_mesa_apply_ci_transfer_ops(const GLcontext *ctx, GLbitfield transferOps,
+                            GLuint n, GLuint indexes[]);
+
+
+extern void
+_mesa_apply_stencil_transfer_ops(const GLcontext *ctx, GLuint n,
+                                 GLstencil stencil[]);
+
+
+extern void
+_mesa_pack_rgba_span_float( GLcontext *ctx, GLuint n, GLfloat rgba[][4],
                             GLenum dstFormat, GLenum dstType, GLvoid *dstAddr,
                             const struct gl_pixelstore_attrib *dstPacking,
-                            GLuint transferOps );
-
-
-extern void
-_mesa_pack_rgba_span_chan( GLcontext *ctx,
-                           GLuint n, CONST GLchan rgba[][4],
-                           GLenum dstFormat, GLenum dstType, GLvoid *dstAddr,
-                           const struct gl_pixelstore_attrib *dstPacking,
-                           GLuint transferOps );
+                            GLbitfield transferOps );
 
 
 extern void
@@ -137,7 +139,7 @@ _mesa_unpack_color_span_chan( GLcontext *ctx,
                               GLenum srcFormat, GLenum srcType,
                               const GLvoid *source,
                               const struct gl_pixelstore_attrib *srcPacking,
-                              GLuint transferOps );
+                              GLbitfield transferOps );
 
 
 extern void
@@ -146,7 +148,7 @@ _mesa_unpack_color_span_float( GLcontext *ctx,
                                GLenum srcFormat, GLenum srcType,
                                const GLvoid *source,
                                const struct gl_pixelstore_attrib *srcPacking,
-                               GLuint transferOps );
+                               GLbitfield transferOps );
 
 
 extern void
@@ -154,14 +156,14 @@ _mesa_unpack_index_span( const GLcontext *ctx, GLuint n,
                          GLenum dstType, GLvoid *dest,
                          GLenum srcType, const GLvoid *source,
                          const struct gl_pixelstore_attrib *srcPacking,
-                         GLuint transferOps );
+                         GLbitfield transferOps );
 
 
 extern void
 _mesa_pack_index_span( const GLcontext *ctx, GLuint n,
                        GLenum dstType, GLvoid *dest, const GLuint *source,
                        const struct gl_pixelstore_attrib *dstPacking,
-                       GLuint transferOps );
+                       GLbitfield transferOps );
 
 
 extern void
@@ -169,7 +171,7 @@ _mesa_unpack_stencil_span( const GLcontext *ctx, GLuint n,
                            GLenum dstType, GLvoid *dest,
                            GLenum srcType, const GLvoid *source,
                            const struct gl_pixelstore_attrib *srcPacking,
-                           GLuint transferOps );
+                           GLbitfield transferOps );
 
 extern void
 _mesa_pack_stencil_span( const GLcontext *ctx, GLuint n,
@@ -179,7 +181,7 @@ _mesa_pack_stencil_span( const GLcontext *ctx, GLuint n,
 
 extern void
 _mesa_unpack_depth_span( const GLcontext *ctx, GLuint n,
-                         GLenum dstType, GLvoid *dest, GLfloat depthScale,
+                         GLenum dstType, GLvoid *dest, GLuint depthMax,
                          GLenum srcType, const GLvoid *source,
                          const struct gl_pixelstore_attrib *srcPacking );
 
@@ -201,6 +203,12 @@ _mesa_unpack_image( GLuint dimensions,
                     GLsizei width, GLsizei height, GLsizei depth,
                     GLenum format, GLenum type, const GLvoid *pixels,
                     const struct gl_pixelstore_attrib *unpack );
+
+
+extern void
+_mesa_convert_colors(GLenum srcType, const GLvoid *src,
+                     GLenum dstType, GLvoid *dst,
+                     GLuint count, const GLubyte mask[]);
 
 
 extern GLboolean

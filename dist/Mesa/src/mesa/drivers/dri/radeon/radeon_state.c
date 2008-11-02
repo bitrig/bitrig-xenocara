@@ -40,8 +40,9 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "light.h"
 #include "state.h"
 #include "context.h"
+#include "framebuffer.h"
 
-#include "array_cache/acache.h"
+#include "vbo/vbo.h"
 #include "tnl/tnl.h"
 #include "tnl/t_pipeline.h"
 #include "swrast_setup/swrast_setup.h"
@@ -52,7 +53,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "radeon_tcl.h"
 #include "radeon_tex.h"
 #include "radeon_swtcl.h"
-#include "radeon_vtxfmt.h"
 #include "drirenderbuffer.h"
 
 static void radeonUpdateSpecular( GLcontext *ctx );
@@ -1635,29 +1635,47 @@ static void radeonLogicOpCode( GLcontext *ctx, GLenum opcode )
  */
 void radeonSetCliprects( radeonContextPtr rmesa )
 {
-   __DRIdrawablePrivate *dPriv = rmesa->dri.drawable;
+   __DRIdrawablePrivate *const drawable = rmesa->dri.drawable;
+   __DRIdrawablePrivate *const readable = rmesa->dri.readable;
+   GLframebuffer *const draw_fb = (GLframebuffer*) drawable->driverPrivate;
+   GLframebuffer *const read_fb = (GLframebuffer*) readable->driverPrivate;
 
-   if (rmesa->glCtx->DrawBuffer->_ColorDrawBufferMask[0]
-       == BUFFER_BIT_BACK_LEFT) {
+   if (draw_fb->_ColorDrawBufferIndexes[0] == BUFFER_BACK_LEFT) {
       /* Can't ignore 2d windows if we are page flipping.
        */
-      if ( dPriv->numBackClipRects == 0 || rmesa->doPageFlip ) {
-	 rmesa->numClipRects = dPriv->numClipRects;
-	 rmesa->pClipRects = dPriv->pClipRects;
+      if ( drawable->numBackClipRects == 0 || rmesa->doPageFlip ) {
+	 rmesa->numClipRects = drawable->numClipRects;
+	 rmesa->pClipRects = drawable->pClipRects;
       }
       else {
-	 rmesa->numClipRects = dPriv->numBackClipRects;
-	 rmesa->pClipRects = dPriv->pBackClipRects;
+	 rmesa->numClipRects = drawable->numBackClipRects;
+	 rmesa->pClipRects = drawable->pBackClipRects;
       }
    }
    else {
       /* front buffer (or none, or multiple buffers */
-      rmesa->numClipRects = dPriv->numClipRects;
-      rmesa->pClipRects = dPriv->pClipRects;
+      rmesa->numClipRects = drawable->numClipRects;
+      rmesa->pClipRects = drawable->pClipRects;
+   }
+
+   if ((draw_fb->Width != drawable->w) || (draw_fb->Height != drawable->h)) {
+      _mesa_resize_framebuffer(rmesa->glCtx, draw_fb,
+			       drawable->w, drawable->h);
+      draw_fb->Initialized = GL_TRUE;
+   }
+
+   if (drawable != readable) {
+      if ((read_fb->Width != readable->w) || (read_fb->Height != readable->h)) {
+	 _mesa_resize_framebuffer(rmesa->glCtx, read_fb,
+				  readable->w, readable->h);
+	 read_fb->Initialized = GL_TRUE;
+      }
    }
 
    if (rmesa->state.scissor.enabled)
       radeonRecalcScissorRects( rmesa );
+
+   rmesa->lastStamp = drawable->lastStamp;
 }
 
 
@@ -1674,17 +1692,18 @@ static void radeonDrawBuffer( GLcontext *ctx, GLenum mode )
 
    RADEON_FIREVERTICES(rmesa);	/* don't pipeline cliprect changes */
 
-   /*
-    * _ColorDrawBufferMask is easier to cope with than <mode>.
-    * Check for software fallback, update cliprects.
-    */
-   switch ( ctx->DrawBuffer->_ColorDrawBufferMask[0] ) {
-   case BUFFER_BIT_FRONT_LEFT:
-   case BUFFER_BIT_BACK_LEFT:
+   if (ctx->DrawBuffer->_NumColorDrawBuffers != 1) {
+      /* 0 (GL_NONE) buffers or multiple color drawing buffers */
+      FALLBACK( rmesa, RADEON_FALLBACK_DRAW_BUFFER, GL_TRUE );
+      return;
+   }
+
+   switch ( ctx->DrawBuffer->_ColorDrawBufferIndexes[0] ) {
+   case BUFFER_FRONT_LEFT:
+   case BUFFER_BACK_LEFT:
       FALLBACK( rmesa, RADEON_FALLBACK_DRAW_BUFFER, GL_FALSE );
       break;
    default:
-      /* 0 (GL_NONE) buffers or multiple color drawing buffers */
       FALLBACK( rmesa, RADEON_FALLBACK_DRAW_BUFFER, GL_TRUE );
       return;
    }
@@ -2203,11 +2222,11 @@ radeonUpdateDrawBuffer(GLcontext *ctx)
    struct gl_framebuffer *fb = ctx->DrawBuffer;
    driRenderbuffer *drb;
 
-   if (fb->_ColorDrawBufferMask[0] == BUFFER_BIT_FRONT_LEFT) {
+   if (fb->_ColorDrawBufferIndexes[0] == BUFFER_FRONT_LEFT) {
       /* draw to front */
       drb = (driRenderbuffer *) fb->Attachment[BUFFER_FRONT_LEFT].Renderbuffer;
    }
-   else if (fb->_ColorDrawBufferMask[0] == BUFFER_BIT_BACK_LEFT) {
+   else if (fb->_ColorDrawBufferIndexes[0] == BUFFER_BACK_LEFT) {
       /* draw to back */
       drb = (driRenderbuffer *) fb->Attachment[BUFFER_BACK_LEFT].Renderbuffer;
    }
@@ -2285,11 +2304,10 @@ static void radeonInvalidateState( GLcontext *ctx, GLuint new_state )
 {
    _swrast_InvalidateState( ctx, new_state );
    _swsetup_InvalidateState( ctx, new_state );
-   _ac_InvalidateState( ctx, new_state );
+   _vbo_InvalidateState( ctx, new_state );
    _tnl_InvalidateState( ctx, new_state );
    _ae_invalidate_state( ctx, new_state );
    RADEON_CONTEXT(ctx)->NewGLState |= new_state;
-   radeonVtxfmtInvalidate( ctx );
 }
 
 

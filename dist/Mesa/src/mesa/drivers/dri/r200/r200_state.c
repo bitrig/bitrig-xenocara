@@ -1,4 +1,3 @@
-/* $XFree86$ */
 /**************************************************************************
 
 Copyright (C) The Weather Channel, Inc.  2002.  All Rights Reserved.
@@ -40,9 +39,10 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "enums.h"
 #include "colormac.h"
 #include "light.h"
+#include "framebuffer.h"
 
 #include "swrast/swrast.h"
-#include "array_cache/acache.h"
+#include "vbo/vbo.h"
 #include "tnl/tnl.h"
 #include "tnl/t_pipeline.h"
 #include "swrast_setup/swrast_setup.h"
@@ -53,7 +53,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "r200_tcl.h"
 #include "r200_tex.h"
 #include "r200_swtcl.h"
-#include "r200_vtxfmt.h"
 #include "r200_vertprog.h"
 
 #include "drirenderbuffer.h"
@@ -490,7 +489,7 @@ static void r200Fogfv( GLcontext *ctx, GLenum pname, const GLfloat *param )
       GLuint fog   = rmesa->hw.ctx.cmd[CTX_PP_FOG_COLOR];
 
       fog &= ~R200_FOG_USE_MASK;
-      if ( ctx->Fog.FogCoordinateSource == GL_FOG_COORD ) {
+      if ( ctx->Fog.FogCoordinateSource == GL_FOG_COORD || ctx->VertexProgram.Enabled) {
 	 fog   |= R200_FOG_USE_VTX_FOG;
 	 out_0 |= R200_VTX_DISCRETE_FOG;
       }
@@ -686,10 +685,80 @@ static void r200FrontFace( GLcontext *ctx, GLenum mode )
 static void r200PointSize( GLcontext *ctx, GLfloat size )
 {
    r200ContextPtr rmesa = R200_CONTEXT(ctx);
+   GLfloat *fcmd = (GLfloat *)rmesa->hw.ptp.cmd;
 
    R200_STATECHANGE( rmesa, cst );
+   R200_STATECHANGE( rmesa, ptp );
    rmesa->hw.cst.cmd[CST_RE_POINTSIZE] &= ~0xffff;
    rmesa->hw.cst.cmd[CST_RE_POINTSIZE] |= ((GLuint)(ctx->Point.Size * 16.0));
+/* this is the size param of the point size calculation (point size reg value
+   is not used when calculation is active). */
+   fcmd[PTP_VPORT_SCALE_PTSIZE] = ctx->Point.Size;
+}
+
+static void r200PointParameter( GLcontext *ctx, GLenum pname, const GLfloat *params)
+{
+   r200ContextPtr rmesa = R200_CONTEXT(ctx);
+   GLfloat *fcmd = (GLfloat *)rmesa->hw.ptp.cmd;
+
+   switch (pname) {
+   case GL_POINT_SIZE_MIN:
+   /* Can clamp both in tcl and setup - just set both (as does fglrx) */
+      R200_STATECHANGE( rmesa, lin );
+      R200_STATECHANGE( rmesa, ptp );
+      rmesa->hw.lin.cmd[LIN_SE_LINE_WIDTH] &= 0xffff;
+      rmesa->hw.lin.cmd[LIN_SE_LINE_WIDTH] |= (GLuint)(ctx->Point.MinSize * 16.0) << 16;
+      fcmd[PTP_CLAMP_MIN] = ctx->Point.MinSize;
+      break;
+   case GL_POINT_SIZE_MAX:
+      R200_STATECHANGE( rmesa, cst );
+      R200_STATECHANGE( rmesa, ptp );
+      rmesa->hw.cst.cmd[CST_RE_POINTSIZE] &= 0xffff;
+      rmesa->hw.cst.cmd[CST_RE_POINTSIZE] |= (GLuint)(ctx->Point.MaxSize * 16.0) << 16;
+      fcmd[PTP_CLAMP_MAX] = ctx->Point.MaxSize;
+      break;
+   case GL_POINT_DISTANCE_ATTENUATION:
+      R200_STATECHANGE( rmesa, vtx );
+      R200_STATECHANGE( rmesa, spr );
+      R200_STATECHANGE( rmesa, ptp );
+      GLfloat *fcmd = (GLfloat *)rmesa->hw.ptp.cmd;
+      rmesa->hw.spr.cmd[SPR_POINT_SPRITE_CNTL] &=
+	 ~(R200_PS_MULT_MASK | R200_PS_LIN_ATT_ZERO | R200_PS_SE_SEL_STATE);
+      /* can't rely on ctx->Point._Attenuated here and test for NEW_POINT in
+	 r200ValidateState looks like overkill */
+      if (ctx->Point.Params[0] != 1.0 ||
+	  ctx->Point.Params[1] != 0.0 ||
+	  ctx->Point.Params[2] != 0.0 ||
+	  (ctx->VertexProgram.Enabled && ctx->VertexProgram.PointSizeEnabled)) {
+	 /* all we care for vp would be the ps_se_sel_state setting */
+	 fcmd[PTP_ATT_CONST_QUAD] = ctx->Point.Params[2];
+	 fcmd[PTP_ATT_CONST_LIN] = ctx->Point.Params[1];
+	 fcmd[PTP_ATT_CONST_CON] = ctx->Point.Params[0];
+	 rmesa->hw.spr.cmd[SPR_POINT_SPRITE_CNTL] |= R200_PS_MULT_ATTENCONST;
+	 if (ctx->Point.Params[1] == 0.0)
+	    rmesa->hw.spr.cmd[SPR_POINT_SPRITE_CNTL] |= R200_PS_LIN_ATT_ZERO;
+/* FIXME: setting this here doesn't look quite ok - we only want to do
+          that if we're actually drawing points probably */
+	 rmesa->hw.vtx.cmd[VTX_TCL_OUTPUT_COMPSEL] |= R200_OUTPUT_PT_SIZE;
+	 rmesa->hw.vtx.cmd[VTX_TCL_OUTPUT_VTXFMT_0] |= R200_VTX_POINT_SIZE;
+      }
+      else {
+	 rmesa->hw.spr.cmd[SPR_POINT_SPRITE_CNTL] |=
+	    R200_PS_SE_SEL_STATE | R200_PS_MULT_CONST;
+	 rmesa->hw.vtx.cmd[VTX_TCL_OUTPUT_COMPSEL] &= ~R200_OUTPUT_PT_SIZE;
+	 rmesa->hw.vtx.cmd[VTX_TCL_OUTPUT_VTXFMT_0] &= ~R200_VTX_POINT_SIZE;
+      }
+      break;
+   case GL_POINT_FADE_THRESHOLD_SIZE:
+      /* don't support multisampling, so doesn't matter. */
+      break;
+   /* can't do these but don't need them.
+   case GL_POINT_SPRITE_R_MODE_NV:
+   case GL_POINT_SPRITE_COORD_ORIGIN: */
+   default:
+      fprintf(stderr, "bad pname parameter in r200PointParameter\n");
+      return;
+   }
 }
 
 /* =============================================================
@@ -703,9 +772,11 @@ static void r200LineWidth( GLcontext *ctx, GLfloat widthf )
    R200_STATECHANGE( rmesa, set );
 
    /* Line width is stored in U6.4 format.
+    * Same min/max limits for AA, non-AA lines.
     */
    rmesa->hw.lin.cmd[LIN_SE_LINE_WIDTH] &= ~0xffff;
-   rmesa->hw.lin.cmd[LIN_SE_LINE_WIDTH] |= (GLuint)(ctx->Line._Width * 16.0);
+   rmesa->hw.lin.cmd[LIN_SE_LINE_WIDTH] |= (GLuint)
+      (CLAMP(widthf, ctx->Const.MinLineWidth, ctx->Const.MaxLineWidth) * 16.0);
 
    if ( widthf > 1.0 ) {
       rmesa->hw.set.cmd[SET_SE_CNTL] |=  R200_WIDELINE_ENABLE;
@@ -1382,20 +1453,23 @@ static void r200ShadeModel( GLcontext *ctx, GLenum mode )
    s &= ~(R200_DIFFUSE_SHADE_MASK |
 	  R200_ALPHA_SHADE_MASK |
 	  R200_SPECULAR_SHADE_MASK |
-	  R200_FOG_SHADE_MASK);
+	  R200_FOG_SHADE_MASK |
+	  R200_DISC_FOG_SHADE_MASK);
 
    switch ( mode ) {
    case GL_FLAT:
       s |= (R200_DIFFUSE_SHADE_FLAT |
 	    R200_ALPHA_SHADE_FLAT |
 	    R200_SPECULAR_SHADE_FLAT |
-	    R200_FOG_SHADE_FLAT);
+	    R200_FOG_SHADE_FLAT |
+	    R200_DISC_FOG_SHADE_FLAT);
       break;
    case GL_SMOOTH:
       s |= (R200_DIFFUSE_SHADE_GOURAUD |
 	    R200_ALPHA_SHADE_GOURAUD |
 	    R200_SPECULAR_SHADE_GOURAUD |
-	    R200_FOG_SHADE_GOURAUD);
+	    R200_FOG_SHADE_GOURAUD |
+	    R200_DISC_FOG_SHADE_GOURAUD);
       break;
    default:
       return;
@@ -1618,6 +1692,11 @@ static void r200ClearStencil( GLcontext *ctx, GLint s )
 #define SUBPIXEL_X 0.125
 #define SUBPIXEL_Y 0.125
 
+
+/**
+ * Called when window size or position changes or viewport or depth range
+ * state is changed.  We update the hardware viewport state here.
+ */
 void r200UpdateWindow( GLcontext *ctx )
 {
    r200ContextPtr rmesa = R200_CONTEXT(ctx);
@@ -1770,34 +1849,53 @@ static void r200LogicOpCode( GLcontext *ctx, GLenum opcode )
 }
 
 
-void r200SetCliprects( r200ContextPtr rmesa, GLenum mode )
+/*
+ * Set up the cliprects for either front or back-buffer drawing.
+ */
+void r200SetCliprects( r200ContextPtr rmesa )
 {
-   __DRIdrawablePrivate *dPriv = rmesa->dri.drawable;
+   __DRIdrawablePrivate *const drawable = rmesa->dri.drawable;
+   __DRIdrawablePrivate *const readable = rmesa->dri.readable;
+   GLframebuffer *const draw_fb = (GLframebuffer*) drawable->driverPrivate;
+   GLframebuffer *const read_fb = (GLframebuffer*) readable->driverPrivate;
 
-   switch ( mode ) {
-   case GL_FRONT_LEFT:
-      rmesa->numClipRects = dPriv->numClipRects;
-      rmesa->pClipRects = dPriv->pClipRects;
-      break;
-   case GL_BACK_LEFT:
+   if (draw_fb->_ColorDrawBufferIndexes[0] == BUFFER_BIT_BACK_LEFT) {
       /* Can't ignore 2d windows if we are page flipping.
        */
-      if ( dPriv->numBackClipRects == 0 || rmesa->doPageFlip ) {
-	 rmesa->numClipRects = dPriv->numClipRects;
-	 rmesa->pClipRects = dPriv->pClipRects;
+      if ( drawable->numBackClipRects == 0 || rmesa->doPageFlip ) {
+         rmesa->numClipRects = drawable->numClipRects;
+         rmesa->pClipRects = drawable->pClipRects;
       }
       else {
-	 rmesa->numClipRects = dPriv->numBackClipRects;
-	 rmesa->pClipRects = dPriv->pBackClipRects;
+         rmesa->numClipRects = drawable->numBackClipRects;
+         rmesa->pClipRects = drawable->pBackClipRects;
       }
-      break;
-   default:
-      fprintf(stderr, "bad mode in r200SetCliprects\n");
-      return;
+   }
+   else {
+     /* front buffer (or none, or multiple buffers) */
+     rmesa->numClipRects = drawable->numClipRects;
+     rmesa->pClipRects = drawable->pClipRects;
+  }
+
+   if ((draw_fb->Width != drawable->w) || (draw_fb->Height != drawable->h)) {
+      _mesa_resize_framebuffer(rmesa->glCtx, draw_fb,
+			       drawable->w, drawable->h);
+      draw_fb->Initialized = GL_TRUE;
+   }
+
+   if (drawable != readable) {
+      if ((read_fb->Width != readable->w) ||
+	  (read_fb->Height != readable->h)) {
+	 _mesa_resize_framebuffer(rmesa->glCtx, read_fb,
+				  readable->w, readable->h);
+	 read_fb->Initialized = GL_TRUE;
+      }
    }
 
    if (rmesa->state.scissor.enabled)
       r200RecalcScissorRects( rmesa );
+
+   rmesa->lastStamp = drawable->lastStamp;
 }
 
 
@@ -1811,24 +1909,23 @@ static void r200DrawBuffer( GLcontext *ctx, GLenum mode )
 
    R200_FIREVERTICES(rmesa);	/* don't pipeline cliprect changes */
 
-   /*
-    * _ColorDrawBufferMask is easier to cope with than <mode>.
-    * Check for software fallback, update cliprects.
-    */
-   switch ( ctx->DrawBuffer->_ColorDrawBufferMask[0] ) {
-   case BUFFER_BIT_FRONT_LEFT:
-      FALLBACK( rmesa, R200_FALLBACK_DRAW_BUFFER, GL_FALSE );
-      r200SetCliprects( rmesa, GL_FRONT_LEFT );
-      break;
-   case BUFFER_BIT_BACK_LEFT:
-      FALLBACK( rmesa, R200_FALLBACK_DRAW_BUFFER, GL_FALSE );
-      r200SetCliprects( rmesa, GL_BACK_LEFT );
-      break;
-   default:
-      /* GL_NONE or GL_FRONT_AND_BACK or stereo left&right, etc */
+   if (ctx->DrawBuffer->_NumColorDrawBuffers != 1) {
+      /* 0 (GL_NONE) buffers or multiple color drawing buffers */
       FALLBACK( rmesa, R200_FALLBACK_DRAW_BUFFER, GL_TRUE );
       return;
    }
+
+   switch ( ctx->DrawBuffer->_ColorDrawBufferIndexes[0] ) {
+   case BUFFER_FRONT_LEFT:
+   case BUFFER_BACK_LEFT:
+      FALLBACK( rmesa, R200_FALLBACK_DRAW_BUFFER, GL_FALSE );
+      break;
+   default:
+      FALLBACK( rmesa, R200_FALLBACK_DRAW_BUFFER, GL_TRUE );
+      return;
+   }
+
+   r200SetCliprects( rmesa );
 
    /* We'll set the drawing engine's offset/pitch parameters later
     * when we update other state.
@@ -2032,6 +2129,19 @@ static void r200Enable( GLcontext *ctx, GLenum cap, GLboolean state )
       break;
 #endif
 
+   case GL_POINT_SPRITE_ARB:
+      R200_STATECHANGE( rmesa, spr );
+      if ( state ) {
+	 int i;
+	 for (i = 0; i < 6; i++) {
+	    rmesa->hw.spr.cmd[SPR_POINT_SPRITE_CNTL] |=
+		ctx->Point.CoordReplace[i] << (R200_PS_GEN_TEX_0_SHIFT + i);
+	 }
+      } else {
+	 rmesa->hw.spr.cmd[SPR_POINT_SPRITE_CNTL] &= ~R200_PS_GEN_TEX_MASK;
+      }
+      break;
+
    case GL_POLYGON_OFFSET_FILL:
       R200_STATECHANGE( rmesa, set );
       if ( state ) {
@@ -2133,10 +2243,9 @@ static void r200Enable( GLcontext *ctx, GLenum cap, GLboolean state )
 	       rmesa->hw.tcl.cmd[TCL_UCP_VERT_BLEND_CTL] &= ~(R200_UCP_ENABLE_0 << i);
 	    }*/
 	 }
-	 /* FIXME: ugly as hell. need to call everything which might change tcl_output_vtxfmt0/1 and compsel */
+	 /* ugly. Need to call everything which might change compsel. */
 	 r200UpdateSpecular( ctx );
-	 r200Fogfv( ctx, GL_FOG_COORD_SRC, NULL );
-#if 1
+#if 0
 	/* shouldn't be necessary, as it's picked up anyway in r200ValidateState (_NEW_PROGRAM),
 	   but without it doom3 locks up at always the same places. Why? */
 	/* FIXME: This can (and should) be replaced by a call to the TCL_STATE_FLUSH reg before
@@ -2165,6 +2274,13 @@ static void r200Enable( GLcontext *ctx, GLenum cap, GLboolean state )
       else {
 	 /* picked up later */
       }
+      /* call functions which change hw state based on ARB_vp enabled or not. */
+      r200PointParameter( ctx, GL_POINT_DISTANCE_ATTENUATION, NULL );
+      r200Fogfv( ctx, GL_FOG_COORD_SRC, NULL );
+      break;
+
+   case GL_VERTEX_PROGRAM_POINT_SIZE_ARB:
+      r200PointParameter( ctx, GL_POINT_DISTANCE_ATTENUATION, NULL );
       break;
 
    case GL_FRAGMENT_SHADER_ATI:
@@ -2329,11 +2445,11 @@ r200UpdateDrawBuffer(GLcontext *ctx)
    struct gl_framebuffer *fb = ctx->DrawBuffer;
    driRenderbuffer *drb;
 
-   if (fb->_ColorDrawBufferMask[0] == BUFFER_BIT_FRONT_LEFT) {
+   if (fb->_ColorDrawBufferIndexes[0] == BUFFER_FRONT_LEFT) {
       /* draw to front */
       drb = (driRenderbuffer *) fb->Attachment[BUFFER_FRONT_LEFT].Renderbuffer;
    }
-   else if (fb->_ColorDrawBufferMask[0] == BUFFER_BIT_BACK_LEFT) {
+   else if (fb->_ColorDrawBufferIndexes[0] == BUFFER_BACK_LEFT) {
       /* draw to back */
       drb = (driRenderbuffer *) fb->Attachment[BUFFER_BACK_LEFT].Renderbuffer;
    }
@@ -2425,23 +2541,24 @@ static void r200InvalidateState( GLcontext *ctx, GLuint new_state )
 {
    _swrast_InvalidateState( ctx, new_state );
    _swsetup_InvalidateState( ctx, new_state );
-   _ac_InvalidateState( ctx, new_state );
+   _vbo_InvalidateState( ctx, new_state );
    _tnl_InvalidateState( ctx, new_state );
    _ae_invalidate_state( ctx, new_state );
    R200_CONTEXT(ctx)->NewGLState |= new_state;
-   r200VtxfmtInvalidate( ctx );
 }
 
 /* A hack.  The r200 can actually cope just fine with materials
- * between begin/ends, so fix this. But how ?
+ * between begin/ends, so fix this.
+ * Should map to inputs just like the generic vertex arrays for vertex progs.
+ * In theory there could still be too many and we'd still need a fallback.
  */
 static GLboolean check_material( GLcontext *ctx )
 {
    TNLcontext *tnl = TNL_CONTEXT(ctx);
    GLint i;
 
-   for (i = _TNL_ATTRIB_MAT_FRONT_AMBIENT; 
-	i < _TNL_ATTRIB_MAT_BACK_INDEXES; 
+   for (i = _TNL_ATTRIB_MAT_FRONT_AMBIENT;
+	i < _TNL_ATTRIB_MAT_BACK_INDEXES;
 	i++)
       if (tnl->vb.AttribPtr[i] &&
 	  tnl->vb.AttribPtr[i]->stride)
@@ -2449,7 +2566,7 @@ static GLboolean check_material( GLcontext *ctx )
 
    return GL_FALSE;
 }
-      
+
 static void r200WrapRunPipeline( GLcontext *ctx )
 {
    r200ContextPtr rmesa = R200_CONTEXT(ctx);
@@ -2463,7 +2580,7 @@ static void r200WrapRunPipeline( GLcontext *ctx )
    if (rmesa->NewGLState)
       r200ValidateState( ctx );
 
-   has_material = (ctx->Light.Enabled && check_material( ctx ));
+   has_material = !ctx->VertexProgram._Enabled && ctx->Light.Enabled && check_material( ctx );
 
    if (has_material) {
       TCL_FALLBACK( ctx, R200_TCL_FALLBACK_MATERIAL, GL_TRUE );
@@ -2516,6 +2633,7 @@ void r200InitStateFuncs( struct dd_function_table *functions )
    functions->PolygonMode		= r200PolygonMode;
    functions->PolygonOffset		= r200PolygonOffset;
    functions->PolygonStipple		= r200PolygonStipple;
+   functions->PointParameterfv		= r200PointParameter;
    functions->PointSize			= r200PointSize;
    functions->RenderMode		= r200RenderMode;
    functions->Scissor			= r200Scissor;
@@ -2524,13 +2642,6 @@ void r200InitStateFuncs( struct dd_function_table *functions )
    functions->StencilMaskSeparate	= r200StencilMaskSeparate;
    functions->StencilOpSeparate		= r200StencilOpSeparate;
    functions->Viewport			= r200Viewport;
-
-   /* Swrast hooks for imaging extensions:
-    */
-   functions->CopyColorTable		= _swrast_CopyColorTable;
-   functions->CopyColorSubTable		= _swrast_CopyColorSubTable;
-   functions->CopyConvolutionFilter1D	= _swrast_CopyConvolutionFilter1D;
-   functions->CopyConvolutionFilter2D	= _swrast_CopyConvolutionFilter2D;
 }
 
 

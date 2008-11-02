@@ -36,9 +36,9 @@
 
 #define LOCAL_VARS					\
    mgaContextPtr mmesa = MGA_CONTEXT(ctx);		\
-   __DRIdrawablePrivate *dPriv = mmesa->mesa_drawable;	\
    __DRIscreenPrivate *sPriv = mmesa->driScreen;	\
    driRenderbuffer *drb = (driRenderbuffer *) rb;	\
+   const __DRIdrawablePrivate *dPriv = drb->dPriv;	\
    GLuint pitch = drb->pitch;				\
    GLuint height = dPriv->h;				\
    char *buf = (char *)(sPriv->pFB +			\
@@ -52,9 +52,9 @@
 
 #define LOCAL_DEPTH_VARS						\
    mgaContextPtr mmesa = MGA_CONTEXT(ctx);				\
-   __DRIdrawablePrivate *dPriv = mmesa->mesa_drawable;			\
    __DRIscreenPrivate *sPriv = mmesa->driScreen;			\
    driRenderbuffer *drb = (driRenderbuffer *) rb;			\
+   const __DRIdrawablePrivate *dPriv = drb->dPriv;			\
    GLuint pitch = drb->pitch;						\
    GLuint height = dPriv->h;						\
    char *buf = (char *)(sPriv->pFB +					\
@@ -107,6 +107,8 @@
 
 /* 16 bit depthbuffer functions.
  */
+#define VALUE_TYPE GLushort
+
 #define WRITE_DEPTH( _x, _y, d )	\
    *(GLushort *)(buf + (_x)*2 + (_y)*pitch) = d;
 
@@ -121,6 +123,8 @@
 
 /* 32 bit depthbuffer functions.
  */
+#define VALUE_TYPE GLuint
+
 #define WRITE_DEPTH( _x, _y, d )	\
    *(GLuint *)(buf + (_x)*4 + (_y)*pitch) = d;
 
@@ -134,6 +138,8 @@
 
 /* 24/8 bit interleaved depth/stencil functions
  */
+#define VALUE_TYPE GLuint
+
 #define WRITE_DEPTH( _x, _y, d ) {			\
    GLuint tmp = *(GLuint *)(buf + (_x)*4 + (_y)*pitch);	\
    tmp &= 0xff;						\

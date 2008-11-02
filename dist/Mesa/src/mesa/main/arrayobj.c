@@ -1,8 +1,8 @@
 /*
  * Mesa 3-D graphics library
- * Version:  6.5
+ * Version:  7.2
  *
- * Copyright (C) 1999-2004  Brian Paul   All Rights Reserved.
+ * Copyright (C) 1999-2008  Brian Paul   All Rights Reserved.
  * (C) Copyright IBM Corporation 2006
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -46,7 +46,7 @@
 #include "bufferobj.h"
 #endif
 #include "arrayobj.h"
-#include "dispatch.h"
+#include "glapi/dispatch.h"
 
 
 /**
@@ -77,7 +77,7 @@ lookup_arrayobj(GLcontext *ctx, GLuint id)
 struct gl_array_object *
 _mesa_new_array_object( GLcontext *ctx, GLuint name )
 {
-   struct gl_array_object *obj = MALLOC_STRUCT(gl_array_object);
+   struct gl_array_object *obj = CALLOC_STRUCT(gl_array_object);
    if (obj)
       _mesa_initialize_array_object(ctx, obj, name);
    return obj;
@@ -114,40 +114,34 @@ _mesa_initialize_array_object( GLcontext *ctx,
    obj->Vertex.StrideB = 0;
    obj->Vertex.Ptr = NULL;
    obj->Vertex.Enabled = GL_FALSE;
-   obj->Vertex.Flags = CA_CLIENT_DATA;
    obj->Normal.Type = GL_FLOAT;
    obj->Normal.Stride = 0;
    obj->Normal.StrideB = 0;
    obj->Normal.Ptr = NULL;
    obj->Normal.Enabled = GL_FALSE;
-   obj->Normal.Flags = CA_CLIENT_DATA;
    obj->Color.Size = 4;
    obj->Color.Type = GL_FLOAT;
    obj->Color.Stride = 0;
    obj->Color.StrideB = 0;
    obj->Color.Ptr = NULL;
    obj->Color.Enabled = GL_FALSE;
-   obj->Color.Flags = CA_CLIENT_DATA;
    obj->SecondaryColor.Size = 4;
    obj->SecondaryColor.Type = GL_FLOAT;
    obj->SecondaryColor.Stride = 0;
    obj->SecondaryColor.StrideB = 0;
    obj->SecondaryColor.Ptr = NULL;
    obj->SecondaryColor.Enabled = GL_FALSE;
-   obj->SecondaryColor.Flags = CA_CLIENT_DATA;
    obj->FogCoord.Size = 1;
    obj->FogCoord.Type = GL_FLOAT;
    obj->FogCoord.Stride = 0;
    obj->FogCoord.StrideB = 0;
    obj->FogCoord.Ptr = NULL;
    obj->FogCoord.Enabled = GL_FALSE;
-   obj->FogCoord.Flags = CA_CLIENT_DATA;
    obj->Index.Type = GL_FLOAT;
    obj->Index.Stride = 0;
    obj->Index.StrideB = 0;
    obj->Index.Ptr = NULL;
    obj->Index.Enabled = GL_FALSE;
-   obj->Index.Flags = CA_CLIENT_DATA;
    for (i = 0; i < MAX_TEXTURE_UNITS; i++) {
       obj->TexCoord[i].Size = 4;
       obj->TexCoord[i].Type = GL_FLOAT;
@@ -155,13 +149,11 @@ _mesa_initialize_array_object( GLcontext *ctx,
       obj->TexCoord[i].StrideB = 0;
       obj->TexCoord[i].Ptr = NULL;
       obj->TexCoord[i].Enabled = GL_FALSE;
-      obj->TexCoord[i].Flags = CA_CLIENT_DATA;
    }
    obj->EdgeFlag.Stride = 0;
    obj->EdgeFlag.StrideB = 0;
    obj->EdgeFlag.Ptr = NULL;
    obj->EdgeFlag.Enabled = GL_FALSE;
-   obj->EdgeFlag.Flags = CA_CLIENT_DATA;
    for (i = 0; i < VERT_ATTRIB_MAX; i++) {
       obj->VertexAttrib[i].Size = 4;
       obj->VertexAttrib[i].Type = GL_FLOAT;
@@ -170,7 +162,6 @@ _mesa_initialize_array_object( GLcontext *ctx,
       obj->VertexAttrib[i].Ptr = NULL;
       obj->VertexAttrib[i].Enabled = GL_FALSE;
       obj->VertexAttrib[i].Normalized = GL_FALSE;
-      obj->VertexAttrib[i].Flags = CA_CLIENT_DATA;
    }
 
 #if FEATURE_ARB_vertex_buffer_object
@@ -215,6 +206,15 @@ _mesa_remove_array_object( GLcontext *ctx, struct gl_array_object *obj )
    if (obj->Name > 0) {
       /* remove from hash table */
       _mesa_HashRemove(ctx->Shared->ArrayObjects, obj->Name);
+   }
+}
+
+
+static void
+unbind_buffer_object( GLcontext *ctx, struct gl_buffer_object *bufObj )
+{
+   if (bufObj != ctx->Array.NullBufferObj) {
+      _mesa_reference_buffer_object(ctx, &bufObj, NULL);
    }
 }
 
@@ -320,18 +320,18 @@ _mesa_DeleteVertexArraysAPPLE(GLsizei n, const GLuint *ids)
 	 /* Unbind any buffer objects that might be bound to arrays in
 	  * this array object.
 	  */
-	 _mesa_unbind_buffer_object( ctx, obj->Vertex.BufferObj );
-	 _mesa_unbind_buffer_object( ctx, obj->Normal.BufferObj );
-	 _mesa_unbind_buffer_object( ctx, obj->Color.BufferObj );
-	 _mesa_unbind_buffer_object( ctx, obj->SecondaryColor.BufferObj );
-	 _mesa_unbind_buffer_object( ctx, obj->FogCoord.BufferObj );
-	 _mesa_unbind_buffer_object( ctx, obj->Index.BufferObj );
+	 unbind_buffer_object( ctx, obj->Vertex.BufferObj );
+	 unbind_buffer_object( ctx, obj->Normal.BufferObj );
+	 unbind_buffer_object( ctx, obj->Color.BufferObj );
+	 unbind_buffer_object( ctx, obj->SecondaryColor.BufferObj );
+	 unbind_buffer_object( ctx, obj->FogCoord.BufferObj );
+	 unbind_buffer_object( ctx, obj->Index.BufferObj );
 	 for (i = 0; i < MAX_TEXTURE_UNITS; i++) {
-	    _mesa_unbind_buffer_object( ctx, obj->TexCoord[i].BufferObj );
+	    unbind_buffer_object( ctx, obj->TexCoord[i].BufferObj );
 	 }
-	 _mesa_unbind_buffer_object( ctx, obj->EdgeFlag.BufferObj );
+	 unbind_buffer_object( ctx, obj->EdgeFlag.BufferObj );
 	 for (i = 0; i < VERT_ATTRIB_MAX; i++) {
-	    _mesa_unbind_buffer_object( ctx, obj->VertexAttrib[i].BufferObj );
+	    unbind_buffer_object( ctx, obj->VertexAttrib[i].BufferObj );
 	 }
 #endif
 

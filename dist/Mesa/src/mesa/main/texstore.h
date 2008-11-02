@@ -57,6 +57,7 @@ extern GLboolean _mesa_texstore_a8(TEXSTORE_PARAMS);
 extern GLboolean _mesa_texstore_ci8(TEXSTORE_PARAMS);
 extern GLboolean _mesa_texstore_ycbcr(TEXSTORE_PARAMS);
 extern GLboolean _mesa_texstore_z24_s8(TEXSTORE_PARAMS);
+extern GLboolean _mesa_texstore_s8_z24(TEXSTORE_PARAMS);
 extern GLboolean _mesa_texstore_z16(TEXSTORE_PARAMS);
 extern GLboolean _mesa_texstore_z32(TEXSTORE_PARAMS);
 extern GLboolean _mesa_texstore_rgba_float32(TEXSTORE_PARAMS);
@@ -83,6 +84,10 @@ _mesa_make_temp_chan_image(GLcontext *ctx, GLuint dims,
                            GLenum srcFormat, GLenum srcType,
                            const GLvoid *srcAddr,
                            const struct gl_pixelstore_attrib *srcPacking);
+
+
+extern void
+_mesa_set_fetch_functions(struct gl_texture_image *texImage, GLuint dims);
 
 
 extern void
@@ -201,27 +206,6 @@ _mesa_store_compressed_texsubimage3d(GLcontext *ctx, GLenum target,
 
 
 extern void
-_mesa_generate_mipmap(GLcontext *ctx, GLenum target,
-                      const struct gl_texture_unit *texUnit,
-                      struct gl_texture_object *texObj);
-
-
-extern void
-_mesa_rescale_teximage2d(GLuint bytesPerPixel,
-                         GLuint srcStrideInPixels,
-                         GLuint dstRowStride,
-                         GLint srcWidth, GLint srcHeight,
-                         GLint dstWidth, GLint dstHeight,
-                         const GLvoid *srcImage, GLvoid *dstImage);
-
-extern void
-_mesa_upscale_teximage2d(GLsizei inWidth, GLsizei inHeight,
-                         GLsizei outWidth, GLsizei outHeight,
-                         GLint comps, const GLchan *src, GLint srcRowStride,
-                         GLchan *dest);
-
-
-extern void
 _mesa_get_teximage(GLcontext *ctx, GLenum target, GLint level,
                    GLenum format, GLenum type, GLvoid *pixels,
                    struct gl_texture_object *texObj,
@@ -231,8 +215,8 @@ _mesa_get_teximage(GLcontext *ctx, GLenum target, GLint level,
 extern void
 _mesa_get_compressed_teximage(GLcontext *ctx, GLenum target, GLint level,
                               GLvoid *img,
-                              const struct gl_texture_object *texObj,
-                              const struct gl_texture_image *texImage);
+                              struct gl_texture_object *texObj,
+                              struct gl_texture_image *texImage);
 
 extern const GLvoid *
 _mesa_validate_pbo_teximage(GLcontext *ctx, GLuint dimensions,
