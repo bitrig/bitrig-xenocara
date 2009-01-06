@@ -1,9 +1,7 @@
-/* $XTermId: resize.c,v 1.99 2006/02/13 01:14:59 tom Exp $ */
-
-/* $XFree86: xc/programs/xterm/resize.c,v 3.62 2006/02/13 01:14:59 dickey Exp $ */
+/* $XTermId: resize.c,v 1.107 2008/12/30 17:07:56 tom Exp $ */
 
 /*
- * Copyright 2003-2005,2006 by Thomas E. Dickey
+ * Copyright 2003-2007,2008 by Thomas E. Dickey
  *
  *                         All Rights Reserved
  *
@@ -60,6 +58,7 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <xstrings.h>
+#include <xtermcap.h>
 #include <xterm_io.h>
 
 #ifdef APOLLO_SR9
@@ -193,34 +192,6 @@ static int checkdigits(char *str);
 static void Usage(void);
 static void readstring(FILE *fp, char *buf, char *str);
 
-#undef US			/* may conflict with curses.h */
-
-#ifdef USE_TERMCAP
-#ifdef HAVE_TERMCAP_H
-#include <termcap.h>
-#if defined(NCURSES_VERSION)
-	/* The tgetent emulation function in SVr4-style curses implementations
-	 * (e.g., ncurses) ignores the buffer, so TERMCAP can't be set from it.
-	 * Instead, just use terminfo.
-	 */
-#undef USE_TERMCAP
-#include <curses.h>
-#endif
-#else
-#undef ERR			/* workaround for glibc 2.1.3 */
-#include <curses.h>
-#ifdef NCURSES_VERSION
-#ifdef HAVE_NCURSES_TERM_H
-#include <ncurses/term.h>
-#else
-#include <term.h>		/* tgetent() */
-#endif /*CYGWIN */
-#endif
-#endif /* HAVE_TERMCAP_H  */
-#endif
-
-#define TERMCAP_SIZE 1500	/* 1023 is standard; 'screen' exceeds */
-
 #ifdef USE_TERMCAP
 static void
 print_termcap(const char *termcap)
@@ -253,8 +224,11 @@ print_termcap(const char *termcap)
 int
 main(int argc, char **argv ENVP_ARG)
 {
-    register char *ptr, *env;
-    register int emu = VT100;
+#ifdef USE_TERMCAP
+    char *env;
+#endif
+    char *ptr;
+    int emu = VT100;
     char *shell;
     struct passwd *pw;
     int i;
@@ -305,7 +279,7 @@ main(int argc, char **argv ENVP_ARG)
 	/* Find out what kind of shell this user is running.
 	 * This is the same algorithm that xterm uses.
 	 */
-	if (((ptr = getenv("SHELL")) == NULL || *ptr == 0) &&
+	if (((ptr = x_getenv("SHELL")) == NULL) &&
 	    (((pw = getpwuid(getuid())) == NULL) ||
 	     *(ptr = pw->pw_shell) == 0))
 	    /* this is the same default that xterm uses */
@@ -344,24 +318,23 @@ main(int argc, char **argv ENVP_ARG)
     }
     tty = fileno(ttyfp);
 #ifdef USE_TERMCAP
-    if (!(env = getenv("TERM")) || !*env) {
+    if ((env = x_getenv("TERM")) == 0) {
 	env = DFT_TERMTYPE;
 	if (SHELL_BOURNE == shell_type)
-	    setname = "TERM=xterm;\nexport TERM;\n";
+	    setname = "TERM=" DFT_TERMTYPE ";\nexport TERM;\n";
 	else
-	    setname = "setenv TERM xterm;\n";
+	    setname = "setenv TERM " DFT_TERMTYPE ";\n";
     }
     termcap[0] = 0;		/* ...just in case we've accidentally gotten terminfo */
     if (tgetent(termcap, env) <= 0 || termcap[0] == 0)
 	ok_tcap = 0;
 #endif /* USE_TERMCAP */
 #ifdef USE_TERMINFO
-    if (!(env = getenv("TERM")) || !*env) {
-	env = DFT_TERMTYPE;
+    if (x_getenv("TERM") == 0) {
 	if (SHELL_BOURNE == shell_type)
-	    setname = "TERM=xterm;\nexport TERM;\n";
+	    setname = "TERM=" DFT_TERMTYPE ";\nexport TERM;\n";
 	else
-	    setname = "setenv TERM xterm;\n";
+	    setname = "setenv TERM " DFT_TERMTYPE ";\n";
     }
 #endif /* USE_TERMINFO */
 
@@ -399,8 +372,18 @@ main(int argc, char **argv ENVP_ARG)
 #endif /* USE_ANY_SYSV_TERMIO/USE_TERMIOS */
 
     if (argc == 2) {
-	sprintf(buf, setsize[emu], argv[0], argv[1]);
-	write(tty, buf, strlen(buf));
+	char *tmpbuf = TypeMallocN(char,
+				   strlen(setsize[emu]) +
+				   strlen(argv[0]) +
+				   strlen(argv[1]) +
+				   1);
+	if (tmpbuf == 0) {
+	    fprintf(stderr, "%s: Cannot query size\n", myname);
+	    onintr(0);
+	}
+	sprintf(tmpbuf, setsize[emu], argv[0], argv[1]);
+	write(tty, tmpbuf, strlen(tmpbuf));
+	free(tmpbuf);
     }
     write(tty, getsize[emu], strlen(getsize[emu]));
     readstring(ttyfp, buf, size[emu]);
@@ -517,7 +500,7 @@ main(int argc, char **argv ENVP_ARG)
 }
 
 static int
-checkdigits(register char *str)
+checkdigits(char *str)
 {
     while (*str) {
 	if (!isdigit(CharOf(*str)))
@@ -528,9 +511,9 @@ checkdigits(register char *str)
 }
 
 static void
-readstring(register FILE *fp, register char *buf, char *str)
+readstring(FILE *fp, char *buf, char *str)
 {
-    register int last, c;
+    int last, c;
 #if !defined(USG) && !defined(__UNIXOS2__)
     /* What is the advantage of setitimer() over alarm()? */
     struct itimerval it;
@@ -545,17 +528,20 @@ readstring(register FILE *fp, register char *buf, char *str)
     setitimer(ITIMER_REAL, &it, (struct itimerval *) NULL);
 #endif
     if ((c = getc(fp)) == 0233) {	/* meta-escape, CSI */
-	*buf++ = c = ESCAPE("")[0];
+	c = ESCAPE("")[0];
+	*buf++ = (char) c;
 	*buf++ = '[';
     } else {
-	*buf++ = c;
+	*buf++ = (char) c;
     }
     if (c != *str) {
 	fprintf(stderr, "%s: unknown character, exiting.\r\n", myname);
 	onintr(0);
     }
     last = str[strlen(str) - 1];
-    while ((*buf++ = getc(fp)) != last) ;
+    while ((*buf++ = (char) getc(fp)) != last) {
+	;
+    }
 #if defined(USG) || defined(__UNIXOS2__)
     alarm(0);
 #else

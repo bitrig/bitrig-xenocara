@@ -1,6 +1,4 @@
-/*
- * $XFree86: xc/programs/xterm/xcharmouse.h,v 1.3 2002/08/24 18:54:39 dickey Exp $
- */
+/* $XTermId: xcharmouse.h,v 1.11 2008/10/05 21:18:49 tom Exp $ */
 
 /************************************************************
 
@@ -44,6 +42,10 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #define SET_BTN_EVENT_MOUSE         1002
 #define SET_ANY_EVENT_MOUSE         1003
 
+#if OPT_FOCUS_EVENT
+#define SET_FOCUS_EVENT_MOUSE       1004 /* can be combined with above */
+#endif
+
 #define SET_BUTTON1_MOVE_POINT      2001 /* click1 emit Esc seq to move point*/
 #define SET_BUTTON2_MOVE_POINT      2002 /* press2 emit Esc seq to move point*/
 #define SET_DBUTTON3_DELETE         2003 /* Double click-3 deletes */
@@ -63,7 +65,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #endif /* OPT_DEC_LOCATOR */
 
 /* Values for screen->send_mouse_pos */
-enum {
+typedef enum {
     MOUSE_OFF
     ,X10_MOUSE
     ,VT200_MOUSE
@@ -71,6 +73,6 @@ enum {
     ,BTN_EVENT_MOUSE
     ,ANY_EVENT_MOUSE
     ,DEC_LOCATOR
-};
+} XtermMouseModes;
 
 #endif /* included_xcharmouse_h */
