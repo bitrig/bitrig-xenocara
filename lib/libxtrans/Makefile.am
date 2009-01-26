@@ -2,10 +2,8 @@ Xtransincludedir = $(includedir)/X11/Xtrans
 Xtransinclude_HEADERS = \
 	Xtrans.h \
 	Xtrans.c \
-	Xtransdnet.c \
 	Xtransint.h \
 	Xtranslcl.c \
-	Xtransos2.c \
 	Xtranssock.c \
 	Xtranstli.c \
 	Xtransutil.c \
@@ -24,6 +22,6 @@ CLEANFILES = ChangeLog
 .PHONY: ChangeLog
 
 ChangeLog:
-	git-log > ChangeLog
+	$(CHANGELOG_CMD)
 
 dist-hook: ChangeLog
