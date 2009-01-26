@@ -20,15 +20,17 @@
 #  CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 aclocaldir = $(datadir)/aclocal
-aclocal_DATA = xorgversion.m4 xorg-macros.m4
+aclocal_DATA = xorg-macros.m4
 
-EXTRA_DIST = $(aclocal_DATA) ChangeLog
+# Previous versions used to install xorgversion.m4, now integrated
+# into xorg-macros.m4.  Explicitly remove that old file in order not
+# to have a macro defined in two different files.
+install-data-hook:
+	rm -f $(DESTDIR)$(aclocaldir)/xorgversion.m4
 
 .PHONY: ChangeLog
 
 ChangeLog:
-	(cd $(srcdir) && git-log) > ChangeLog
+	$(CHANGELOG_CMD)
 
 dist-hook: ChangeLog
-
-DISTCLEANFILES = ChangeLog
