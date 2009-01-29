@@ -1,4 +1,4 @@
-/* $XdotOrg: app/xdm/session.c,v 1.6 2006/04/08 00:22:23 alanc Exp $ */
+/* $XdotOrg: app/xdm/session.c,v 1.7 2006-06-03 00:05:24 alanc Exp $ */
 /* $Xorg: session.c,v 1.8 2001/02/09 02:05:40 xorgcvs Exp $ */
 /*
 
@@ -52,6 +52,8 @@ from The Open Group.
 #ifdef AIXV3
 # include <usersec.h>
 #endif
+
+#ifndef USE_PAM        /* PAM modules should handle these */
 #ifdef SECURE_RPC
 # include <rpc/rpc.h>
 # include <rpc/key_prot.h>
@@ -62,6 +64,7 @@ extern int key_setnet(struct key_netstarg *arg);
 #ifdef K5AUTH
 # include <krb5/krb5.h>
 #endif
+#endif /* USE_PAM */
 
 #ifdef __SCO__
 #include <prot.h>
@@ -168,11 +171,11 @@ static	struct dlfuncs	dlfuncs = {
 static Bool StartClient(
     struct verify_info	*verify,
     struct display	*d,
-    int			*pidp,
+    pid_t		*pidp,
     char		*name,
     char		*passwd);
 
-static int			clientPid;
+static pid_t			clientPid;
 static struct greet_info	greet;
 static struct verify_info	verify;
 
@@ -208,11 +211,11 @@ waitAbort (int n)
 #endif
 
 static void
-AbortClient (int pid)
+AbortClient (pid_t pid)
 {
     int	sig = SIGTERM;
     volatile int	i;
-    int	retId;
+    pid_t	retId;
 
     for (i = 0; i < 4; i++) {
 	if (killpg (pid, sig) == -1) {
@@ -278,7 +281,7 @@ ErrorHandler(Display *dpy, XErrorEvent *event)
 void
 ManageSession (struct display *d)
 {
-    static int		pid = 0;
+    static pid_t	pid = 0;
     Display		*dpy;
     greet_user_rtn	greet_stat;
     static GreetUserProc greet_user_proc = NULL;
@@ -379,7 +382,7 @@ void
 LoadXloginResources (struct display *d)
 {
     char	**args;
-    char	**env = 0;
+    char	**env = NULL;
 
     if (d->resources[0] && access (d->resources, 4) == 0) {
 	env = systemEnv (d, (char *) 0, (char *) 0);
@@ -395,7 +398,7 @@ LoadXloginResources (struct display *d)
 void
 SetupDisplay (struct display *d)
 {
-    char	**env = 0;
+    char	**env = NULL;
 
     if (d->setup && d->setup[0]) {
     	env = systemEnv (d, (char *) 0, (char *) 0);
@@ -473,9 +476,8 @@ void
 SessionExit (struct display *d, int status, int removeAuth)
 {
 #ifdef USE_PAM
-	pam_handle_t *pamh = thepamh();
-#endif
-#ifdef USE_PAM
+    pam_handle_t *pamh = thepamh();
+
     if (pamh) {
         /* shutdown PAM session */
 	pam_close_session(pamh, 0);
@@ -490,10 +492,16 @@ SessionExit (struct display *d, int status, int removeAuth)
     else
 	ResetServer (d);
     if (removeAuth) {
-	setgid (verify.gid);
-	setuid (verify.uid);
+	if (setgid (verify.gid) == -1) {
+	    LogError( "SessionExit: setgid: %s\n", strerror(errno));
+	    exit(status);
+	}
+	if (setuid (verify.uid) == -1) {
+	    LogError( "SessionExit: setuid: %s\n", strerror(errno));
+	    exit(status);
+	}
 	RemoveUserAuthorization (d, &verify);
-#ifdef K5AUTH
+#if defined(K5AUTH) && !defined(USE_PAM)   /* PAM modules should handle this */
 	/* do like "kdestroy" program */
         {
 	    krb5_error_code code;
@@ -526,13 +534,13 @@ static Bool
 StartClient (
     struct verify_info	*verify,
     struct display	*d,
-    int			*pidp,
+    pid_t		*pidp,
     char		*name,
     char		*passwd)
 {
     char	**f, *home;
     char	*failsafeArgv[2];
-    int	pid;
+    pid_t	pid;
 #ifdef HAS_SETUSERCONTEXT
     struct passwd* pwd;
 #endif
@@ -619,6 +627,8 @@ StartClient (
 	    return (0);
 	}
 #endif   /* QNX4 doesn't support multi-groups, no initgroups() */
+#endif /* !HAS_SETUSERCONTEXT */
+
 #ifdef USE_PAM
 	if (pamh) {
 	    long i;
@@ -639,6 +649,8 @@ StartClient (
 
 	}
 #endif
+
+#ifndef HAS_SETUSERCONTEXT
 	if (setuid(verify->uid) < 0) {
 	    LogError ("setuid %d (user \"%s\") failed, errno=%d\n",
 		     verify->uid, name, errno);
@@ -673,6 +685,7 @@ StartClient (
 	}
 #endif /* AIXV3 */
 
+#ifndef USE_PAM		/* PAM modules should handle these */
 	/*
 	 * for user-based authorization schemes,
 	 * use the password to get the user's credentials.
@@ -759,7 +772,14 @@ StartClient (
 	    }
 	}
 #endif /* K5AUTH */
-	bzero(passwd, strlen(passwd));
+#endif /* !USE_PAM */
+
+	if (d->windowPath)
+		verify->userEnviron = setEnv(verify->userEnviron, "WINDOWPATH", d->windowPath);
+
+	if (passwd != NULL)
+	    bzero(passwd, strlen(passwd));
+
 	SetUserAuthorization (d, verify);
 	home = getEnv (verify->userEnviron, "HOME");
 	if (home)
@@ -777,17 +797,19 @@ StartClient (
 		LogError ("Session has no command/arguments\n");
 	}
 	failsafeArgv[0] = d->failsafeClient;
-	failsafeArgv[1] = 0;
+	failsafeArgv[1] = NULL;
 	execute (failsafeArgv, verify->userEnviron);
 	exit (1);
     case -1:
-	bzero(passwd, strlen(passwd));
+	if (passwd != NULL)
+	    bzero(passwd, strlen(passwd));
 	Debug ("StartSession, fork failed\n");
 	LogError ("can't start session on \"%s\", fork failed, errno=%d\n",
 		  d->name, errno);
 	return 0;
     default:
-	bzero(passwd, strlen(passwd));
+	if (passwd != NULL)
+	    bzero(passwd, strlen(passwd));
 	Debug ("StartSession, fork succeeded %d\n", pid);
 	*pidp = pid;
 	return 1;
@@ -818,12 +840,16 @@ source (char **environ, char *file)
 static int
 runAndWait (char **args, char **environ)
 {
-    int	pid;
+    pid_t	pid;
     waitType	result;
 
     switch (pid = fork ()) {
     case 0:
 	CleanUpChild ();
+#ifdef XDMCP
+	/* The chooser socket is not closed by CleanUpChild() */
+	DestroyWellKnownSockets();
+#endif
 	execute (args, environ);
 	LogError ("can't execute \"%s\" (err %d)\n", args[0], errno);
 	exit (1);
@@ -891,10 +917,10 @@ execute (char **argv, char **environ)
 		    ++optarg;
 		while (*optarg && isspace (*optarg));
 	    } else
-		optarg = 0;
+		optarg = NULL;
 	} else {
 	    p = "/bin/sh";
-	    optarg = 0;
+	    optarg = NULL;
 	}
 	Debug ("Shell script execution: %s (optarg %s)\n",
 		p, optarg ? optarg : "(null)");
@@ -921,7 +947,7 @@ defaultEnv (void)
 {
     char    **env, **exp, *value;
 
-    env = 0;
+    env = NULL;
     for (exp = exportList; exp && *exp; ++exp) {
 	value = getenv (*exp);
 	if (value)
@@ -947,6 +973,8 @@ systemEnv (struct display *d, char *user, char *home)
     env = setEnv (env, "SHELL", d->systemShell);
     if (d->authFile)
 	    env = setEnv (env, "XAUTHORITY", d->authFile);
+    if (d->windowPath)
+	    env = setEnv (env, "WINDOWPATH", d->windowPath);
     return env;
 }
 
