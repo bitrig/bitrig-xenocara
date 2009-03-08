@@ -61,13 +61,9 @@ in this Software without prior written authorization from The Open Group.
 #include <netdb.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#ifdef SYSV
-#ifdef i386
-#if !defined(SCO325) && !defined(sun)
+#ifdef HAVE_NET_ERRNO_H
 #include <net/errno.h>
-#endif /* !SCO325 && !sun */
-#endif /* i386 */
-#endif /* SYSV */
+#endif /* HAVE_NET_ERRNO_H */
 #endif /* !STREAMSCONN */
 #endif /* !WIN32 */
 #include <errno.h>
@@ -92,15 +88,6 @@ static volatile Bool nameserver_timedout = False;
  * be found.  Stolen from xhost.
  */
 
-/* defined by autoconf AC_TYPE_SIGNAL, need to define for Imake */
-#ifndef RETSIGTYPE 
-# ifdef SIGNALRETURNSINT
-#  define RETSIGTYPE int
-# else
-#  define RETSIGTYPE void
-# endif
-#endif
-
 static jmp_buf env;
 static RETSIGTYPE
 nameserver_lost(int sig)
@@ -115,8 +102,7 @@ nameserver_lost(int sig)
 #endif
 
 char *
-get_hostname (auth)
-    Xauth *auth;
+get_hostname (Xauth *auth)
 {
     static struct hostent *hp;
     int af;
@@ -309,6 +295,8 @@ struct addrlist *get_address_info (
 	hints.ai_protocol = 0;	
         if (getaddrinfo(host,NULL,&hints,&firstai) !=0) return NULL;
 	for (ai = firstai; ai != NULL; ai = ai->ai_next) {
+	    struct addrlist *duplicate;
+
 	    if (ai->ai_family == AF_INET) {
 		struct sockaddr_in *sin = (struct sockaddr_in *)ai->ai_addr;
 		src = &(sin->sin_addr);
@@ -321,7 +309,14 @@ struct addrlist *get_address_info (
 		family = FamilyInternet6;
 	    }
 
-	    if (len > 0 && src != NULL) {
+	    for(duplicate = retval; duplicate != NULL; duplicate = duplicate->next) {
+		if(duplicate->family == family && duplicate->len == len &&
+                   memcmp(duplicate->address, src, len) == 0) {
+		    break;
+                }
+	    }
+
+	    if (len > 0 && src != NULL && duplicate == NULL) {
 		struct addrlist *newrv = malloc (sizeof(struct addrlist));
 		if (newrv) {
 		    newrv->address = malloc (len);
