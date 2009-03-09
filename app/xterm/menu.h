@@ -1,8 +1,8 @@
-/* $XTermId: menu.h,v 1.106 2006/07/23 14:59:13 tom Exp $ */
+/* $XTermId: menu.h,v 1.113 2009/02/13 19:55:26 tom Exp $ */
 
 /*
 
-Copyright 1999-2005,2006 by Thomas E. Dickey
+Copyright 1999-2007,2009 by Thomas E. Dickey
 
                         All Rights Reserved
 
@@ -49,7 +49,6 @@ other dealings in this Software without prior written authorization
 from The Open Group.
 
 */
-/* $XFree86: xc/programs/xterm/menu.h,v 3.41 2006/03/13 01:27:59 dickey Exp $ */
 
 #ifndef included_menu_h
 #define included_menu_h
@@ -70,7 +69,11 @@ extern MenuEntry tekMenuEntries[];
 
 extern void Handle8BitControl      PROTO_XT_ACTIONS_ARGS;
 extern void HandleAllow132         PROTO_XT_ACTIONS_ARGS;
+extern void HandleAllowFontOps     PROTO_XT_ACTIONS_ARGS;
 extern void HandleAllowSends       PROTO_XT_ACTIONS_ARGS;
+extern void HandleAllowTcapOps     PROTO_XT_ACTIONS_ARGS;
+extern void HandleAllowTitleOps    PROTO_XT_ACTIONS_ARGS;
+extern void HandleAllowWindowOps   PROTO_XT_ACTIONS_ARGS;
 extern void HandleAltEsc           PROTO_XT_ACTIONS_ARGS;
 extern void HandleAltScreen        PROTO_XT_ACTIONS_ARGS;
 extern void HandleAppCursor        PROTO_XT_ACTIONS_ARGS;
@@ -78,6 +81,7 @@ extern void HandleAppKeypad        PROTO_XT_ACTIONS_ARGS;
 extern void HandleAutoLineFeed     PROTO_XT_ACTIONS_ARGS;
 extern void HandleAutoWrap         PROTO_XT_ACTIONS_ARGS;
 extern void HandleBackarrow        PROTO_XT_ACTIONS_ARGS;
+extern void HandleBellIsUrgent     PROTO_XT_ACTIONS_ARGS;
 extern void HandleClearSavedLines  PROTO_XT_ACTIONS_ARGS;
 extern void HandleCreateMenu       PROTO_XT_ACTIONS_ARGS;
 extern void HandleCursesEmul       PROTO_XT_ACTIONS_ARGS;
@@ -89,6 +93,7 @@ extern void HandleFontLoading      PROTO_XT_ACTIONS_ARGS;
 extern void HandleHardReset        PROTO_XT_ACTIONS_ARGS;
 extern void HandleHpFunctionKeys   PROTO_XT_ACTIONS_ARGS;
 extern void HandleJumpscroll       PROTO_XT_ACTIONS_ARGS;
+extern void HandleKeepSelection    PROTO_XT_ACTIONS_ARGS;
 extern void HandleLogging          PROTO_XT_ACTIONS_ARGS;
 extern void HandleMarginBell       PROTO_XT_ACTIONS_ARGS;
 extern void HandleMetaEsc          PROTO_XT_ACTIONS_ARGS;
@@ -162,6 +167,9 @@ typedef enum {
 #endif
     mainMenu_delete_del,
     mainMenu_old_fkeys,
+#if OPT_TCAP_FKEYS
+    mainMenu_tcap_fkeys,
+#endif
 #if OPT_HP_FUNC_KEYS
     mainMenu_hp_fkeys,
 #endif
@@ -202,10 +210,11 @@ typedef enum {
     vtMenu_scrollkey,
     vtMenu_scrollttyoutput,
     vtMenu_allow132,
+    vtMenu_keepSelection,
     vtMenu_selectToClipboard,
     vtMenu_visualbell,
+    vtMenu_bellIsUrgent,
     vtMenu_poponbell,
-    vtMenu_marginbell,
 #if OPT_BLINK_CURS
     vtMenu_cursorblink,
 #endif
@@ -231,7 +240,7 @@ typedef enum {
  * items in vt100 font menu
  */
 typedef enum {
-    fontMenu_fontdefault,
+    fontMenu_default,
     fontMenu_font1,
     fontMenu_font2,
     fontMenu_font3,
@@ -266,6 +275,13 @@ typedef enum {
     fontMenu_wide_title,
 #endif
 #endif
+#if OPT_ALLOW_XXX_OPS
+    fontMenu_line3,
+    fontMenu_allowTcapOps,
+    fontMenu_allowFontOps,
+    fontMenu_allowTitleOps,
+    fontMenu_allowWindowOps,
+#endif
 
     fontMenu_LAST
 } fontMenuIndices;
@@ -297,7 +313,7 @@ typedef enum {
  * functions for updating menus
  */
 
-extern void SetItemSensitivity(Widget mi, XtArgVal val);
+extern void SetItemSensitivity(Widget mi, Bool val);
 
 /*
  * there should be one of each of the following for each checkable item
@@ -356,6 +372,12 @@ extern void update_sun_fkeys(void);
 #define update_sun_fkeys() /*nothing*/
 #endif
 
+#if OPT_TCAP_FKEYS
+extern void update_tcap_fkeys(void);
+#else
+#define update_tcap_fkeys() /*nothing*/
+#endif
+
 extern void update_scrollbar(void);
 extern void update_jumpscroll(void);
 extern void update_reversevideo(void);
@@ -365,13 +387,23 @@ extern void update_autolinefeed(void);
 extern void update_appcursor(void);
 extern void update_appkeypad(void);
 extern void update_scrollkey(void);
+extern void update_keepSelection(void);
 extern void update_selectToClipboard(void);
 extern void update_scrollttyoutput(void);
 extern void update_allow132(void);
 extern void update_cursesemul(void);
 extern void update_visualbell(void);
+extern void update_bellIsUrgent(void);
 extern void update_poponbell(void);
-extern void update_marginbell(void);
+
+#define update_marginbell() /* nothing */
+
+#if OPT_ALLOW_XXX_OPS
+extern void update_menu_allowTcapOps(void);
+extern void update_menu_allowFontOps(void);
+extern void update_menu_allowTitleOps(void);
+extern void update_menu_allowWindowOps(void);
+#endif
 
 #if OPT_BLINK_CURS
 extern void update_cursorblink(void);
