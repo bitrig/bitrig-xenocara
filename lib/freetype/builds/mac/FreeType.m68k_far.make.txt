@@ -24,14 +24,14 @@ COptions        = \xB6
 			-d FT2_BUILD_LIBRARY \xB6
 			-d FT_CONFIG_CONFIG_H="<ftconfig.h>" \xB6
 			-d FT_CONFIG_MODULES_H="<ftmodule.h>" \xB6
-			{Includes} {Sym-68K} -model far 
+			{Includes} {Sym-68K} -model far
 
 
 ### Source Files ###
 
 SrcFiles        =  \xB6
 				  :src:autofit:autofit.c \xB6
-				  :src:base:ftbase.c \xB6
+				  :builds:mac:ftbase.c \xB6
 				  :src:base:ftbbox.c \xB6
 				  :src:base:ftbdf.c \xB6
 				  :src:base:ftbitmap.c \xB6
@@ -39,7 +39,6 @@ SrcFiles        =  \xB6
 				  :src:base:ftglyph.c \xB6
 				  :src:base:ftgxval.c \xB6
 				  :src:base:ftinit.c \xB6
-				  :src:base:ftmac.c \xB6
 				  :src:base:ftmm.c \xB6
 				  :src:base:ftotval.c \xB6
 				  :src:base:ftpfr.c \xB6
@@ -83,7 +82,6 @@ ObjFiles-68K    =  \xB6
 				  "{ObjDir}ftglyph.c.o" \xB6
 				  "{ObjDir}ftgxval.c.o" \xB6
 				  "{ObjDir}ftinit.c.o" \xB6
-				  "{ObjDir}ftmac.c.o" \xB6
 				  "{ObjDir}ftmm.c.o" \xB6
 				  "{ObjDir}ftotval.c.o" \xB6
 				  "{ObjDir}ftpfr.c.o" \xB6
@@ -117,7 +115,7 @@ ObjFiles-68K    =  \xB6
 
 ### Libraries ###
 
-LibFiles-68K    = 
+LibFiles-68K    =
 
 
 ### Default Rules ###
@@ -128,8 +126,14 @@ LibFiles-68K    =
 
 ### Build Rules ###
 
-"{ObjDir}ftmac.c.o" \xC4\xC4 :src:base:ftmac.c
-	{C} :src:base:ftmac.c -o "{ObjDir}ftmac.c.o" {COptions}
+:builds:mac:ftbase.c \xC4\xC4 :src:base:ftbase.c
+	Duplicate :src:base:ftbase.c :builds:mac:ftbase.c
+
+"{ObjDir}ftbase.c.o" \xC4\xC4 :builds:mac:ftbase.c
+	{C} :builds:mac:ftbase.c -o "{ObjDir}ftbase.c.o" \xB6
+				-i :builds:mac: \xB6
+				-i :src:base: \xB6
+				{COptions}
 
 FreeType.m68k_far    \xC4\xC4  FreeType.m68k_far.o
 
@@ -146,7 +150,7 @@ FreeType.m68k_far.o  \xC4\xC4  {ObjFiles-68K} {LibFiles-68K} {\xA5MondoBuild\xA5
 ### Required Dependencies ###
 
 "{ObjDir}autofit.c.o" \xC4 :src:autofit:autofit.c
-"{ObjDir}ftbase.c.o" \xC4 :src:base:ftbase.c
+# "{ObjDir}ftbase.c.o" \xC4 :src:base:ftbase.c
 "{ObjDir}ftbbox.c.o" \xC4 :src:base:ftbbox.c
 "{ObjDir}ftbdf.c.o" \xC4 :src:base:ftbdf.c
 "{ObjDir}ftbitmap.c.o" \xC4 :src:base:ftbitmap.c
@@ -154,7 +158,6 @@ FreeType.m68k_far.o  \xC4\xC4  {ObjFiles-68K} {LibFiles-68K} {\xA5MondoBuild\xA5
 "{ObjDir}ftglyph.c.o" \xC4 :src:base:ftglyph.c
 "{ObjDir}ftgxval.c.o" \xC4 :src:base:ftgxval.c
 "{ObjDir}ftinit.c.o" \xC4 :src:base:ftinit.c
-# "{ObjDir}ftmac.c.o" \xC4 :src:base:ftmac.c
 "{ObjDir}ftmm.c.o" \xC4 :src:base:ftmm.c
 "{ObjDir}ftotval.c.o" \xC4 :src:base:ftotval.c
 "{ObjDir}ftpfr.c.o" \xC4 :src:base:ftpfr.c

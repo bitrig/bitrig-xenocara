@@ -1,7 +1,7 @@
 This document contains instructions  how to build the FreeType library
 on non-Unix systems  with the help of GNU Make.  Note  that if you are
 running Cygwin or MSys in  Windows, you should follow the instructions
-in the file INSTALL.UNX instead.
+in the file INSTALL.UNIX instead.
 
 
   FreeType 2 includes a powerful and flexible build system that allows
@@ -22,7 +22,7 @@ in the file INSTALL.UNX instead.
 
     Note that  make++, a  make tool written  in Perl,  supports enough
     features of GNU make to compile FreeType.  See
-    
+
       http://makepp.sourceforge.net
 
     for more information; you need version 1.19 or newer, and you must
@@ -35,7 +35,7 @@ in the file INSTALL.UNX instead.
 
     to display its version number.
 
-    VERSION 3.78.1 OR NEWER IS NEEDED!
+    VERSION 3.80 OR NEWER IS NEEDED!
 
 
   2. Invoke `make'
@@ -77,7 +77,7 @@ in the file INSTALL.UNX instead.
 
     If the build system correctly detected your platform, but you want
     to use a different compiler  than the one specified in the summary
-    (for most platforms, gcc is  the defaut compiler), invoke GNU Make
+    (for most platforms, gcc is the default compiler), invoke GNU Make
     with
 
       make setup <compiler>
@@ -137,7 +137,7 @@ in the file INSTALL.UNX instead.
 
 
   Final note
-  
+
     The build  system builds a  statically linked library of  the font
     engine in the  `objs' directory.  It does _not_  support the build
     of  DLLs on  Windows and  OS/2.  If  you need  these, you  have to
@@ -146,7 +146,7 @@ in the file INSTALL.UNX instead.
 
 ----------------------------------------------------------------------
 
-Copyright 2003, 2004, 2005, 2006 by
+Copyright 2003, 2004, 2005, 2006, 2008 by
 David Turner, Robert Wilhelm, and Werner Lemberg.
 
 This  file is  part of  the FreeType  project, and  may only  be used,

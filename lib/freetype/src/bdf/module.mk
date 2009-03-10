@@ -4,7 +4,7 @@
 
 # Copyright 2001, 2002, 2006 by
 # Francesco Zappa Nardelli
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
 # in the Software without restriction, including without limitation the rights
@@ -27,7 +27,7 @@
 FTMODULE_H_COMMANDS += BDF_DRIVER
 
 define BDF_DRIVER
-$(OPEN_DRIVER)bdf_driver_class$(CLOSE_DRIVER)
+$(OPEN_DRIVER) FT_Driver_ClassRec, bdf_driver_class $(CLOSE_DRIVER)
 $(ECHO_DRIVER)bdf       $(ECHO_DRIVER_DESC)bdf bitmap fonts$(ECHO_DRIVER_DONE)
 endef
 

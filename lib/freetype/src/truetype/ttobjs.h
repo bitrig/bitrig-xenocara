@@ -4,7 +4,7 @@
 /*                                                                         */
 /*    Objects manager (specification).                                     */
 /*                                                                         */
-/*  Copyright 1996-2001, 2002, 2003, 2004, 2005, 2006 by                   */
+/*  Copyright 1996-2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 by       */
 /*  David Turner, Robert Wilhelm, and Werner Lemberg.                      */
 /*                                                                         */
 /*  This file is part of the FreeType project, and may only be used,       */
@@ -99,6 +99,10 @@ FT_BEGIN_HEADER
     FT_Short       delta_shift;
 
     FT_Byte        instruct_control;
+    /* According to Greg Hitchcock from Microsoft, the `scan_control'     */
+    /* variable as documented in the TrueType specification is a 32-bit   */
+    /* integer; the high-word part holds the SCANTYPE value, the low-word */
+    /* part the SCANCTRL value.  We separate it into two fields.          */
     FT_Bool        scan_control;
     FT_Int         scan_type;
 
@@ -109,7 +113,7 @@ FT_BEGIN_HEADER
   } TT_GraphicsState;
 
 
-#ifdef TT_CONFIG_OPTION_BYTECODE_INTERPRETER
+#ifdef TT_USE_BYTECODE_INTERPRETER
 
   FT_LOCAL( void )
   tt_glyphzone_done( TT_GlyphZone  zone );
@@ -120,7 +124,7 @@ FT_BEGIN_HEADER
                     FT_Short      maxContours,
                     TT_GlyphZone  zone );
 
-#endif /* TT_CONFIG_OPTION_BYTECODE_INTERPRETER */
+#endif /* TT_USE_BYTECODE_INTERPRETER */
 
 
 
@@ -324,7 +328,7 @@ FT_BEGIN_HEADER
 
     FT_ULong           strike_index;      /* 0xFFFFFFFF to indicate invalid */
 
-#ifdef TT_CONFIG_OPTION_BYTECODE_INTERPRETER
+#ifdef TT_USE_BYTECODE_INTERPRETER
 
     FT_UInt            num_function_defs; /* number of function definitions */
     FT_UInt            max_function_defs;
@@ -358,7 +362,10 @@ FT_BEGIN_HEADER
     FT_Bool            debug;
     TT_ExecContext     context;
 
-#endif /* TT_CONFIG_OPTION_BYTECODE_INTERPRETER */
+    FT_Bool            bytecode_ready;
+    FT_Bool            cvt_ready;
+
+#endif /* TT_USE_BYTECODE_INTERPRETER */
 
   } TT_SizeRec;
 
@@ -412,7 +419,7 @@ FT_BEGIN_HEADER
   FT_LOCAL( void )
   tt_size_done( FT_Size  ttsize );          /* TT_Size */
 
-#ifdef TT_CONFIG_OPTION_BYTECODE_INTERPRETER
+#ifdef TT_USE_BYTECODE_INTERPRETER
 
   FT_LOCAL( FT_Error )
   tt_size_run_fpgm( TT_Size  size );
@@ -420,7 +427,10 @@ FT_BEGIN_HEADER
   FT_LOCAL( FT_Error )
   tt_size_run_prep( TT_Size  size );
 
-#endif /* TT_CONFIG_OPTION_BYTECODE_INTERPRETER */
+  FT_LOCAL( FT_Error )
+  tt_size_ready_bytecode( TT_Size  size );
+
+#endif /* TT_USE_BYTECODE_INTERPRETER */
 
   FT_LOCAL( FT_Error )
   tt_size_reset( TT_Size  size );

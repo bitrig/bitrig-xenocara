@@ -126,10 +126,10 @@ FT_BEGIN_HEADER
   typedef union  GXV_StateTable_GlyphOffsetDesc_
   {
     FT_Byte    uc;
-    FT_UShort  u;   	/* same as GXV_LookupValueDesc */
+    FT_UShort  u;       /* same as GXV_LookupValueDesc */
     FT_ULong   ul;
     FT_Char    c;
-    FT_Short   s;   	/* same as GXV_LookupValueDesc */
+    FT_Short   s;       /* same as GXV_LookupValueDesc */
     FT_Long    l;
 
   } GXV_StateTable_GlyphOffsetDesc;
@@ -275,11 +275,11 @@ FT_BEGIN_HEADER
 
 #else /* !FT_DEBUG_LEVEL_TRACE */
 
-#define GXV_INIT                do ; while ( 0 )
-#define GXV_NAME_ENTER( name )  do ; while ( 0 )
-#define GXV_EXIT                do ; while ( 0 )
+#define GXV_INIT                do { } while ( 0 )
+#define GXV_NAME_ENTER( name )  do { } while ( 0 )
+#define GXV_EXIT                do { } while ( 0 )
 
-#define GXV_TRACE( s )          do ; while ( 0 )
+#define GXV_TRACE( s )          do { } while ( 0 )
 
 #endif  /* !FT_DEBUG_LEVEL_TRACE */
 

@@ -4,7 +4,7 @@
 /*                                                                         */
 /*    Memory debugger (body).                                              */
 /*                                                                         */
-/*  Copyright 2001, 2002, 2003, 2004, 2005, 2006 by                        */
+/*  Copyright 2001, 2002, 2003, 2004, 2005, 2006, 2009 by                  */
 /*  David Turner, Robert Wilhelm, and Werner Lemberg.                      */
 /*                                                                         */
 /*  This file is part of the FreeType project, and may only be used,       */
@@ -33,8 +33,7 @@
                     * memory, however.
                     */
 
-#include <stdio.h>
-#include <stdlib.h>
+#include FT_CONFIG_STANDARD_LIBRARY_H
 
   FT_BASE_DEF( const char* )  _ft_debug_file   = 0;
   FT_BASE_DEF( long )         _ft_debug_lineno = 0;
@@ -460,7 +459,9 @@
     FT_MemSource  node, *pnode;
 
 
-    hash  = (FT_UInt32)(void*)_ft_debug_file +
+    /* cast to FT_PtrDist first since void* can be larger */
+    /* than FT_UInt32 and GCC 4.1.1 emits a warning       */
+    hash  = (FT_UInt32)(FT_PtrDist)(void*)_ft_debug_file +
               (FT_UInt32)( 5 * _ft_debug_lineno );
     pnode = &table->sources[hash % FT_MEM_SOURCE_BUCKETS];
 
@@ -988,7 +989,7 @@
 #else  /* !FT_DEBUG_MEMORY */
 
   /* ANSI C doesn't like empty source files */
-  const FT_Byte  _debug_mem_dummy = 0;
+  static const FT_Byte  _debug_mem_dummy = 0;
 
 #endif /* !FT_DEBUG_MEMORY */
 

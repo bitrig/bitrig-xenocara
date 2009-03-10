@@ -4,7 +4,7 @@
 
 # Copyright 2000, 2006 by
 # Francesco Zappa Nardelli
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
 # in the Software without restriction, including without limitation the rights
@@ -27,7 +27,7 @@
 FTMODULE_H_COMMANDS += PCF_DRIVER
 
 define PCF_DRIVER
-$(OPEN_DRIVER)pcf_driver_class$(CLOSE_DRIVER)
+$(OPEN_DRIVER) FT_Driver_ClassRec, pcf_driver_class $(CLOSE_DRIVER)
 $(ECHO_DRIVER)pcf       $(ECHO_DRIVER_DESC)pcf bitmap fonts$(ECHO_DRIVER_DONE)
 endef
 
