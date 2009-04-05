@@ -1,5 +1,5 @@
 /*
- * $Id: fcconstant.fncs,v 1.1 2006/11/25 18:42:13 matthieu Exp $
+ * $Id: fcconstant.fncs,v 1.2 2009/04/05 16:43:35 matthieu Exp $
  *
  * Copyright © 2003 Keith Packard
  *
@@ -24,19 +24,23 @@
 @RET@		FcBool
 @FUNC@		FcNameRegisterConstants 
 @TYPE1@		const FcConstant *		@ARG1@		consts
-@TYPE2@		int				@ARG2@		nconsts
+@TYPE2@		int%				@ARG2@		nconsts
 @PURPOSE@	Register symbolic constants
 @DESC@
-Register <parameter>nconsts</parameter> new symbolic constants.
+Register <parameter>nconsts</parameter> new symbolic constants. Returns
+FcFalse if the constants cannot be registered (due to allocation failure).
+Otherwise returns FcTrue.
 @@
 
 @RET@		FcBool
 @FUNC@		FcNameUnregisterConstants
 @TYPE1@		const FcConstant *		@ARG1@		consts
-@TYPE2@		int				@ARG2@		nconsts
+@TYPE2@		int%				@ARG2@		nconsts
 @PURPOSE@	Unregister symbolic constants
 @DESC@
-Unregister <parameter>nconsts</parameter> symbolic constants.
+Unregister <parameter>nconsts</parameter> symbolic constants. Returns
+FcFalse if the specified constants were not registered. Otherwise returns
+FcTrue.
 @@
 
 @RET@		const FcConstant *

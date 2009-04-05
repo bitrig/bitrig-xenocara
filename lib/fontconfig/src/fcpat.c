@@ -21,6 +21,7 @@
  */
 
 #include "fcint.h"
+#include "fcftint.h"
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
@@ -925,10 +926,14 @@ FcPatternDuplicate (const FcPattern *orig)
     for (i = 0; i < orig->num; i++)
     {
 	for (l = FcPatternEltValues(e + i); l; l = FcValueListNext(l))
-	    if (!FcPatternObjectAdd (new, e[i].object,
-				     FcValueCanonicalize(&l->value),
-				     FcTrue))
+	{
+	    if (!FcPatternObjectAddWithBinding (new, e[i].object,
+						FcValueCanonicalize(&l->value),
+						l->binding,
+						FcTrue))
 		goto bail1;
+	    
+	}
     }
 
     return new;
@@ -1049,7 +1054,7 @@ FcStrStaticNameFini (void)
 	    next = b->next;
 	    name = (char *) (b + 1);
 	    size = sizeof (struct objectBucket) + strlen (name) + 1;
-	    FcMemFree (FC_MEM_STATICSTR, size);
+	    FcMemFree (FC_MEM_STATICSTR, size + sizeof (int));
 	    free (b);
 	}
 	FcObjectBuckets[i] = 0;
@@ -1174,8 +1179,14 @@ FcValueListSerialize (FcSerialize *serialize, const FcValueList *vl)
 	    head_serialized = vl_serialized;
 	
 	vl_serialized->next = NULL;
-	vl_serialized->value = vl->value;
+	vl_serialized->value.type = vl->value.type;
 	switch (vl->value.type) {
+	case FcTypeInteger:
+	    vl_serialized->value.u.i = vl->value.u.i;
+	    break;
+	case FcTypeDouble:
+	    vl_serialized->value.u.d = vl->value.u.d;
+	    break;
 	case FcTypeString:
 	    s_serialized = FcStrSerialize (serialize, vl->value.u.s);
 	    if (!s_serialized)
@@ -1184,6 +1195,12 @@ FcValueListSerialize (FcSerialize *serialize, const FcValueList *vl)
 							     s_serialized,
 							     FcChar8);
 	    break;
+	case FcTypeBool:
+	    vl_serialized->value.u.b = vl->value.u.b;
+	    break;
+	case FcTypeMatrix:
+	    /* can't happen */
+	    break;
 	case FcTypeCharSet:
 	    c_serialized = FcCharSetSerialize (serialize, vl->value.u.c);
 	    if (!c_serialized)
@@ -1191,6 +1208,9 @@ FcValueListSerialize (FcSerialize *serialize, const FcValueList *vl)
 	    vl_serialized->value.u.c = FcPtrToEncodedOffset (&vl_serialized->value,
 							     c_serialized,
 							     FcCharSet);
+	    break;
+	case FcTypeFTFace:
+	    /* can't happen */
 	    break;
 	case FcTypeLangSet:
 	    l_serialized = FcLangSetSerialize (serialize, vl->value.u.l);
@@ -1210,4 +1230,5 @@ FcValueListSerialize (FcSerialize *serialize, const FcValueList *vl)
 }
 #define __fcpat__
 #include "fcaliastail.h"
+#include "fcftaliastail.h"
 #undef __fcpat__
