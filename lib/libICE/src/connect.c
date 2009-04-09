@@ -36,21 +36,20 @@ Author: Ralph Mor, X Consortium
 #include <X11/Xtrans/Xtrans.h>
 #include "globals.h"
 
-static XtransConnInfo ConnectToPeer();
+static XtransConnInfo ConnectToPeer(char *networkIdsList,
+				    char **actualConnectionRet);
 
 #define Strstr strstr
 
 IceConn
-IceOpenConnection (networkIdsList, context, mustAuthenticate, majorOpcodeCheck,
-    errorLength, errorStringRet)
-
-char 	   *networkIdsList;
-IcePointer context;
-Bool 	   mustAuthenticate;
-int  	   majorOpcodeCheck;
-int  	   errorLength;
-char 	   *errorStringRet;
-
+IceOpenConnection (
+	char 	   *networkIdsList,
+	IcePointer context,
+	Bool 	   mustAuthenticate,
+	int  	   majorOpcodeCheck,
+	int  	   errorLength,
+	char 	   *errorStringRet
+)
 {
     IceConn			iceConn;
     int				extra, i, j;
@@ -431,10 +430,9 @@ char 	   *errorStringRet;
 
 
 IcePointer
-IceGetConnectionContext (iceConn)
-
-IceConn    iceConn;
-
+IceGetConnectionContext (
+	IceConn    iceConn
+)
 {
     return (iceConn->context);
 }
@@ -449,11 +447,7 @@ IceConn    iceConn;
 
 
 static XtransConnInfo
-ConnectToPeer (networkIdsList, actualConnectionRet)
-
-char *networkIdsList;
-char **actualConnectionRet;
-
+ConnectToPeer (char *networkIdsList, char **actualConnectionRet)
 {
     char addrbuf[256];
     char* address;
@@ -527,9 +521,7 @@ char **actualConnectionRet;
 	 * We need to return the actual network connection string
 	 */
 
-	*actualConnectionRet = (char *) malloc (strlen (address) + 1);
-	strcpy (*actualConnectionRet, address);
-
+	*actualConnectionRet = strdup(address);
 	
 	/*
 	 * Return the file descriptor

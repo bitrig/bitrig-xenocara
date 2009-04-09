@@ -60,11 +60,10 @@ IceAuthDataEntry _IcePaAuthDataEntries[ICE_MAX_AUTH_DATA_ENTRIES] = {0};
 
 
 void
-IceSetPaAuthData (numEntries, entries)
-
-int			numEntries;
-IceAuthDataEntry	*entries;
-
+IceSetPaAuthData (
+	int			numEntries,
+	IceAuthDataEntry	*entries
+)
 {
     /*
      * _IcePaAuthDataEntries should really be a linked list.
@@ -96,20 +95,14 @@ IceAuthDataEntry	*entries;
 	    _IcePaAuthDataEntryCount++;
 	}
 
-	_IcePaAuthDataEntries[j].protocol_name = (char *) malloc (
-	    strlen (entries[i].protocol_name) + 1);
-	strcpy (_IcePaAuthDataEntries[j].protocol_name,
-	    entries[i].protocol_name);
+	_IcePaAuthDataEntries[j].protocol_name
+	    = strdup(entries[i].protocol_name);
 
-	_IcePaAuthDataEntries[j].network_id = (char *) malloc (
-	    strlen (entries[i].network_id) + 1);
-	strcpy (_IcePaAuthDataEntries[j].network_id,
-	    entries[i].network_id);
+	_IcePaAuthDataEntries[j].network_id
+	    = strdup(entries[i].network_id);
 
-	_IcePaAuthDataEntries[j].auth_name = (char *) malloc (
-            strlen (entries[i].auth_name) + 1);
-	strcpy (_IcePaAuthDataEntries[j].auth_name,
-	    entries[i].auth_name);
+	_IcePaAuthDataEntries[j].auth_name
+            = strdup(entries[i].auth_name);
 
 	_IcePaAuthDataEntries[j].auth_data_length =
             entries[i].auth_data_length;

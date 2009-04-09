@@ -37,13 +37,12 @@ Author: Ralph Mor,  X Consortium
 
 
 Status
-IceListenForConnections (countRet, listenObjsRet, errorLength, errorStringRet)
-
-int		*countRet;
-IceListenObj	**listenObjsRet;
-int		errorLength;
-char		*errorStringRet;
-
+IceListenForConnections (
+	int		*countRet,
+	IceListenObj	**listenObjsRet,
+	int		errorLength,
+	char		*errorStringRet
+)
 {
     struct _IceListenObj	*listenObjs;
     char			*networkId;
@@ -123,8 +122,10 @@ char		*errorStringRet;
 			free ((char *) (*listenObjsRet)[j]);
 
 		    free ((char *) *listenObjsRet);
+		    *listenObjsRet = NULL;
 
 		    status = 0;
+		    break;
 		}
 		else
 		{
@@ -159,10 +160,9 @@ char		*errorStringRet;
 
 
 int
-IceGetListenConnectionNumber (listenObj)
-
-IceListenObj listenObj;
-
+IceGetListenConnectionNumber (
+	IceListenObj listenObj
+)
 {
     return (_IceTransGetConnectionNumber (listenObj->trans_conn));
 }
@@ -170,29 +170,20 @@ IceListenObj listenObj;
 
 
 char *
-IceGetListenConnectionString (listenObj)
-
-IceListenObj listenObj;
-
+IceGetListenConnectionString (
+	IceListenObj listenObj
+)
 {
-    char *networkId;
-
-    networkId = (char *) malloc (strlen (listenObj->network_id) + 1);
-
-    if (networkId)
-	strcpy (networkId, listenObj->network_id);
-
-    return (networkId);
+    return strdup(listenObj->network_id);
 }
 
 
 
 char *
-IceComposeNetworkIdList (count, listenObjs)
-
-int		count;
-IceListenObj	*listenObjs;
-
+IceComposeNetworkIdList (
+	int		count,
+	IceListenObj	*listenObjs
+)
 {
     char *list;
     int len = 0;
@@ -246,11 +237,10 @@ IceListenObj	*listenObjs;
 
 
 void
-IceFreeListenObjs (count, listenObjs)
-
-int	     count;
-IceListenObj *listenObjs;
-
+IceFreeListenObjs (
+	int	     count,
+	IceListenObj *listenObjs
+)
 {
     int i;
 
@@ -273,11 +263,10 @@ IceListenObj *listenObjs;
  */
 
 void
-IceSetHostBasedAuthProc (listenObj, hostBasedAuthProc)
-
-IceListenObj		listenObj;
-IceHostBasedAuthProc	hostBasedAuthProc;
-
+IceSetHostBasedAuthProc (
+	IceListenObj		listenObj,
+	IceHostBasedAuthProc	hostBasedAuthProc
+)
 {
     listenObj->host_based_auth_proc = hostBasedAuthProc;
 }

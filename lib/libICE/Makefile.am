@@ -3,9 +3,16 @@ SUBDIRS = src
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = ice.pc
 
-EXTRA_DIST=ice.pc.in ChangeLog
-CLEANFILES = ChangeLog
+EXTRA_DIST=ice.pc.in
 
-ChangeLog: FORCE
-	git-log > ChangeLog
-FORCE: ChangeLog
+.PHONY: ChangeLog
+
+ChangeLog:
+	$(CHANGELOG_CMD)
+
+dist-hook: ChangeLog
+
+if LINT
+lint:
+	(cd src && $(MAKE) $(MFLAGS) lint)
+endif LINT

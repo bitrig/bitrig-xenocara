@@ -34,19 +34,17 @@ Author: Ralph Mor, X Consortium
 #include "ICElibint.h"
 
 int
-IceRegisterForProtocolSetup (protocolName, vendor, release,
-    versionCount, versionRecs, authCount, authNames, authProcs, IOErrorProc)
-
-char			*protocolName;
-char			*vendor;
-char			*release;
-int			versionCount;
-IcePoVersionRec		*versionRecs;
-int			authCount;
-char		        **authNames;
-IcePoAuthProc		*authProcs;
-IceIOErrorProc		IOErrorProc;
-
+IceRegisterForProtocolSetup (
+	char			*protocolName,
+	char			*vendor,
+	char			*release,
+	int			versionCount,
+	IcePoVersionRec		*versionRecs,
+	int			authCount,
+	const char	        **authNames,
+	IcePoAuthProc		*authProcs,
+	IceIOErrorProc		IOErrorProc
+)
 {
     _IcePoProtocol 	*p;
     int			opcodeRet, i;
@@ -85,8 +83,7 @@ IceIOErrorProc		IOErrorProc;
 	char *name;
 
 	_IceProtocols[_IceLastMajorOpcode].protocol_name = name =
-	    (char *) malloc (strlen (protocolName) + 1);
-	strcpy (name, protocolName);
+	    strdup(protocolName);
 
 	p = _IceProtocols[_IceLastMajorOpcode].orig_client =
 	    (_IcePoProtocol *) malloc (sizeof (_IcePoProtocol));
@@ -96,11 +93,8 @@ IceIOErrorProc		IOErrorProc;
 	opcodeRet = ++_IceLastMajorOpcode;
     }
 
-    p->vendor = (char *) malloc (strlen (vendor) + 1);
-    strcpy (p->vendor, vendor);
-
-    p->release = (char *) malloc (strlen (release) + 1);
-    strcpy (p->release, release);
+    p->vendor = strdup(vendor);
+    p->release = strdup(release);
 
     p->version_count = versionCount;
 
@@ -119,10 +113,7 @@ IceIOErrorProc		IOErrorProc;
 
 	for (i = 0; i < authCount; i++)
 	{
-	    p->auth_names[i] =
-	        (char *) malloc (strlen (authNames[i]) + 1);
-	    strcpy (p->auth_names[i], authNames[i]);
-
+	    p->auth_names[i] = strdup(authNames[i]);
 	    p->auth_procs[i] = authProcs[i];
 	}
     }
@@ -140,24 +131,20 @@ IceIOErrorProc		IOErrorProc;
 
 
 int
-IceRegisterForProtocolReply (protocolName, vendor, release,
-    versionCount, versionRecs, authCount, authNames, authProcs,
-    hostBasedAuthProc, protocolSetupProc, protocolActivateProc,
-    IOErrorProc)
-
-char				*protocolName;
-char				*vendor;
-char				*release;
-int				versionCount;
-IcePaVersionRec			*versionRecs;
-int				authCount;
-char				**authNames;
-IcePaAuthProc			*authProcs;
-IceHostBasedAuthProc		hostBasedAuthProc;
-IceProtocolSetupProc		protocolSetupProc;
-IceProtocolActivateProc		protocolActivateProc;
-IceIOErrorProc			IOErrorProc;
-
+IceRegisterForProtocolReply (
+	char				*protocolName,
+	char				*vendor,
+	char				*release,
+	int				versionCount,
+	IcePaVersionRec			*versionRecs,
+	int				authCount,
+	const char			**authNames,
+	IcePaAuthProc			*authProcs,
+	IceHostBasedAuthProc		hostBasedAuthProc,
+	IceProtocolSetupProc		protocolSetupProc,
+	IceProtocolActivateProc		protocolActivateProc,
+	IceIOErrorProc			IOErrorProc
+)
 {
     _IcePaProtocol 	*p;
     int			opcodeRet, i;
@@ -197,8 +184,7 @@ IceIOErrorProc			IOErrorProc;
 	char *name;
 
 	_IceProtocols[_IceLastMajorOpcode].protocol_name = name =
-	    (char *) malloc (strlen (protocolName) + 1);
-	strcpy (name, protocolName);
+	    strdup(protocolName);
 
 	_IceProtocols[_IceLastMajorOpcode].orig_client = NULL;
 
@@ -208,11 +194,8 @@ IceIOErrorProc			IOErrorProc;
 	opcodeRet = ++_IceLastMajorOpcode;
     }
 
-    p->vendor = (char *) malloc (strlen (vendor) + 1);
-    strcpy (p->vendor, vendor);
-
-    p->release = (char *) malloc (strlen (release) + 1);
-    strcpy (p->release, release);
+    p->vendor = strdup(vendor);
+    p->release = strdup(release);
 
     p->version_count = versionCount;
 
@@ -234,10 +217,7 @@ IceIOErrorProc			IOErrorProc;
 
 	for (i = 0; i < authCount; i++)
 	{
-	    p->auth_names[i] =
-	        (char *) malloc (strlen (authNames[i]) + 1);
-	    strcpy (p->auth_names[i], authNames[i]);
-
+	    p->auth_names[i] = strdup(authNames[i]);
 	    p->auth_procs[i] = authProcs[i];
 	}
     }
