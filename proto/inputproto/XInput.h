@@ -72,6 +72,10 @@ SOFTWARE.
 #define _deviceStateNotify	0
 #define _deviceMappingNotify	1
 #define _changeDeviceNotify	2
+/* Space of 3 between is necessary! Reserved for DeviceKeyStateNotify,
+   DeviceButtonStateNotify, DevicePresenceNotify (essentially unused). This
+   code has to be in sync with FixExtensionEvents() in xserver/Xi/extinit.c */
+#define _propertyNotify		6
 
 #define FindTypeAndClass(d,type,_class,classid,offset) \
     { int _i; XInputClassInfo *_ip; \
@@ -119,6 +123,9 @@ SOFTWARE.
 #define ChangeDeviceNotify(d,type,_class) \
     FindTypeAndClass(d, type, _class, OtherClass, _changeDeviceNotify)
 
+#define DevicePropertyNotify(d, type, _class) \
+    FindTypeAndClass(d, type, _class, OtherClass, _propertyNotify)
+
 #define DevicePointerMotionHint(d,type,_class) \
     { _class =  ((XDevice *) d)->device_id << 8 | _devicePointerMotionHint;}
 
@@ -148,6 +155,13 @@ SOFTWARE.
 
 #define NoExtensionEvent(d,type,_class) \
     { _class =  ((XDevice *) d)->device_id << 8 | _noExtensionEvent;}
+
+#define DevicePresence(dpy, type, _class)                       \
+    {                                                           \
+        extern int _XiGetDevicePresenceNotifyEvent(Display *);  \
+        type = _XiGetDevicePresenceNotifyEvent(dpy);            \
+        _class =  (0x10000 | _devicePresence);                  \
+    }
 
 #define BadDevice(dpy,error) _xibaddevice(dpy, &error)
 
@@ -418,6 +432,47 @@ typedef struct {
 
 /*******************************************************************
  *
+ * DevicePresenceNotify event.  This event is sent when the list of
+ * input devices changes, in which case devchange will be false, and
+ * no information about the change will be contained in the event;
+ * the client should use XListInputDevices() to learn what has changed.
+ *
+ * If devchange is true, an attribute that the server believes is
+ * important has changed on a device, and the client should use
+ * XGetDeviceControl to examine the device.  If control is non-zero,
+ * then that control has changed meaningfully.
+ */
+
+typedef struct {
+    int           type;
+    unsigned long serial;       /* # of last request processed by server */
+    Bool          send_event;   /* true if this came from a SendEvent request */
+    Display       *display;     /* Display the event was read from */
+    Window        window;       /* unused */
+    Time          time;
+    Bool          devchange;
+    XID           deviceid;
+    XID           control;
+} XDevicePresenceNotifyEvent;
+
+/*
+ * Notifies the client that a property on a device has changed value. The
+ * client is expected to query the server for updated value of the property.
+ */
+typedef struct {
+    int           type;
+    unsigned long serial;       /* # of last request processed by server */
+    Bool          send_event;   /* true if this came from a SendEvent request */
+    Display       *display;     /* Display the event was read from */
+    Window        window;       /* unused */
+    Time          time;
+    XID           deviceid;     /* id of the device that changed */
+    Atom          atom;         /* the property that changed */
+    int           state;        /* PropertyNewValue or PropertyDeleted */
+} XDevicePropertyNotifyEvent;
+
+/*******************************************************************
+ *
  * Control structures for input devices that support input class
  * Feedback.  These are used by the XGetFeedbackControl and 
  * XChangeFeedbackControl functions.
@@ -631,6 +686,49 @@ typedef struct {
      int            *min_resolutions;
      int            *max_resolutions;
 } XDeviceResolutionState;
+
+typedef struct {
+    XID             control;
+    int             length;
+    int             min_x;
+    int             max_x;
+    int             min_y;
+    int             max_y;
+    int             flip_x;
+    int             flip_y;
+    int             rotation;
+    int             button_threshold;
+} XDeviceAbsCalibControl, XDeviceAbsCalibState;
+
+typedef struct {
+    XID             control;
+    int             length;
+    int             offset_x;
+    int             offset_y;
+    int             width;
+    int             height;
+    int             screen;
+    XID             following;
+} XDeviceAbsAreaControl, XDeviceAbsAreaState;
+
+typedef struct {
+    XID             control;
+    int             length;
+    int             status;
+} XDeviceCoreControl;
+
+typedef struct {
+    XID             control;
+    int             length;
+    int             status;
+    int             iscore;
+} XDeviceCoreState;
+
+typedef struct {
+    XID             control;
+    int             length;
+    int             enable;
+} XDeviceEnableControl, XDeviceEnableState;
 
 /*******************************************************************
  *
@@ -1119,6 +1217,56 @@ extern void	XFreeDeviceMotionEvents(
 extern void	XFreeDeviceControl(
     XDeviceControl*	/* control */
 );
+
+typedef struct {
+    Bool    pending;
+    Bool    range;
+    Bool    immutable;
+    Bool    fromClient;
+    int     num_values;
+    long    *values;
+} XIPropertyInfo;
+
+extern Atom*   XListDeviceProperties(
+    Display*            /* dpy */,
+    XDevice*            /* dev */,
+    int*                /* nprops_return */
+);
+
+extern void XChangeDeviceProperty(
+    Display*            /* dpy */,
+    XDevice*            /* dev */,
+    Atom                /* property */,
+    Atom                /* type */,
+    int                 /* format */,
+    int                 /* mode */,
+    _Xconst unsigned char * /*data */,
+    int                 /* nelements */
+);
+
+extern void
+XDeleteDeviceProperty(
+    Display*            /* dpy */,
+    XDevice*            /* dev */,
+    Atom                /* property */
+);
+
+extern Status
+XGetDeviceProperty(
+     Display*           /* dpy*/,
+     XDevice*           /* dev*/,
+     Atom               /* property*/,
+     long               /* offset*/,
+     long               /* length*/,
+     Bool               /* delete*/,
+     Atom               /* req_type*/,
+     Atom*              /* actual_type*/,
+     int*               /* actual_format*/,
+     unsigned long*     /* nitems*/,
+     unsigned long*     /* bytes_after*/,
+     unsigned char**    /* prop*/
+);
+
 
 _XFUNCPROTOEND
 
