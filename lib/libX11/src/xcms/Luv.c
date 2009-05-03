@@ -3,7 +3,7 @@
 /*
  * Code and supporting documentation (c) Copyright 1990 1991 Tektronix, Inc.
  * 	All Rights Reserved
- * 
+ *
  * This file is a component of an X Window System-specific implementation
  * of XCMS based on the TekColor Color Management System.  Permission is
  * hereby granted to use, copy, modify, sell, and otherwise distribute this
@@ -11,10 +11,10 @@
  * that this copyright, permission, and disclaimer notice is reproduced in
  * all copies of this software and in supporting documentation.  TekColor
  * is a trademark of Tektronix, Inc.
- * 
+ *
  * Tektronix makes no representation about the suitability of this software
  * for any purpose.  It is provided "as is" and with all faults.
- * 
+ *
  * TEKTRONIX DISCLAIMS ALL WARRANTIES APPLICABLE TO THIS SOFTWARE,
  * INCLUDING THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
  * PARTICULAR PURPOSE.  IN NO EVENT SHALL TEKTRONIX BE LIABLE FOR ANY
@@ -167,7 +167,7 @@ CIELuv_ParseString(
 	    &pColor->spec.CIELuv.v_star) != 3) {
         char *s; /* Maybe failed due to locale */
         int f;
-        if (s = strdup(spec)) {
+        if ((s = strdup(spec))) {
             for (f = 0; s[f]; ++f)
                 if (s[f] == '.')
                     s[f] = ',';
@@ -233,11 +233,11 @@ XcmsCIELuv_ValidSpec(
  *	SYNOPSIS
  */
 Status
-XcmsCIELuvToCIEuvY(ccc, pLuv_WhitePt, pColors_in_out, nColors)
-    XcmsCCC ccc;
-    XcmsColor *pLuv_WhitePt;
-    XcmsColor *pColors_in_out;
-    unsigned int nColors;
+XcmsCIELuvToCIEuvY(
+    XcmsCCC ccc,
+    XcmsColor *pLuv_WhitePt,
+    XcmsColor *pColors_in_out,
+    unsigned int nColors)
 /*
  *	DESCRIPTION
  *		Converts color specifications in an array of XcmsColor
@@ -303,7 +303,7 @@ XcmsCIELuvToCIEuvY(ccc, pLuv_WhitePt, pColors_in_out, nColors)
 	    uvY_return.v_prime = pLuv_WhitePt->spec.CIEuvY.v_prime;
 	} else {
 	    tmpVal = 13.0 * (pColor->spec.CIELuv.L_star / 100.0);
-	    uvY_return.u_prime = pColor->spec.CIELuv.u_star/tmpVal + 
+	    uvY_return.u_prime = pColor->spec.CIELuv.u_star/tmpVal +
 			    pLuv_WhitePt->spec.CIEuvY.u_prime;
 	    uvY_return.v_prime = pColor->spec.CIELuv.v_star/tmpVal +
 			    pLuv_WhitePt->spec.CIEuvY.v_prime;
@@ -325,11 +325,11 @@ XcmsCIELuvToCIEuvY(ccc, pLuv_WhitePt, pColors_in_out, nColors)
  *	SYNOPSIS
  */
 Status
-XcmsCIEuvYToCIELuv(ccc, pLuv_WhitePt, pColors_in_out, nColors)
-    XcmsCCC ccc;
-    XcmsColor *pLuv_WhitePt;
-    XcmsColor *pColors_in_out;
-    unsigned int nColors;
+XcmsCIEuvYToCIELuv(
+    XcmsCCC ccc,
+    XcmsColor *pLuv_WhitePt,
+    XcmsColor *pColors_in_out,
+    unsigned int nColors)
 /*
  *	DESCRIPTION
  *		Converts color specifications in an array of XcmsColor
@@ -381,7 +381,7 @@ XcmsCIEuvYToCIELuv(ccc, pLuv_WhitePt, pColors_in_out, nColors)
 	}
 
 	/* Now convert the uvY to Luv */
-	Luv_return.L_star = 
+	Luv_return.L_star =
 	    (pColor->spec.CIEuvY.Y < 0.008856)
 	    ?
 	    (pColor->spec.CIEuvY.Y * 903.29)

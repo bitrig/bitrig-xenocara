@@ -278,32 +278,26 @@ static long
 modmask(
     char *name)
 {
-    long mask;
-
     struct _modtbl {
-	char *name;
+	const char name[6];
 	long mask;
     };
-    struct _modtbl *p;
 
-    static struct _modtbl tbl[] = {
+    static const struct _modtbl tbl[] = {
 	{ "Ctrl",	ControlMask	},
         { "Lock",	LockMask	},
         { "Caps",	LockMask	},
         { "Shift",	ShiftMask	},
         { "Alt",	Mod1Mask	},
-        { "Meta",	Mod1Mask	},
-        { NULL,		0		}};
+        { "Meta",	Mod1Mask	}};
 
-    p = tbl;
-    mask = 0;
-    for (p = tbl; p->name != NULL; p++) {
-	if (strcmp(name, p->name) == 0) {
-	    mask = p->mask;
-	    break;
-	}
-    }
-    return(mask);
+    int i, num_entries = sizeof (tbl) / sizeof (tbl[0]);
+
+    for (i = 0; i < num_entries; i++)
+        if (!strcmp (name, tbl[i].name))
+            return tbl[i].mask;
+
+    return 0;
 }
 
 static char*
@@ -410,7 +404,7 @@ get_mb_string (Xim im, char *buf, KeySym ks)
     return len;
 }
 
-#define AllMask (ShiftMask | LockMask | ControlMask | Mod1Mask) 
+#define AllMask (ShiftMask | LockMask | ControlMask | Mod1Mask)
 #define LOCAL_WC_BUFSIZE 128
 #define LOCAL_UTF8_BUFSIZE 256
 #define SEQUENCE_MAX	10
@@ -451,7 +445,7 @@ parseline(
     do {
 	token = nexttoken(fp, tokenbuf, &lastch);
     } while (token == ENDOFLINE);
-    
+
     if (token == ENDOFFILE) {
 	return(-1);
     }
@@ -471,6 +465,7 @@ parseline(
             if (infp == NULL)
                 goto error;
             _XimParseStringFile(infp, im);
+            fclose(infp);
             return (0);
 	} else if ((token == KEY) && (strcmp("None", tokenbuf) == 0)) {
 	    modifier = 0;
@@ -597,7 +592,7 @@ parseline(
 
     l = _Xmbstoutf8(local_utf8_buf, rhs_string_mb, LOCAL_UTF8_BUFSIZE - 1);
     if (l == LOCAL_UTF8_BUFSIZE - 1) {
-	local_wc_buf[l] = '\0';
+	local_utf8_buf[l] = '\0';
     }
     while (b->utf8used + l + 1 > b->utf8size) {
 	b->utf8size = b->utf8size ? b->utf8size * 1.5 : 1024;

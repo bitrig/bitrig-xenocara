@@ -3,7 +3,7 @@
 /*
  * Code and supporting documentation (c) Copyright 1990 1991 Tektronix, Inc.
  * 	All Rights Reserved
- * 
+ *
  * This file is a component of an X Window System-specific implementation
  * of XCMS based on the TekColor Color Management System.  Permission is
  * hereby granted to use, copy, modify, sell, and otherwise distribute this
@@ -11,10 +11,10 @@
  * that this copyright, permission, and disclaimer notice is reproduced in
  * all copies of this software and in supporting documentation.  TekColor
  * is a trademark of Tektronix, Inc.
- * 
+ *
  * Tektronix makes no representation about the suitability of this software
  * for any purpose.  It is provided "as is" and with all faults.
- * 
+ *
  * TEKTRONIX DISCLAIMS ALL WARRANTIES APPLICABLE TO THIS SOFTWARE,
  * INCLUDING THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
  * PARTICULAR PURPOSE.  IN NO EVENT SHALL TEKTRONIX BE LIABLE FOR ANY
@@ -164,7 +164,7 @@ CIELab_ParseString(
 	    &pColor->spec.CIELab.b_star) != 3) {
         char *s; /* Maybe failed due to locale */
         int f;
-        if (s = strdup(spec)) {
+        if ((s = strdup(spec))) {
             for (f = 0; s[f]; ++f)
                 if (s[f] == '.')
                     s[f] = ',';
@@ -232,11 +232,11 @@ XcmsCIELab_ValidSpec(
  *	SYNOPSIS
  */
 Status
-XcmsCIELabToCIEXYZ(ccc, pLab_WhitePt, pColors_in_out, nColors)
-    XcmsCCC ccc;
-    XcmsColor *pLab_WhitePt;
-    XcmsColor *pColors_in_out;
-    unsigned int nColors;
+XcmsCIELabToCIEXYZ(
+    XcmsCCC ccc,
+    XcmsColor *pLab_WhitePt,
+    XcmsColor *pColors_in_out,
+    unsigned int nColors)
 /*
  *	DESCRIPTION
  *		Converts color specifications in an array of XcmsColor
@@ -335,11 +335,11 @@ XcmsCIELabToCIEXYZ(ccc, pLab_WhitePt, pColors_in_out, nColors)
  *	SYNOPSIS
  */
 Status
-XcmsCIEXYZToCIELab(ccc, pLab_WhitePt, pColors_in_out, nColors)
-    XcmsCCC ccc;
-    XcmsColor *pLab_WhitePt;
-    XcmsColor *pColors_in_out;
-    unsigned int nColors;
+XcmsCIEXYZToCIELab(
+    XcmsCCC ccc,
+    XcmsColor *pLab_WhitePt,
+    XcmsColor *pColors_in_out,
+    unsigned int nColors)
 /*
  *	DESCRIPTION
  *		Converts color specifications in an array of XcmsColor

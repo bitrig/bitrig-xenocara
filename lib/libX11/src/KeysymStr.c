@@ -71,8 +71,7 @@ SameValue(
     return False;
 }
 
-char *XKeysymToString(ks)
-    KeySym ks;
+char *XKeysymToString(KeySym ks)
 {
     register int i, n;
     int h;
@@ -148,7 +147,7 @@ char *XKeysymToString(ks)
                 s[i] = 'A'+ val1 - 10;
         }
         s[i] = 'U';
-        return s; 
+        return s;
     }
     return ((char *) NULL);
 }

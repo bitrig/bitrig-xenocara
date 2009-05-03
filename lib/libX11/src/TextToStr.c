@@ -40,10 +40,10 @@ in this Software without prior written authorization from The Open Group.
  * null-separated STRING property.
  */
 
-Status XTextPropertyToStringList (tp, list_return, count_return)
-    XTextProperty *tp;
-    char ***list_return;
-    int *count_return;
+Status XTextPropertyToStringList (
+    XTextProperty *tp,
+    char ***list_return,
+    int *count_return)
 {
     char **list;			/* return value */
     int nelements;			/* return value */
@@ -76,7 +76,7 @@ Status XTextPropertyToStringList (tp, list_return, count_return)
      */
     list = (char **) Xmalloc (nelements * sizeof (char *));
     if (!list) return False;
-	
+
     start = (char *) Xmalloc ((datalen + 1) * sizeof (char));	/* for <NUL> */
     if (!start) {
 	Xfree ((char *) list);
@@ -109,8 +109,7 @@ Status XTextPropertyToStringList (tp, list_return, count_return)
 }
 
 
-void XFreeStringList (list)
-    char **list;
+void XFreeStringList (char **list)
 {
     if (list) {
 	if (list[0]) Xfree (list[0]);

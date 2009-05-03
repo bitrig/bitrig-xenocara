@@ -38,16 +38,16 @@ extern long const _Xevent_to_mask[];
 #define AllButtons (Button1MotionMask|Button2MotionMask|Button3MotionMask|\
 		    Button4MotionMask|Button5MotionMask)
 
-/* 
+/*
  * Check existing events in queue to find if any match.  If so, return.
  * If not, flush buffer and see if any more events are readable. If one
  * matches, return.  If all else fails, tell the user no events found.
  */
 
-Bool XCheckMaskEvent (dpy, mask, event)
-        register Display *dpy;
-	long mask;		/* Selected event mask. */
- 	register XEvent *event;	/* XEvent to be filled in. */
+Bool XCheckMaskEvent (
+	register Display *dpy,
+	long mask,		/* Selected event mask. */
+	register XEvent *event)	/* XEvent to be filled in. */
 {
 	register _XQEvent *prev, *qelt;
 	unsigned long qe_serial = 0;

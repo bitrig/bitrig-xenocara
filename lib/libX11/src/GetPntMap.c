@@ -38,10 +38,10 @@ in this Software without prior written authorization from The Open Group.
 #endif
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
-int XGetPointerMapping (dpy, map, nmaps)
-    register Display *dpy;
-    unsigned char *map;	/* RETURN */
-    int nmaps;
+int XGetPointerMapping (
+    register Display *dpy,
+    unsigned char *map,	/* RETURN */
+    int nmaps)
 
 {
     unsigned char mapping[256];	/* known fixed size */
@@ -67,11 +67,11 @@ int XGetPointerMapping (dpy, map, nmaps)
     _XRead (dpy, (char *)mapping, nbytes);
     /* don't return more data than the user asked for. */
     if (rep.nElts) {
-	    memcpy ((char *) map, (char *) mapping, 
+	    memcpy ((char *) map, (char *) mapping,
 		MIN((int)rep.nElts, nmaps) );
 	}
 
-    if (remainder) 
+    if (remainder)
 	_XEatData(dpy, (unsigned long)remainder);
 
     UnlockDisplay(dpy);

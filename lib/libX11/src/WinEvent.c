@@ -37,7 +37,7 @@ extern long const _Xevent_to_mask[];
 #define AllButtons (Button1MotionMask|Button2MotionMask|Button3MotionMask|\
 		    Button4MotionMask|Button5MotionMask)
 
-/* 
+/*
  * Return the next event in the queue
  * for the given window matching one of the events in the mask.
  * Events earlier in the queue are not discarded.
@@ -46,11 +46,11 @@ extern long const _Xevent_to_mask[];
  */
 
 int
-XWindowEvent (dpy, w, mask, event)
-        register Display *dpy;
-	Window w;		/* Selected window. */
-	long mask;		/* Selected event mask. */
-	register XEvent *event;	/* XEvent to be filled in. */
+XWindowEvent (
+        register Display *dpy,
+	Window w,		/* Selected window. */
+	long mask,		/* Selected event mask. */
+	register XEvent *event)	/* XEvent to be filled in. */
 {
 	register _XQEvent *prev, *qelt;
 	unsigned long qe_serial = 0;

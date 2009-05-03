@@ -14,11 +14,12 @@ endif
 EXTRA_DIST=x11.pc.in x11-xcb.pc.in ChangeLog
 
 MAINTAINERCLEANFILES=ChangeLog
+DISTCLEANFILES = doltcompile doltlibtool
 
 .PHONY: ChangeLog
 
 ChangeLog:
-	GIT_DIR=${srcdir}/.git git-log > ChangeLog
+	$(CHANGELOG_CMD)
 
 dist-hook: ChangeLog
 
