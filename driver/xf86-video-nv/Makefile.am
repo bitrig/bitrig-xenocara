@@ -19,12 +19,14 @@
 #  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 AUTOMAKE_OPTIONS = foreign
-SUBDIRS = src man
+SUBDIRS = src man compat
 
-EXTRA_DIST = README.NV1 ChangeLog
+EXTRA_DIST = README.G80 ChangeLog
 
-# Always regenerate the changelog
 CLEANFILES = ChangeLog
-ChangeLog: FORCE
-	git-log > ChangeLog
-FORCE:
+.PHONY: ChangeLog
+
+ChangeLog:
+	(GIT_DIR=$(top_srcdir)/.git git log > .changelog.tmp && mv .changelog.tmp ChangeLog; rm -f .changelog.tmp) || (touch ChangeLog; echo 'git directory not found: installing possibly empty changelog.' >&2)
+
+dist-hook: ChangeLog
