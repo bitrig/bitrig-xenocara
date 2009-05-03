@@ -38,7 +38,7 @@
 
 #include <misc.h>
 #include <xf86.h>
-#define NEED_XF86_TYPES
+#define NEED_XF86_TYPES 1
 #if !defined(DGUX)
 #include <xisb.h>
 #endif
@@ -57,6 +57,7 @@
 /******************************************************************************
  * Function/Macro keys variables
  *****************************************************************************/
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 5
 static KeySym void_map[] = 
 {
 	NoSymbol,	NoSymbol,	NoSymbol,	NoSymbol,
@@ -130,6 +131,7 @@ static KeySymsRec void_keysyms = {
   /* map	minKeyCode	maxKeyCode	width */
   void_map,	8,		255,		1
 };
+#endif	/* GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 5 */
 
 static const char *DEFAULTS[] = {
     NULL
@@ -172,6 +174,10 @@ xf86VoidControlProc(DeviceIntPtr device, int what)
     InputInfoPtr pInfo;
     unsigned char map[MAXBUTTONS + 1];
     int i;
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 5
+    XkbRMLVOSet rmlvo;
+#endif
+    Bool result;
     
     pInfo = device->public.devicePrivate;
     
@@ -202,14 +208,25 @@ xf86VoidControlProc(DeviceIntPtr device, int what)
 	  return !Success;
 	}
 */
-	if (InitKeyboardDeviceStruct((DevicePtr)device, &void_keysyms, NULL, BellProc, KeyControlProc) == FALSE) {
+
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 5
+	memset(&rmlvo, 0, sizeof(XkbRMLVOSet));
+	result = InitKeyboardDeviceStruct(device, &rmlvo,
+					  BellProc, KeyControlProc);
+#else
+	result = InitKeyboardDeviceStruct((DevicePtr)device, &void_keysyms,
+					  NULL, BellProc, KeyControlProc);
+#endif
+	if (!result) {
 	  ErrorF("unable to init keyboard device\n");
 	  return !Success;
 	}
 
 	if (InitValuatorClassDeviceStruct(device, 
 					  2,
-					  xf86GetMotionEvents, 
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 3
+					  xf86GetMotionEvents,
+#endif
 					  0,
 					  Absolute) == FALSE) {
 	  InitValuatorAxisStruct(device,
@@ -283,8 +300,10 @@ xf86VoidInit(InputDriverPtr	drv,
     pInfo->flags = XI86_KEYBOARD_CAPABLE | XI86_POINTER_CAPABLE | XI86_SEND_DRAG_EVENTS;
     pInfo->device_control = xf86VoidControlProc;
     pInfo->read_input = NULL;
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) == 0
     pInfo->motion_history_proc = xf86GetMotionEvents;
     pInfo->history_size = 0;
+#endif    
     pInfo->control_proc = NULL;
     pInfo->close_proc = NULL;
     pInfo->switch_mode = NULL;
@@ -293,7 +312,7 @@ xf86VoidInit(InputDriverPtr	drv,
     pInfo->fd = -1;
     pInfo->dev = NULL;
     pInfo->private_flags = 0;
-    pInfo->always_core_feedback = 0;
+    pInfo->always_core_feedback = NULL;
     pInfo->conf_idev = dev;
 
     /* Collect the options, and process the common options. */
@@ -358,7 +377,7 @@ static XF86ModuleVersionInfo xf86VoidVersionRec =
     MODINFOSTRING1,
     MODINFOSTRING2,
     XORG_VERSION_CURRENT,
-    1, 1, 0,
+    PACKAGE_VERSION_MAJOR, PACKAGE_VERSION_MINOR, PACKAGE_VERSION_PATCHLEVEL,
     ABI_CLASS_XINPUT,
     ABI_XINPUT_VERSION,
     MOD_CLASS_XINPUT,
