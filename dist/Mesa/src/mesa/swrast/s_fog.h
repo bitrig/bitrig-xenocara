@@ -28,7 +28,6 @@
 #define S_FOG_H
 
 
-#include "mtypes.h"
 #include "swrast.h"
 
 
@@ -36,10 +35,10 @@ extern GLfloat
 _swrast_z_to_fogfactor(GLcontext *ctx, GLfloat z);
 
 extern void
-_swrast_fog_rgba_span( const GLcontext *ctx, struct sw_span *span );
+_swrast_fog_rgba_span( const GLcontext *ctx, SWspan *span );
 
 extern void
-_swrast_fog_ci_span( const GLcontext *ctx, struct sw_span *span );
+_swrast_fog_ci_span( const GLcontext *ctx, SWspan *span );
 
 
 #endif

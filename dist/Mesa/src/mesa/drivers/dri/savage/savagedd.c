@@ -23,12 +23,12 @@
  */
 
 
-#include "mtypes.h"
-#include "framebuffer.h"
+#include "main/mtypes.h"
+#include "main/framebuffer.h"
 
 #include <stdio.h>
 
-#include "mm.h"
+#include "main/mm.h"
 #include "swrast/swrast.h"
 
 #include "savagedd.h"
@@ -37,12 +37,12 @@
 #include "savagetex.h"
 #include "savagetris.h"
 #include "savagecontext.h"
-#include "extensions.h"
+#include "main/extensions.h"
 
 #include "utils.h"
 
 
-#define DRIVER_DATE "20050829"
+#define DRIVER_DATE "20061110"
 
 /***************************************
  * Mesa's Driver Functions
@@ -95,25 +95,7 @@ static GLint savageGetParameteri(const GLcontext *ctx, GLint param)
 #endif
 
 
-static void savageBufferSize(GLframebuffer *buffer, GLuint *width, GLuint *height)
-{
-   GET_CURRENT_CONTEXT(ctx);
-   savageContextPtr imesa = SAVAGE_CONTEXT(ctx);
-
-   /* Need to lock to make sure the driDrawable is uptodate.  This
-    * information is used to resize Mesa's software buffers, so it has
-    * to be correct.
-    */
-   LOCK_HARDWARE(imesa);
-   *width = imesa->driDrawable->w;
-   *height = imesa->driDrawable->h;
-   UNLOCK_HARDWARE(imesa);
-}
-
-
 void savageDDInitDriverFuncs( GLcontext *ctx )
 {
-   ctx->Driver.GetBufferSize = savageBufferSize;
-   ctx->Driver.ResizeBuffers = _mesa_resize_framebuffer;
    ctx->Driver.GetString = savageDDGetString;
 }

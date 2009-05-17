@@ -29,20 +29,20 @@
 
 #include <ggi/mesa/ggimesa_int.h>
 #include <ggi/mesa/debug.h>
-#include "extensions.h"
-#include "buffers.h"
-#include "colormac.h"
-#include "imports.h"
-#include "matrix.h"
+#include "main/extensions.h"
+#include "main/buffers.h"
+#include "main/colormac.h"
+#include "main/imports.h"
+#include "main/matrix.h"
+#include "main/teximage.h"
+#include "main/texformat.h"
+#include "main/texstore.h"
 #include "swrast/swrast.h"
 #include "swrast_setup/swrast_setup.h"
 #include "tnl/tnl.h"
 #include "tnl/t_context.h"
 #include "tnl/t_pipeline.h"
-#include "array_cache/acache.h"
-#include "teximage.h"
-#include "texformat.h"
-#include "texstore.h"
+#include "vbo/vbo.h"
 
 /* We use LibGG to manage config files */
 #include <ggi/gg.h>
@@ -257,10 +257,18 @@ static void gl_ggiGetSize(GLframebuffer *fb, GLuint *width, GLuint *height)
 	printf("returning %d, %d\n", *width, *height);
 }
 
+/**
+ * We only implement this function as a mechanism to check if the
+ * framebuffer size has changed (and update corresponding state).
+ */
 static void gl_ggiViewport(GLcontext *ctx, GLint x, GLint y, GLsizei w, GLsizei h)
 {
-   /* poll for window size change and realloc software Z/stencil/etc if needed */
-   _mesa_ResizeBuffersMESA();
+   GLuint newWidth, newHeight;
+   GLframebuffer *buffer = ctx->WinSysDrawBuffer;
+   gl_ggiGetSize( buffer, &newWidth, &newHeight );
+   if (buffer->Width != newWidth || buffer->Height != newHeight) {
+      _mesa_resize_framebuffer(ctx, buffer, newWidth, newHeight );
+   }
 }
 
 
@@ -305,10 +313,14 @@ static void gl_ggiSetClearColor(GLcontext *ctx, const GLfloat color[4])
 	ggi_ctx->clearcolor = col;
 }
 
-static void gl_ggiClear(GLcontext *ctx, GLbitfield mask, GLboolean all,
-			GLint x, GLint y, GLint width, GLint height)
+static void gl_ggiClear(GLcontext *ctx, GLbitfield mask)
 {
 	ggi_mesa_context_t ggi_ctx = (ggi_mesa_context_t)ctx->DriverCtx;
+        int x = ctx->DrawBuffer->_Xmin;
+        int y = ctx->DrawBuffer->_Ymin;
+        int w = ctx->DrawBuffer->_Xmax - x;
+        int h = ctx->DrawBuffer->_Ymax - y;
+        GLboolean all = (w == ctx->DrawBuffer->Width && h == ctx->DrawBuffer->height)
 	
 	GGIMESADPRINT_CORE("gl_ggiClear() called\n");
 
@@ -328,7 +340,7 @@ static void gl_ggiClear(GLcontext *ctx, GLbitfield mask, GLboolean all,
 
 		mask &= ~(DD_FRONT_LEFT_BIT | DD_BACK_LEFT_BIT);
 	}
-	_swrast_Clear(ctx, mask, all, x, y, width, height);
+	_swrast_Clear(ctx, mask);
 	
 }
 
@@ -551,7 +563,7 @@ ggi_mesa_context_t ggiMesaCreateContext(ggi_visual_t vis)
         _mesa_enable_sw_extensions(ctx->gl_ctx);
 	
 	_swrast_CreateContext(ctx->gl_ctx);
-	_ac_CreateContext(ctx->gl_ctx);
+	_vbo_CreateContext(ctx->gl_ctx);
 	_tnl_CreateContext(ctx->gl_ctx);
 	_swsetup_CreateContext(ctx->gl_ctx);
 	

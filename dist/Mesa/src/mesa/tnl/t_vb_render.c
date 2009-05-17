@@ -38,12 +38,12 @@
  */
 
 
-#include "glheader.h"
-#include "context.h"
-#include "enums.h"
-#include "macros.h"
-#include "imports.h"
-#include "mtypes.h"
+#include "main/glheader.h"
+#include "main/context.h"
+#include "main/enums.h"
+#include "main/macros.h"
+#include "main/imports.h"
+#include "main/mtypes.h"
 
 #include "t_pipeline.h"
 
@@ -305,7 +305,7 @@ static GLboolean run_render( GLcontext *ctx,
 
       for (i = 0 ; i < VB->PrimitiveCount ; i++)
       {
-	 GLuint prim = VB->Primitive[i].mode;
+	 GLuint prim = _tnl_translate_prim(&VB->Primitive[i]);
 	 GLuint start = VB->Primitive[i].start;
 	 GLuint length = VB->Primitive[i].count;
 

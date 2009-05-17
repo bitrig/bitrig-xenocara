@@ -27,10 +27,11 @@
  * extensions into either swrast or a sister module.  
  */
 
+#include "main/glheader.h"
+#include "main/colortab.h"
+#include "main/convolve.h"
 #include "s_context.h"
 #include "s_span.h"
-#include "colortab.h"
-#include "convolve.h"
 
 
 void
@@ -54,7 +55,7 @@ _swrast_CopyColorTable( GLcontext *ctx,
 
    /* read the data from framebuffer */
    _swrast_read_rgba_span( ctx, ctx->ReadBuffer->_ColorReadBuffer,
-                           width, x, y, data );
+                           width, x, y, CHAN_TYPE, data );
 
    RENDER_FINISH(swrast,ctx);
 
@@ -89,7 +90,7 @@ _swrast_CopyColorSubTable( GLcontext *ctx,GLenum target, GLsizei start,
 
    /* read the data from framebuffer */
    _swrast_read_rgba_span( ctx, ctx->ReadBuffer->_ColorReadBuffer,
-                           width, x, y, data );
+                           width, x, y, CHAN_TYPE, data );
 
    RENDER_FINISH(swrast,ctx);
 
@@ -122,7 +123,7 @@ _swrast_CopyConvolutionFilter1D(GLcontext *ctx, GLenum target,
 
    /* read the data from framebuffer */
    _swrast_read_rgba_span( ctx, ctx->ReadBuffer->_ColorReadBuffer,
-                           width, x, y, (GLchan (*)[4]) rgba );
+                           width, x, y, CHAN_TYPE, rgba );
    
    RENDER_FINISH( swrast, ctx );
 
@@ -160,7 +161,7 @@ _swrast_CopyConvolutionFilter2D(GLcontext *ctx, GLenum target,
    /* read pixels from framebuffer */
    for (i = 0; i < height; i++) {
       _swrast_read_rgba_span( ctx, ctx->ReadBuffer->_ColorReadBuffer,
-                              width, x, y + i, (GLchan (*)[4]) rgba[i] );
+                              width, x, y + i, CHAN_TYPE, rgba[i] );
    }
 
    RENDER_FINISH(swrast,ctx);

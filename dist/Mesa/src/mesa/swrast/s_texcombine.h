@@ -27,10 +27,9 @@
 #define S_TEXCOMBINE_H
 
 
-#include "mtypes.h"
 #include "swrast.h"
 
 extern void
-_swrast_texture_span( GLcontext *ctx, struct sw_span *span );
+_swrast_texture_span( GLcontext *ctx, SWspan *span );
 
 #endif

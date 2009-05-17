@@ -28,7 +28,6 @@
  * Silicon Graphics, Inc.
  */
 /*
-** $Header: /home/thib/scm/openbsd-cvs/xenocara/dist/Mesa/src/glu/sgi/libnurbs/nurbtess/zlassert.h,v 1.2 2008/11/02 14:58:11 matthieu Exp $
 */
 
 /*XXXblythe this file should be deleted*/

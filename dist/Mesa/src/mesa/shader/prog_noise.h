@@ -1,9 +1,8 @@
-
 /*
  * Mesa 3-D graphics library
- * Version:  3.5
+ * Version:  6.5
  *
- * Copyright (C) 1999-2001  Brian Paul   All Rights Reserved.
+ * Copyright (C) 2006  Brian Paul   All Rights Reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,14 +22,13 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#ifndef PROG_NOISE
+#define PROG_NOISE
 
-#ifndef S_DRAWPIXELS_H
-#define S_DRAWPIXELS_H
-
-
-#include "mtypes.h"
-#include "swrast.h"
-
-/* XXX kill this header? */
+extern GLfloat _mesa_noise1(GLfloat);
+extern GLfloat _mesa_noise2(GLfloat, GLfloat);
+extern GLfloat _mesa_noise3(GLfloat, GLfloat, GLfloat);
+extern GLfloat _mesa_noise4(GLfloat, GLfloat, GLfloat, GLfloat);
 
 #endif
+

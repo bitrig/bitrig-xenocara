@@ -14,20 +14,20 @@
 
 #include "utils.h"
 #include "buffers.h"
-#include "extensions.h"
-#include "framebuffer.h"
-#include "renderbuffer.h"
-#include "array_cache/acache.h"
+#include "main/extensions.h"
+#include "main/framebuffer.h"
+#include "main/renderbuffer.h"
+#include "vbo/vbo.h"
 #include "swrast/swrast.h"
 #include "swrast_setup/swrast_setup.h"
 #include "tnl/tnl.h"
-#include "tnl/t_context.h"
+#include "tnl/tcontext.h"
 #include "tnl/t_pipeline.h"
 #include "drivers/common/driverfuncs.h"
 #include "drirenderbuffer.h"
 
 #include "eglconfig.h"
-#include "eglcontext.h"
+#include "eglmain/context.h"
 #include "egldisplay.h"
 #include "egldriver.h"
 #include "eglglobals.h"
@@ -113,8 +113,8 @@ fbFillInConfigs(_EGLDisplay *disp, unsigned pixel_bits, unsigned depth_bits,
             GLX_NONE, GLX_SWAP_UNDEFINED_OML /*, GLX_SWAP_COPY_OML */
          };
 
-   u_int8_t depth_bits_array[2];
-   u_int8_t stencil_bits_array[2];
+   uint8_t depth_bits_array[2];
+   uint8_t stencil_bits_array[2];
 
    depth_bits_array[0] = 0;
    depth_bits_array[1] = depth_bits;
@@ -388,7 +388,7 @@ update_state( GLcontext *ctx, GLuint new_state )
    /* not much to do here - pass it on */
    _swrast_InvalidateState( ctx, new_state );
    _swsetup_InvalidateState( ctx, new_state );
-   _ac_InvalidateState( ctx, new_state );
+   _vbo_InvalidateState( ctx, new_state );
    _tnl_InvalidateState( ctx, new_state );
 }
 
@@ -429,7 +429,6 @@ init_core_functions( struct dd_function_table *functions )
 {
    functions->GetString = get_string;
    functions->UpdateState = update_state;
-   functions->ResizeBuffers = _mesa_resize_framebuffer;
    functions->GetBufferSize = get_buffer_size;
    functions->Viewport = viewport;
 
@@ -492,7 +491,7 @@ fbCreateContext(_EGLDriver *drv, EGLDisplay dpy, EGLConfig config, EGLContext sh
 
    /* Create module contexts */
    _swrast_CreateContext( ctx );
-   _ac_CreateContext( ctx );
+   _vbo_CreateContext( ctx );
    _tnl_CreateContext( ctx );
    _swsetup_CreateContext( ctx );
    _swsetup_Wakeup( ctx );

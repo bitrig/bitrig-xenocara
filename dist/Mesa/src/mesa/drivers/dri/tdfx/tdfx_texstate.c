@@ -23,7 +23,6 @@
  * OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-/* $XFree86: xc/lib/GL/mesa/src/drv/tdfx/tdfx_texstate.c,v 1.2 2002/02/22 21:45:04 dawes Exp $ */
 
 /*
  * New fixes:
@@ -1015,8 +1014,11 @@ SetupSingleTexEnvVoodoo3(GLcontext *ctx, int unit,
       }
       break;
 
-   default:
+   default: {
+      (void) memcpy(&colorComb, &fxMesa->ColorCombine, sizeof(colorComb));
+      (void) memcpy(&alphaComb, &fxMesa->AlphaCombine, sizeof(alphaComb));
       _mesa_problem(ctx, "bad texture env mode in %s", __FUNCTION__);
+   }
    }
 
    if (colorComb.Function != fxMesa->ColorCombine.Function ||

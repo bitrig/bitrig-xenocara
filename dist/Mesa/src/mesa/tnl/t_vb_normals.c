@@ -26,12 +26,12 @@
  */
 
 
-#include "glheader.h"
-#include "colormac.h"
-#include "context.h"
-#include "macros.h"
-#include "imports.h"
-#include "mtypes.h"
+#include "main/glheader.h"
+#include "main/colormac.h"
+#include "main/context.h"
+#include "main/macros.h"
+#include "main/imports.h"
+#include "main/mtypes.h"
 
 #include "math/m_xform.h"
 
@@ -95,12 +95,7 @@ validate_normal_stage(GLcontext *ctx, struct tnl_pipeline_stage *stage)
 {
    struct normal_stage_data *store = NORMAL_STAGE_DATA(stage);
 
-   if (ctx->ShaderObjects._VertexShaderPresent) {
-      store->NormalTransform = NULL;
-      return;
-   }
-
-   if (ctx->VertexProgram._Enabled ||
+   if (ctx->VertexProgram._Current ||
        (!ctx->Light.Enabled &&
 	!(ctx->Texture._GenFlags & TEXGEN_NEED_NORMALS))) {
       store->NormalTransform = NULL;

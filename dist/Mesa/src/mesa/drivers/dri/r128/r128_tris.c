@@ -1,4 +1,4 @@
-/* $XFree86: xc/lib/GL/mesa/src/drv/r128/r128_tris.c,v 1.8 2002/10/30 12:51:43 alanh Exp $ */ /* -*- c-basic-offset: 3 -*- */
+/* -*- c-basic-offset: 3 -*- */
 /**************************************************************************
 
 Copyright 2000, 2001 ATI Technologies Inc., Ontario, Canada, and
@@ -33,10 +33,10 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
  */
 
-#include "glheader.h"
-#include "mtypes.h"
-#include "colormac.h"
-#include "macros.h"
+#include "main/glheader.h"
+#include "main/mtypes.h"
+#include "main/colormac.h"
+#include "main/macros.h"
 
 #include "swrast/swrast.h"
 #include "swrast_setup/swrast_setup.h"
@@ -605,9 +605,9 @@ static void r128RenderStart( GLcontext *ctx )
     * build up a hardware vertex.
     */
    if (RENDERINPUTS_TEST_RANGE( index_bitset, _TNL_FIRST_TEX, _TNL_LAST_TEX ))
-      EMIT_ATTR( _TNL_ATTRIB_POS, EMIT_4F_VIEWPORT, R128_CCE_VC_FRMT_RHW, 16 );
+      EMIT_ATTR( _TNL_ATTRIB_POS, EMIT_4F_VIEWPORT, R128_CCE_VC_FRMT_RHW, 4 );
    else
-      EMIT_ATTR( _TNL_ATTRIB_POS, EMIT_3F_VIEWPORT, 0, 12 );
+      EMIT_ATTR( _TNL_ATTRIB_POS, EMIT_3F_VIEWPORT, 0, 3 );
 
    rmesa->coloroffset = offset;
 #if MESA_LITTLE_ENDIAN 

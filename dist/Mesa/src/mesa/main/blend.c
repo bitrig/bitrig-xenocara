@@ -31,11 +31,11 @@
 
 #include "glheader.h"
 #include "blend.h"
-#include "colormac.h"
 #include "context.h"
 #include "enums.h"
 #include "macros.h"
 #include "mtypes.h"
+#include "glapi/glapitable.h"
 
 
 /**
@@ -45,19 +45,11 @@
  * \param dfactor destination factor operator.
  *
  * \sa glBlendFunc, glBlendFuncSeparateEXT
- *
- * Swizzles the inputs and calls \c glBlendFuncSeparateEXT.  This is done
- * using the \c CurrentDispatch table in the context, so this same function
- * can be used while compiling display lists.  Therefore, there is no need
- * for the display list code to save and restore this function.
  */
 void GLAPIENTRY
 _mesa_BlendFunc( GLenum sfactor, GLenum dfactor )
 {
-   GET_CURRENT_CONTEXT(ctx);
-
-   (*ctx->CurrentDispatch->BlendFuncSeparateEXT)( sfactor, dfactor,
-						  sfactor, dfactor );
+   _mesa_BlendFuncSeparateEXT(sfactor, dfactor, sfactor, dfactor);
 }
 
 
@@ -514,6 +506,37 @@ _mesa_ColorMask( GLboolean red, GLboolean green,
    if (ctx->Driver.ColorMask)
       ctx->Driver.ColorMask( ctx, red, green, blue, alpha );
 }
+
+
+extern void GLAPIENTRY
+_mesa_ClampColorARB(GLenum target, GLenum clamp)
+{
+   GET_CURRENT_CONTEXT(ctx);
+
+   ASSERT_OUTSIDE_BEGIN_END(ctx);
+
+   if (clamp != GL_TRUE && clamp != GL_FALSE && clamp != GL_FIXED_ONLY_ARB) {
+      _mesa_error(ctx, GL_INVALID_ENUM, "glClampColorARB(clamp)");
+      return;
+   }
+
+   switch (target) {
+   case GL_CLAMP_VERTEX_COLOR_ARB:
+      ctx->Light.ClampVertexColor = clamp;
+      break;
+   case GL_CLAMP_FRAGMENT_COLOR_ARB:
+      ctx->Color.ClampFragmentColor = clamp;
+      break;
+   case GL_CLAMP_READ_COLOR_ARB:
+      ctx->Color.ClampReadColor = clamp;
+      break;
+   default:
+      _mesa_error(ctx, GL_INVALID_ENUM, "glClampColorARB(target)");
+      return;
+   }
+}
+
+
 
 
 /**********************************************************************/

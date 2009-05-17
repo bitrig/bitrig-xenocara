@@ -35,8 +35,6 @@
 /* 
  * tobezier.c++
  *
- * $Date: 2008/11/02 14:58:11 $ $Revision: 1.2 $
- * $Header: /home/thib/scm/openbsd-cvs/xenocara/dist/Mesa/src/glu/sgi/libnurbs/internals/tobezier.cc,v 1.2 2008/11/02 14:58:11 matthieu Exp $
  */
 
 #include "glimports.h"

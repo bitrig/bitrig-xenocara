@@ -27,16 +27,15 @@
 #define S_DEPTH_H
 
 
-#include "mtypes.h"
 #include "s_context.h"
 
 
 extern GLuint
-_swrast_depth_test_span( GLcontext *ctx, struct sw_span *span);
+_swrast_depth_test_span( GLcontext *ctx, SWspan *span);
 
 
 extern GLboolean
-_swrast_depth_bounds_test( GLcontext *ctx, struct sw_span *span );
+_swrast_depth_bounds_test( GLcontext *ctx, SWspan *span );
 
 
 extern void

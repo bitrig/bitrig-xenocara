@@ -23,19 +23,14 @@
  * OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-/* $XFree86: xc/lib/GL/mesa/src/drv/tdfx/tdfx_context.c,v 1.12 2003/05/08 09:25:35 herrb Exp $ */
 
-/*
- * New fixes:
- *	Daniel Borca <dborca@users.sourceforge.net>, 19 Jul 2004
+/**
+ * \file tdfx_context.c
+ * Context management functions for 3Dfx hardware.
  *
- * Original rewrite:
- *	Gareth Hughes <gareth@valinux.com>, 29 Sep - 1 Oct 2000
- *
- * Authors:
- *	Gareth Hughes <gareth@valinux.com>
- *	Brian Paul <brianp@valinux.com>
- *
+ * \author Gareth Hughes <gareth@valinux.com> (original rewrite 29 Sep - 1 Oct 2000)
+ * \author Brian Paul <brianp@valinux.com>
+ * \author Daniel Borca <dborca@users.sourceforge.net> (new fixes 19 Jul 2004)
  */
 
 #include <dlfcn.h>
@@ -48,13 +43,13 @@
 #include "tdfx_render.h"
 #include "tdfx_span.h"
 #include "tdfx_texman.h"
-#include "extensions.h"
-#include "hash.h"
-#include "texobj.h"
+#include "main/extensions.h"
+#include "main/hash.h"
+#include "main/texobj.h"
 
 #include "swrast/swrast.h"
 #include "swrast_setup/swrast_setup.h"
-#include "array_cache/acache.h"
+#include "vbo/vbo.h"
 
 #include "tnl/tnl.h"
 #include "tnl/t_pipeline.h"
@@ -65,6 +60,7 @@
 
 #define need_GL_ARB_multisample
 /* #define need_GL_ARB_point_parameters */
+#define need_GL_ARB_occlusion_query
 #define need_GL_ARB_texture_compression
 #define need_GL_ARB_vertex_buffer_object
 /* #define need_GL_ARB_vertex_program */
@@ -87,6 +83,7 @@
 const struct dri_extension card_extensions[] =
 {
     { "GL_ARB_multisample",                GL_ARB_multisample_functions },
+    { "GL_ARB_occlusion_query",            GL_ARB_occlusion_query_functions },
     { "GL_ARB_texture_mirrored_repeat",    NULL },
     { "GL_ARB_vertex_buffer_object",       GL_ARB_vertex_buffer_object_functions },
 
@@ -168,12 +165,6 @@ static const struct tnl_pipeline_stage *tdfx_pipeline[] = {
    &_tnl_texgen_stage, 
    &_tnl_texture_transform_stage, 
    &_tnl_point_attenuation_stage,
-#if 0
-#if defined(FEATURE_NV_vertex_program) || defined(FEATURE_ARB_vertex_program)
-   &_tnl_arb_vertex_program_stage,
-   &_tnl_vertex_program_stage,
-#endif
-#endif
    &_tnl_render_stage,		
    0,
 };
@@ -331,7 +322,7 @@ GLboolean tdfxCreateContext( const __GLcontextModes *mesaVis,
    /* Initialize the software rasterizer and helper modules.
     */
    _swrast_CreateContext( ctx );
-   _ac_CreateContext( ctx );
+   _vbo_CreateContext( ctx );
    _tnl_CreateContext( ctx );
    _swsetup_CreateContext( ctx );
 
@@ -612,7 +603,7 @@ tdfxDestroyContext( __DRIcontextPrivate *driContextPriv )
 
       _swsetup_DestroyContext( fxMesa->glCtx );
       _tnl_DestroyContext( fxMesa->glCtx );
-      _ac_DestroyContext( fxMesa->glCtx );
+      _vbo_DestroyContext( fxMesa->glCtx );
       _swrast_DestroyContext( fxMesa->glCtx );
 
       tdfxFreeVB( fxMesa->glCtx );
@@ -660,8 +651,10 @@ tdfxMakeCurrent( __DRIcontextPrivate *driContextPriv,
       GLcontext *newCtx = newFx->glCtx;
       GET_CURRENT_CONTEXT(curCtx);
 
-      if ( newFx->driDrawable != driDrawPriv ) {
+      if ((newFx->driDrawable != driDrawPriv)
+	  || (newFx->driReadable != driReadPriv)) {
 	 newFx->driDrawable = driDrawPriv;
+	 newFx->driReadable = driReadPriv;
 	 newFx->dirty = ~0;
       }
       else {
@@ -677,6 +670,11 @@ tdfxMakeCurrent( __DRIcontextPrivate *driContextPriv,
 	 }
 	 /* [dBorca] tunnel2 requires this */
 	 newFx->dirty = ~0;
+      }
+
+      driUpdateFramebufferSize(newCtx, driDrawPriv);
+      if (driDrawPriv != driReadPriv) {
+	 driUpdateFramebufferSize(newCtx, driReadPriv);
       }
 
       if ( !newFx->Glide.Initialized ) {

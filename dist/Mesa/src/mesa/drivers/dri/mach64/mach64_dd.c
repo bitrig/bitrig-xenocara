@@ -1,4 +1,4 @@
-/* $XFree86$ */ /* -*- mode: c; c-basic-offset: 3 -*- */
+/* -*- mode: c; c-basic-offset: 3 -*- */
 /*
  * Copyright 2000 Gareth Hughes
  * All Rights Reserved.
@@ -35,9 +35,10 @@
 #include "mach64_vb.h"
 #include "mach64_dd.h"
 
-#include "context.h"
+#include "main/context.h"
+#include "main/framebuffer.h"
+
 #include "utils.h"
-#include "framebuffer.h"
 
 #define DRIVER_DATE	"20051019"
 
@@ -127,7 +128,6 @@ static void mach64DDFinish( GLcontext *ctx )
 void mach64InitDriverFuncs( struct dd_function_table *functions )
 {
    functions->GetBufferSize	= mach64DDGetBufferSize;
-   functions->ResizeBuffers    = _mesa_resize_framebuffer;
    functions->GetString	= mach64DDGetString;
    functions->Finish		= mach64DDFinish;
    functions->Flush		= mach64DDFlush;

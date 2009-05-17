@@ -23,7 +23,6 @@
  * OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-/* $XFree86: xc/lib/GL/mesa/src/drv/tdfx/tdfx_lock.c,v 1.5 2002/12/16 16:19:00 dawes Exp $ */
 
 /*
  * Original rewrite:
@@ -47,16 +46,20 @@
 void tdfxGetLock( tdfxContextPtr fxMesa )
 {
     __DRIcontextPrivate *cPriv = fxMesa->driContext;
-    __DRIdrawablePrivate *dPriv = cPriv->driDrawablePriv;
-    __DRIscreenPrivate *sPriv = dPriv->driScreenPriv;
+    __DRIdrawablePrivate *const drawable = cPriv->driDrawablePriv;
+    __DRIdrawablePrivate *const readable = cPriv->driReadablePriv;
+    __DRIscreenPrivate *sPriv = drawable->driScreenPriv;
     TDFXSAREAPriv *saPriv = (TDFXSAREAPriv *) (((char *) sPriv->pSAREA) +
 					fxMesa->fxScreen->sarea_priv_offset);
-    unsigned int stamp = dPriv->lastStamp;
+    unsigned int stamp = drawable->lastStamp;
 
     drmGetLock( fxMesa->driFd, fxMesa->hHWContext, 0 );
 
-    /* This macro will update dPriv's cliprects if needed */
-    DRI_VALIDATE_DRAWABLE_INFO( sPriv, dPriv );
+    /* This macro will update drawable's cliprects if needed */
+    DRI_VALIDATE_DRAWABLE_INFO(sPriv, drawable);
+    if (drawable != readable) {
+	DRI_VALIDATE_DRAWABLE_INFO(sPriv, readable);
+    }
 
     if ( saPriv->fifoOwner != fxMesa->hHWContext ) {
         fxMesa->Glide.grDRIImportFifo( saPriv->fifoPtr, saPriv->fifoRead );
@@ -83,10 +86,15 @@ void tdfxGetLock( tdfxContextPtr fxMesa )
     }
 #endif
 
-    if ( *dPriv->pStamp != stamp || saPriv->ctxOwner != fxMesa->hHWContext ) {
+    if ((*drawable->pStamp != stamp)
+	|| (saPriv->ctxOwner != fxMesa->hHWContext)) {
+       driUpdateFramebufferSize(fxMesa->glCtx, drawable);
+       if (drawable != readable) {
+	   driUpdateFramebufferSize(fxMesa->glCtx, readable);
+       }
+
        tdfxUpdateClipping(fxMesa->glCtx);
        tdfxUploadClipping(fxMesa);
-       driUpdateFramebufferSize(fxMesa->glCtx, dPriv);
     }
 
     DEBUG_LOCK();

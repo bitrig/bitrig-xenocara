@@ -31,7 +31,6 @@
 /*
  * monotonizer.h
  *
- * $Header: /home/thib/scm/openbsd-cvs/xenocara/dist/Mesa/src/glu/sgi/libnurbs/internals/monotonizer.h,v 1.2 2008/11/02 14:58:11 matthieu Exp $
  */
 
 #ifndef __glumonotonizer_h_

@@ -34,10 +34,9 @@
  * \author Keith Whitwell <keith@tungstengraphics.com>
  * \author Gareth Hughes <gareth@valinux.com>
  */
-/* $XFree86: xc/lib/GL/mesa/src/drv/mga/mgapixel.c,v 1.9 2002/11/05 17:46:08 tsi Exp $ */
 
-#include "mtypes.h"
-#include "macros.h"
+#include "main/mtypes.h"
+#include "main/macros.h"
 #include "mgadd.h"
 #include "mgacontext.h"
 #include "mgaioctl.h"
@@ -45,7 +44,7 @@
 #include "mgastate.h"
 
 #include "swrast/swrast.h"
-#include "imports.h"
+#include "main/imports.h"
 
 #if 0
 #define IS_AGP_MEM( mmesa, p )						  \
@@ -646,15 +645,8 @@ mgaDDDrawPixels( GLcontext *ctx,
  */
 void mgaDDInitPixelFuncs( GLcontext *ctx )
 {
-   /* Pixel path fallbacks.
-    */
-   ctx->Driver.Accum = _swrast_Accum;
-   ctx->Driver.Bitmap = _swrast_Bitmap;
-   ctx->Driver.CopyPixels = _swrast_CopyPixels;
-   ctx->Driver.DrawPixels = _swrast_DrawPixels;
-   ctx->Driver.ReadPixels = _swrast_ReadPixels;
-
 #if 0
+   /* evidently, these functions don't always work */
    if (getenv("MGA_BLIT_PIXELS")) {
       ctx->Driver.ReadPixels = mgaDDReadPixels; /* requires agp dest */
       ctx->Driver.DrawPixels = mgaDDDrawPixels; /* works with agp/normal mem */

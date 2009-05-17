@@ -1,8 +1,8 @@
 /*
  * Mesa 3-D graphics library
- * Version:  6.5
  *
- * Copyright (C) 2005-2006  Brian Paul   All Rights Reserved.
+ * Copyright (C) 2005-2008  Brian Paul   All Rights Reserved.
+ * Copyright (C) 2009 VMware, Inc.   All Rights Reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -22,21 +22,20 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#if !defined SLANG_PREPROCESS_H
+#ifndef SLANG_PREPROCESS_H
 #define SLANG_PREPROCESS_H
 
 #include "slang_compile.h"
+#include "slang_log.h"
 
-#if defined __cplusplus
-extern "C" {
-#endif
 
-GLboolean
+extern GLboolean
 _slang_preprocess_version (const char *, GLuint *, GLuint *, slang_info_log *);
 
-#ifdef __cplusplus
-}
-#endif
+extern GLboolean
+_slang_preprocess_directives(slang_string *output, const char *input,
+                             slang_info_log *,
+                             const struct gl_extensions *extensions,
+                             struct gl_sl_pragmas *pragmas);
 
-#endif
-
+#endif /* SLANG_PREPROCESS_H */

@@ -59,7 +59,7 @@ static GLuint TexObj = 0;
 static void
 Error(const char *display, const char *msg)
 {
-   fprintf(stderr, "Error on display %s - %s\n", display, msg);
+   fprintf(stderr, "Error on display %s - %s\n", XDisplayName(display), msg);
    exit(1);
 }
 
@@ -286,7 +286,7 @@ EventLoop(void)
                         XLookupString(&event.xkey, buf, sizeof(buf), &keySym, &stat);
                         switch (keySym) {
                            case XK_Escape:
-                              exit(0);
+                              return;
                               break;
                            case XK_d:
                            case XK_D:

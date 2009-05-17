@@ -1,6 +1,7 @@
+
 /**************************************************************************
  * 
- * Copyright 2003 Tungsten Graphics, Inc., Cedar Park, Texas.
+ * Copyright 2006 Tungsten Graphics, Inc., Cedar Park, Texas.
  * All Rights Reserved.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -25,22 +26,27 @@
  * 
  **************************************************************************/
 
-#ifndef INTEL_IOCTL_H
-#define INTEL_IOCTL_H
+#ifndef INTEL_SWAPBUFFERS_H
+#define INTEL_SWAPBUFFERS_H
 
-#include "intel_context.h"
+#include "dri_util.h"
+#include "drm.h"
 
-void intelWaitIrq( struct intel_context *intel, int seq );
-int intelEmitIrqLocked( struct intel_context *intel );
+struct intel_context;
+struct intel_framebuffer;
 
-void intel_batch_ioctl( struct intel_context *intel, 
-			GLuint start_offset,
-			GLuint used,
-			GLboolean ignore_cliprects,
-			GLboolean allow_unlock );
-void intel_exec_ioctl(struct intel_context *intel,
-		      GLuint used,
-		      GLboolean ignore_cliprects, GLboolean allow_unlock,
-		      void *start, GLuint count, dri_fence **fence);
 
-#endif
+extern void
+intelSwapBuffers(__DRIdrawablePrivate * dPriv);
+
+extern void
+intelCopySubBuffer(__DRIdrawablePrivate * dPriv, int x, int y, int w, int h);
+
+extern GLuint
+intelFixupVblank(struct intel_context *intel, __DRIdrawablePrivate *dPriv);
+
+extern void
+intelWindowMoved(struct intel_context *intel);
+
+
+#endif /* INTEL_SWAPBUFFERS_H */

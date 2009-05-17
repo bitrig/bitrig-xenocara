@@ -5,12 +5,12 @@
 #include <X11/Xlibint.h>
 #include "s3v_context.h"
 #include "s3v_macros.h"
-#include "macros.h"
 #include "s3v_dri.h"
-#include "colormac.h"
+#include "main/macros.h"
+#include "main/colormac.h"
 #include "swrast/swrast.h"
 #include "swrast_setup/swrast_setup.h"
-#include "array_cache/acache.h"
+#include "vbo/vbo.h"
 #include "tnl/tnl.h"
 
 /* #define DEBUG(str) printf str */
@@ -73,11 +73,16 @@ static void s3vDDBlendFunc( GLcontext *ctx, GLenum sfactor, GLenum dfactor )
  * Buffer clear
  */
 
-static void s3vDDClear( GLcontext *ctx, GLbitfield mask, GLboolean all,
-			       GLint cx, GLint cy, GLint cw, GLint ch )
+static void s3vDDClear( GLcontext *ctx, GLbitfield mask )
 {
 	s3vContextPtr vmesa = S3V_CONTEXT(ctx);
 	unsigned int _stride;
+        GLint cx = ctx->DrawBuffer->_Xmin;
+        GLint cy = ctx->DrawBuffer->_Ymin;
+        GLint cw = ctx->DrawBuffer->_Xmax - cx;
+        GLint ch = ctx->DrawBuffer->_Ymax - cy;
+
+        /* XXX FIX ME: the cx,cy,cw,ch vars are currently ignored! */
 
 	vmesa->restore_primitive = -1;
 
@@ -120,7 +125,7 @@ static void s3vDDClear( GLcontext *ctx, GLbitfield mask, GLboolean all,
 	if (mask & BUFFER_BIT_DEPTH) { /* depth */
 		DEBUG(("BUFFER_BIT_DEPTH\n"));
 		
-		_stride = ((cw+31)&~31) * 2;
+		_stride = ((cw+31)&~31) * 2; /* XXX cw or Buffer->Width??? */
 
 		DMAOUT_CHECK(BITBLT_SRC_BASE, 15);
 	        	DMAOUT(0);
@@ -157,7 +162,7 @@ static void s3vDDClear( GLcontext *ctx, GLbitfield mask, GLboolean all,
 	if ( mask )
 		DEBUG(("still masked ;3(\n")); */ /* yes */
 #else
-      _swrast_Clear( ctx, mask, all, cx, cy, cw, ch );
+      _swrast_Clear( ctx, mask );
 #endif
 }
 
@@ -820,7 +825,7 @@ static void s3vDDUpdateState( GLcontext *ctx, GLuint new_state )
 {
 	_swrast_InvalidateState( ctx, new_state );
 	_swsetup_InvalidateState( ctx, new_state );
-	_ac_InvalidateState( ctx, new_state );
+	_vbo_InvalidateState( ctx, new_state );
 	_tnl_InvalidateState( ctx, new_state );
 	S3V_CONTEXT(ctx)->new_gl_state |= new_state;
 }

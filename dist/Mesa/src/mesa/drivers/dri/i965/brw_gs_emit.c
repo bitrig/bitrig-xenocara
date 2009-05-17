@@ -30,9 +30,9 @@
   */
  
 
-#include "glheader.h"
-#include "macros.h"
-#include "enums.h"
+#include "main/glheader.h"
+#include "main/macros.h"
+#include "main/enums.h"
 
 #include "shader/program.h"
 #include "intel_batchbuffer.h"
@@ -114,6 +114,16 @@ void brw_gs_quads( struct brw_gs_compile *c )
    brw_gs_emit_vue(c, c->reg.vertex[0], 0, (_3DPRIM_POLYGON << 2));
    brw_gs_emit_vue(c, c->reg.vertex[1], 0, (_3DPRIM_POLYGON << 2)); 
    brw_gs_emit_vue(c, c->reg.vertex[2], 1, ((_3DPRIM_POLYGON << 2) | R02_PRIM_END));
+}
+
+void brw_gs_quad_strip( struct brw_gs_compile *c )
+{
+   brw_gs_alloc_regs(c, 4);
+   
+   brw_gs_emit_vue(c, c->reg.vertex[2], 0, ((_3DPRIM_POLYGON << 2) | R02_PRIM_START));
+   brw_gs_emit_vue(c, c->reg.vertex[3], 0, (_3DPRIM_POLYGON << 2));
+   brw_gs_emit_vue(c, c->reg.vertex[0], 0, (_3DPRIM_POLYGON << 2)); 
+   brw_gs_emit_vue(c, c->reg.vertex[1], 1, ((_3DPRIM_POLYGON << 2) | R02_PRIM_END));
 }
 
 void brw_gs_tris( struct brw_gs_compile *c )

@@ -5,9 +5,9 @@
 
 /*
  * Mesa 3-D graphics library
- * Version:  6.5
+ * Version:  6.5.2
  *
- * Copyright (C) 1999-2005  Brian Paul   All Rights Reserved.
+ * Copyright (C) 1999-2006  Brian Paul   All Rights Reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -511,7 +511,18 @@ do {                        \
       (DST)[1] += S;                \
 } while (0)
 
+/** Assign scalers to short vectors */
+#define ASSIGN_2V( V, V0, V1 )	\
+do {				\
+    V[0] = V0;			\
+    V[1] = V1;			\
+} while(0)
 
+/*@}*/
+
+
+/** \name Linear interpolation macros */
+/*@{*/
 
 /**
  * Linear interpolation
@@ -585,15 +596,6 @@ do {                                    \
    }                                    \
 } while(0)
 
-
-
-/** Assign scalers to short vectors */
-#define ASSIGN_2V( V, V0, V1 )  \
-do {                \
-    V[0] = V0;          \
-    V[1] = V1;          \
-} while(0)
-
 /*@}*/
 
 
@@ -653,6 +655,13 @@ do {                        \
 
 #define LEN_SQUARED_3FV( V ) ((V)[0]*(V)[0]+(V)[1]*(V)[1]+(V)[2]*(V)[2])
 #define LEN_SQUARED_2FV( V ) ((V)[0]*(V)[0]+(V)[1]*(V)[1])
+
+
+/** casts to silence warnings with some compilers */
+#define ENUM_TO_INT(E)     ((GLint)(E))
+#define ENUM_TO_FLOAT(E)   ((GLfloat)(GLint)(E))
+#define ENUM_TO_DOUBLE(E)  ((GLdouble)(GLint)(E))
+#define ENUM_TO_BOOLEAN(E) ((E) ? GL_TRUE : GL_FALSE)
 
 
 #endif

@@ -23,15 +23,15 @@
  */
 
 #include "glxheader.h"
-#include "colormac.h"
-#include "context.h"
-#include "depth.h"
-#include "drawpix.h"
-#include "extensions.h"
-#include "macros.h"
-#include "imports.h"
-#include "mtypes.h"
-#include "state.h"
+#include "main/colormac.h"
+#include "main/context.h"
+#include "main/depth.h"
+#include "main/drawpix.h"
+#include "main/extensions.h"
+#include "main/macros.h"
+#include "main/imports.h"
+#include "main/mtypes.h"
+#include "main/state.h"
 #include "xmesaP.h"
 
 #include "swrast/swrast.h"
@@ -1453,7 +1453,7 @@ static void put_row_8R8G8B24_ximage( PUT_ROW_ARGS )
                   pixel &= 0x00ffffff;
                   pixel |= rgba[i][BCOMP] << 24;
                   *ptr4++ = pixel;
-                  pixel = *ptr4 && 0xffff0000;
+                  pixel = *ptr4 & 0xffff0000;
                   pixel |= rgba[i][GCOMP];
                   pixel |= rgba[i][RCOMP] << 8;
                   *ptr4 = pixel;
@@ -1463,7 +1463,7 @@ static void put_row_8R8G8B24_ximage( PUT_ROW_ARGS )
                   pixel |= rgba[i][BCOMP] << 16;
                   pixel |= rgba[i][GCOMP] << 24;
                   *ptr4++ = pixel;
-                  pixel = *ptr4 && 0xffffff00;
+                  pixel = *ptr4 & 0xffffff00;
                   pixel |= rgba[i][RCOMP];
                   *ptr4 = pixel;
                   break;
@@ -1493,7 +1493,7 @@ static void put_row_8R8G8B24_ximage( PUT_ROW_ARGS )
             pixel &= 0x00ffffff;
             pixel |= rgba[i][BCOMP] << 24;
             *ptr4++ = pixel;
-            pixel = *ptr4 && 0xffff0000;
+            pixel = *ptr4 & 0xffff0000;
             pixel |= rgba[i][GCOMP];
             pixel |= rgba[i++][RCOMP] << 8;
             *ptr4 = pixel;
@@ -1504,7 +1504,7 @@ static void put_row_8R8G8B24_ximage( PUT_ROW_ARGS )
             pixel |= rgba[i][BCOMP] << 16;
             pixel |= rgba[i][GCOMP] << 24;
             *ptr4++ = pixel;
-            pixel = *ptr4 && 0xffffff00;
+            pixel = *ptr4 & 0xffffff00;
             pixel |= rgba[i++][RCOMP];
             *ptr4 = pixel;
             if (0 == --w)

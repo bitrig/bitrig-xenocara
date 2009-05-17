@@ -23,14 +23,14 @@
  *
  */
 
-#include "gamma_context.h"
+#include "gammacontext.h"
 #include "gamma_vb.h"
 #include "gamma_lock.h"
 #if defined(USE_X86_ASM)
 #include "x86/common_x86_asm.h"
 #endif
 
-#include "context.h"
+#include "main/context.h"
 #include "swrast/swrast.h"
 
 #define GAMMA_DATE	"20021125"
@@ -104,25 +104,6 @@ void gammaDDInitExtensions( GLcontext *ctx )
  */
 void gammaDDInitDriverFuncs( GLcontext *ctx )
 {
-   ctx->Driver.GetBufferSize		= gammaDDGetBufferSize;
-   ctx->Driver.ResizeBuffers            = _swrast_alloc_buffers;
-   ctx->Driver.GetString		= gammaDDGetString;
-
-   ctx->Driver.Error			= NULL;
-
-   /* Pixel path fallbacks
-    */
-   ctx->Driver.Accum                    = _swrast_Accum;
-   ctx->Driver.Bitmap                   = _swrast_Bitmap;
-   ctx->Driver.CopyPixels               = _swrast_CopyPixels;
-   ctx->Driver.DrawPixels               = _swrast_DrawPixels;
-   ctx->Driver.ReadPixels               = _swrast_ReadPixels;
-   ctx->Driver.ResizeBuffers            = _swrast_alloc_buffers;
-
-   /* Swrast hooks for imaging extensions:
-    */
-   ctx->Driver.CopyColorTable		= _swrast_CopyColorTable;
-   ctx->Driver.CopyColorSubTable	= _swrast_CopyColorSubTable;
-   ctx->Driver.CopyConvolutionFilter1D	= _swrast_CopyConvolutionFilter1D;
-   ctx->Driver.CopyConvolutionFilter2D	= _swrast_CopyConvolutionFilter2D;
+   ctx->Driver.GetBufferSize = gammaDDGetBufferSize;
+   ctx->Driver.GetString = gammaDDGetString;
 }

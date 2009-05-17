@@ -1,8 +1,8 @@
 /*
  * Mesa 3-D graphics library
- * Version:  6.5
+ * Version:  6.5.2
  *
- * Copyright (C) 1999-2005  Brian Paul   All Rights Reserved.
+ * Copyright (C) 1999-2006  Brian Paul   All Rights Reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -37,15 +37,13 @@
  * including any use thereof or modifications thereto.
  */
 
-#include "glheader.h"
-#include "context.h"
-#include "hash.h"
-#include "imports.h"
-#include "macros.h"
-#include "mtypes.h"
+#include "main/glheader.h"
+#include "main/context.h"
+#include "main/imports.h"
+#include "main/macros.h"
 #include "nvprogram.h"
 #include "nvvertparse.h"
-#include "program_instruction.h"
+#include "prog_instruction.h"
 #include "program.h"
 
 
@@ -62,8 +60,8 @@ struct parse_state {
    GLboolean isStateProgram;
    GLboolean isPositionInvariant;
    GLboolean isVersion1_1;
-   GLuint inputsRead;
-   GLuint outputsWritten;
+   GLbitfield inputsRead;
+   GLbitfield outputsWritten;
    GLboolean anyProgRegsWritten;
    GLuint numInst;                 /* number of instructions parsed */
 };
@@ -686,13 +684,13 @@ Parse_SwizzleSrcReg(struct parse_state *parseState, struct prog_src_register *sr
       if (token[1] == 0) {
          /* single letter swizzle */
          if (token[0] == 'x')
-            srcReg->Swizzle = MAKE_SWIZZLE4(0, 0, 0, 0);
+            srcReg->Swizzle = SWIZZLE_XXXX;
          else if (token[0] == 'y')
-            srcReg->Swizzle = MAKE_SWIZZLE4(1, 1, 1, 1);
+            srcReg->Swizzle = SWIZZLE_YYYY;
          else if (token[0] == 'z')
-            srcReg->Swizzle = MAKE_SWIZZLE4(2, 2, 2, 2);
+            srcReg->Swizzle = SWIZZLE_ZZZZ;
          else if (token[0] == 'w')
-            srcReg->Swizzle = MAKE_SWIZZLE4(3, 3, 3, 3);
+            srcReg->Swizzle = SWIZZLE_WWWW;
          else
             RETURN_ERROR1("Expected x, y, z, or w");
       }
@@ -1143,7 +1141,7 @@ Parse_InstructionSequence(struct parse_state *parseState,
       struct prog_instruction *inst = program + parseState->numInst;
 
       /* Initialize the instruction */
-      _mesa_init_instruction(inst);
+      _mesa_init_instructions(inst, 1);
 
       if (Parse_String(parseState, "MOV")) {
          if (!Parse_UnaryOpInstruction(parseState, inst, OPCODE_MOV))
@@ -1380,8 +1378,7 @@ _mesa_parse_nv_vertex_program(GLcontext *ctx, GLenum dstTarget,
          _mesa_free(programString);
          return;  /* out of memory */
       }
-      _mesa_memcpy(newInst, instBuffer,
-                   parseState.numInst * sizeof(struct prog_instruction));
+      _mesa_copy_instructions(newInst, instBuffer, parseState.numInst);
 
       /* install the program */
       program->Base.Target = target;
@@ -1395,6 +1392,8 @@ _mesa_parse_nv_vertex_program(GLcontext *ctx, GLenum dstTarget,
       }
       program->Base.Instructions = newInst;
       program->Base.InputsRead = parseState.inputsRead;
+      if (parseState.isPositionInvariant)
+         program->Base.InputsRead |= VERT_BIT_POS;
       program->Base.NumInstructions = parseState.numInst;
       program->Base.OutputsWritten = parseState.outputsWritten;
       program->IsPositionInvariant = parseState.isPositionInvariant;

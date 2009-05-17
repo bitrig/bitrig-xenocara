@@ -1,6 +1,6 @@
 /*
  * Mesa 3-D graphics library
- * Version:  6.5
+ * Version:  6.5.2
  *
  * Copyright (C) 2005-2006  Brian Paul   All Rights Reserved.
  *
@@ -22,66 +22,71 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#if !defined SLANG_COMPILE_FUNCTION_H
+#ifndef SLANG_COMPILE_FUNCTION_H
 #define SLANG_COMPILE_FUNCTION_H
 
-#if defined __cplusplus
-extern "C" {
-#endif
 
-struct slang_code_unit_;
-
+/**
+ * Types of functions.
+ */
 typedef enum slang_function_kind_
 {
-	slang_func_ordinary,
-	slang_func_constructor,
-	slang_func_operator
+   SLANG_FUNC_ORDINARY,
+   SLANG_FUNC_CONSTRUCTOR,
+   SLANG_FUNC_OPERATOR
 } slang_function_kind;
 
-typedef struct slang_fixup_table_
-{
-	GLuint *table;
-	GLuint count;
-} slang_fixup_table;
 
-void slang_fixup_table_init (slang_fixup_table *);
-void slang_fixup_table_free (slang_fixup_table *);
-
+/**
+ * Description of a compiled shader function.
+ */
 typedef struct slang_function_
 {
-	slang_function_kind kind;
-	slang_variable header;
-	slang_variable_scope *parameters;
-	unsigned int param_count;
-	slang_operation *body;
-	unsigned int address;
-	slang_fixup_table fixups;
+   slang_function_kind kind;
+   slang_variable header;      /**< The function's name and return type */
+   slang_variable_scope *parameters; /**< formal parameters AND local vars */
+   unsigned int param_count;   /**< number of formal params (no locals) */
+   slang_operation *body;      /**< The instruction tree */
 } slang_function;
 
-int slang_function_construct (slang_function *);
-void slang_function_destruct (slang_function *);
-
-typedef struct slang_function_scope_
-{
-	slang_function *functions;
-   GLuint num_functions;
-	struct slang_function_scope_ *outer_scope;
-} slang_function_scope;
-
-extern GLvoid
-_slang_function_scope_ctr (slang_function_scope *);
-
-void slang_function_scope_destruct (slang_function_scope *);
-int slang_function_scope_find_by_name (slang_function_scope *, slang_atom, int);
-slang_function *slang_function_scope_find (slang_function_scope *, slang_function *, int);
+extern int slang_function_construct(slang_function *);
+extern void slang_function_destruct(slang_function *);
+extern slang_function *slang_function_new(slang_function_kind kind);
 
 extern GLboolean
-_slang_build_export_code_table (slang_export_code_table *, slang_function_scope *,
-                                struct slang_code_unit_ *);
+_slang_function_has_return_value(const slang_function *fun);
 
-#ifdef __cplusplus
-}
-#endif
 
-#endif
+/**
+ * Basically, a list of compiled functions.
+ */
+typedef struct slang_function_scope_
+{
+   slang_function *functions;
+   GLuint num_functions;
+   struct slang_function_scope_ *outer_scope;
+} slang_function_scope;
 
+
+extern GLvoid
+_slang_function_scope_ctr(slang_function_scope *);
+
+extern void
+slang_function_scope_destruct(slang_function_scope *);
+
+extern int
+slang_function_scope_find_by_name(slang_function_scope *, slang_atom, int);
+
+extern slang_function *
+slang_function_scope_find(slang_function_scope *, slang_function *, int);
+
+extern struct slang_function_ *
+_slang_function_locate(const struct slang_function_scope_ *funcs,
+                       slang_atom name, struct slang_operation_ *params,
+                       GLuint num_params,
+                       const struct slang_name_space_ *space,
+                       slang_atom_pool *atoms, slang_info_log *log,
+                       GLboolean *error);
+
+
+#endif /* SLANG_COMPILE_FUNCTION_H */

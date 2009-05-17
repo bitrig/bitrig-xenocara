@@ -23,7 +23,6 @@
  * OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-/* $XFree86: xc/lib/GL/mesa/src/drv/tdfx/tdfx_pixels.c,v 1.4 2002/02/22 21:45:03 dawes Exp $ */
 
 /*
  * Original rewrite:
@@ -45,7 +44,7 @@
 
 #include "swrast/swrast.h"
 
-#include "image.h"
+#include "main/image.h"
 
 
 #define FX_grLfbWriteRegion(fxMesa,dst_buffer,dst_x,dst_y,src_format,src_width,src_height,src_stride,src_data)		\
@@ -496,9 +495,9 @@ tdfx_readpixels_R5G6B5(GLcontext * ctx, GLint x, GLint y,
    {
       tdfxContextPtr fxMesa = TDFX_CONTEXT(ctx);
       GrLfbInfo_t info;
-
-      const GLint winX = fxMesa->x_offset;
-      const GLint winY = fxMesa->y_offset + fxMesa->height - 1;
+      __DRIdrawablePrivate *const readable = fxMesa->driReadable;
+      const GLint winX = readable->x;
+      const GLint winY = readable->y + readable->h - 1;
       const GLint scrX = winX + x;
       const GLint scrY = winY - y;
 
@@ -554,9 +553,9 @@ tdfx_readpixels_R8G8B8A8(GLcontext * ctx, GLint x, GLint y,
    {
       tdfxContextPtr fxMesa = TDFX_CONTEXT(ctx);
       GrLfbInfo_t info;
-
-      const GLint winX = fxMesa->x_offset;
-      const GLint winY = fxMesa->y_offset + fxMesa->height - 1;
+      __DRIdrawablePrivate *const readable = fxMesa->driReadable;
+      const GLint winX = readable->x;
+      const GLint winY = readable->y + readable->h - 1;
       const GLint scrX = winX + x;
       const GLint scrY = winY - y;
 

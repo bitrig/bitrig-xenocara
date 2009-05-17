@@ -34,6 +34,7 @@
 #include "colormac.h"
 #include "context.h"
 #include "image.h"
+#include "mipmap.h"
 #include "texcompress.h"
 #include "texformat.h"
 #include "texstore.h"
@@ -148,8 +149,6 @@ _mesa_compressed_texture_size( GLcontext *ctx,
       /* Textures smaller than 8x4 will effectively be made into 8x4 and
        * take 16 bytes.
        */
-      if (size < 16)
-         size = 16;
       return size;
    case MESA_FORMAT_RGB_DXT1:
    case MESA_FORMAT_RGBA_DXT1:
@@ -161,8 +160,6 @@ _mesa_compressed_texture_size( GLcontext *ctx,
       /* Textures smaller than 4x4 will effectively be made into 4x4 and
        * take 8 bytes.
        */
-      if (size < 8)
-         size = 8;
       return size;
    case MESA_FORMAT_RGBA_DXT3:
    case MESA_FORMAT_RGBA_DXT5:
@@ -174,8 +171,6 @@ _mesa_compressed_texture_size( GLcontext *ctx,
       /* Textures smaller than 4x4 will effectively be made into 4x4 and
        * take 16 bytes.
        */
-      if (size < 16)
-         size = 16;
       return size;
    default:
       _mesa_problem(ctx, "bad mesaFormat in _mesa_compressed_texture_size");
