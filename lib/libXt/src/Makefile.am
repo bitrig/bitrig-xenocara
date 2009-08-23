@@ -6,7 +6,7 @@ CLEANFILES = $(BUILT_SOURCES)
 SRCH_DEFINES = -DXFILESEARCHPATHDEFAULT=\"$(XFILESEARCHPATHDEFAULT)\"
 ERRORDB_DEFINES = -DERRORDB=\"$(libdir)/X11/XtErrorDB\"
 
-AM_CFLAGS = $(XT_CFLAGS) $(X11_CFLAGS) $(SRCH_DEFINES) $(ERRORDB_DEFINES) \
+AM_CFLAGS = $(XT_CFLAGS) $(SRCH_DEFINES) $(ERRORDB_DEFINES) \
 	$(XTMALLOC_ZERO_CFLAGS)
 
 INCLUDES = -I$(top_srcdir)/include/ -I$(top_srcdir)/include/X11 \
@@ -98,8 +98,8 @@ $(BUILT_HEADER): $(BUILT_SOURCE)
 
 $(BUILT_SOURCE):
 	$(top_builddir)/util/makestrs -i $(top_srcdir) $(STRINGSABIOPTIONS) < $(STRING_LIST) > StringDefs.c
-	$(INSTALL) -d $(top_builddir)/src
-	$(INSTALL) -d $(top_builddir)/include/X11
-	$(install_sh_DATA) StringDefs.h $(top_builddir)/include/X11
-	$(install_sh_DATA) Shell.h $(top_builddir)/include/X11
+	mkdir -p $(top_builddir)/src
+	mkdir -p $(top_builddir)/include/X11
+	cp StringDefs.h $(top_builddir)/include/X11
+	cp Shell.h $(top_builddir)/include/X11
 	rm StringDefs.h Shell.h
