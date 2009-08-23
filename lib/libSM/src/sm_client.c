@@ -1,6 +1,3 @@
-/* $XdotOrg: $ */
-/* $Xorg: sm_client.c,v 1.4 2001/02/09 02:03:30 xorgcvs Exp $ */
-
 /*
 
 Copyright 1993, 1998  The Open Group
@@ -36,27 +33,32 @@ in this Software without prior written authorization from The Open Group.
 #endif
 #include <X11/SM/SMlib.h>
 #include "SMlibint.h"
-#include "globals.h"
 
-static void set_callbacks();
+int 	_SmcOpcode = 0;
+int 	_SmsOpcode = 0;
+
+#ifndef __UNIXOS2__
+SmsNewClientProc _SmsNewClientProc;
+SmPointer        _SmsNewClientData;
+#else
+SmsNewClientProc _SmsNewClientProc = 0;
+SmPointer        _SmsNewClientData = 0;
+#endif
+
+SmcErrorHandler _SmcErrorHandler = _SmcDefaultErrorHandler;
+SmsErrorHandler _SmsErrorHandler = _SmsDefaultErrorHandler;
+
+
+static void
+set_callbacks(SmcConn smcConn, unsigned long mask, SmcCallbacks *callbacks);
 
 
 SmcConn
-SmcOpenConnection (networkIdsList, context,
-    xsmpMajorRev, xsmpMinorRev, mask, callbacks,
-    previousId, clientIdRet, errorLength, errorStringRet)
-
-char 		*networkIdsList;
-SmPointer	context;
-int		xsmpMajorRev;
-int		xsmpMinorRev;
-unsigned long   mask;
-SmcCallbacks	*callbacks;
-char 		*previousId;
-char 		**clientIdRet;
-int  		errorLength;
-char 		*errorStringRet;
-
+SmcOpenConnection(char *networkIdsList, SmPointer context,
+		  int xsmpMajorRev, int xsmpMinorRev,
+		  unsigned long mask, SmcCallbacks *callbacks,
+		  char *previousId, char **clientIdRet,
+		  int errorLength, char *errorStringRet)
 {
     SmcConn			smcConn;
     IceConn			iceConn;
@@ -73,6 +75,16 @@ char 		*errorStringRet;
     _SmcRegisterClientReply	reply;
     Bool			gotReply, ioErrorOccured;
 
+    const char *auth_names[] = {"MIT-MAGIC-COOKIE-1"};
+    IcePoAuthProc auth_procs[] = {_IcePoMagicCookie1Proc};
+    int auth_count = 1;
+
+    IcePoVersionRec versions[] = {
+        {SmProtoMajor, SmProtoMinor, _SmcProcessMessage}
+    };
+    int version_count = 1;
+
+
     *clientIdRet = NULL;
 
     if (errorStringRet && errorLength > 0)
@@ -83,13 +95,13 @@ char 		*errorStringRet;
 	/*
 	 * For now, there is only one version of XSMP, so we don't
 	 * have to check {xsmpMajorRev, xsmpMinorRev}.  In the future,
-	 * we will check against _SmcVersions and generate the list
+	 * we will check against versions and generate the list
 	 * of versions the application actually supports.
 	 */
 
 	if ((_SmcOpcode = IceRegisterForProtocolSetup ("XSMP",
-	    SmVendorString, SmReleaseString, _SmVersionCount, _SmcVersions,
-            _SmAuthCount, _SmAuthNames, _SmcAuthProcs, NULL)) < 0)
+	    SmVendorString, SmReleaseString, version_count, versions,
+            auth_count, auth_names, auth_procs, NULL)) < 0)
 	{
 	    if (errorStringRet && errorLength > 0) {
 		strncpy (errorStringRet,
@@ -188,7 +200,9 @@ char 		*errorStringRet;
      * Now register the client
      */
 
-    len = previousId ? strlen (previousId) : 0;
+    if (!previousId)
+	previousId = "";
+    len = strlen (previousId);
     extra = ARRAY8_BYTES (len);
 
     IceGetHeaderExtra (iceConn, _SmcOpcode, SM_RegisterClient,
@@ -254,7 +268,7 @@ char 		*errorStringRet;
 		    SIZEOF (smRegisterClientMsg), WORD64COUNT (extra),
 		    smRegisterClientMsg, pMsg, pData);
 
-		STORE_ARRAY8 (pData, 0, NULL);
+		STORE_ARRAY8 (pData, 0, "");
 
 		IceFlush (iceConn);
 
@@ -272,12 +286,7 @@ char 		*errorStringRet;
 
 
 SmcCloseStatus
-SmcCloseConnection (smcConn, count, reasonMsgs)
-
-SmcConn smcConn;
-int	count;
-char    **reasonMsgs;
-
+SmcCloseConnection(SmcConn smcConn, int count, char **reasonMsgs)
 {
     IceConn			iceConn = smcConn->iceConn;
     smCloseConnectionMsg 	*pMsg;
@@ -345,12 +354,7 @@ char    **reasonMsgs;
 
 
 void
-SmcModifyCallbacks (smcConn, mask, callbacks)
-
-SmcConn    	smcConn;
-unsigned long 	mask;
-SmcCallbacks	*callbacks;
-
+SmcModifyCallbacks(SmcConn smcConn, unsigned long mask, SmcCallbacks *callbacks)
 {
     set_callbacks (smcConn, mask, callbacks);
 }
@@ -358,12 +362,7 @@ SmcCallbacks	*callbacks;
 
 
 void
-SmcSetProperties (smcConn, numProps, props)
-
-SmcConn    	smcConn;
-int      	numProps;
-SmProp       	**props;
-
+SmcSetProperties(SmcConn smcConn, int numProps, SmProp **props)
 {
     IceConn		iceConn = smcConn->iceConn;
     smSetPropertiesMsg	*pMsg;
@@ -378,6 +377,7 @@ SmProp       	**props;
     pMsg->length += WORD64COUNT (bytes);
 
     pBuf = pStart = IceAllocScratch (iceConn, bytes);
+    memset(pStart, 0, bytes);
 
     STORE_LISTOF_PROPERTY (pBuf, numProps, props);
 
@@ -388,12 +388,7 @@ SmProp       	**props;
 
 
 void
-SmcDeleteProperties (smcConn, numProps, propNames)
-
-SmcConn smcConn;
-int     numProps;
-char	**propNames;
-
+SmcDeleteProperties(SmcConn smcConn, int numProps, char **propNames)
 {
     IceConn			iceConn = smcConn->iceConn;
     smDeletePropertiesMsg 	*pMsg;
@@ -421,12 +416,8 @@ char	**propNames;
 
 
 Status
-SmcGetProperties (smcConn, propReplyProc, clientData)
-
-SmcConn		 smcConn;
-SmcPropReplyProc propReplyProc;
-SmPointer	 clientData;
-
+SmcGetProperties(SmcConn smcConn, SmcPropReplyProc propReplyProc,
+		 SmPointer clientData)
 {
     IceConn		iceConn = smcConn->iceConn;
     _SmcPropReplyWait 	*wait, *ptr;
@@ -459,13 +450,8 @@ SmPointer	 clientData;
 
 
 Status
-SmcInteractRequest (smcConn, dialogType, interactProc, clientData)
-
-SmcConn 	smcConn;
-int		dialogType;
-SmcInteractProc	interactProc;
-SmPointer	clientData;
-
+SmcInteractRequest(SmcConn smcConn, int dialogType,
+		   SmcInteractProc interactProc, SmPointer clientData)
 {
     IceConn			iceConn = smcConn->iceConn;
     smInteractRequestMsg	*pMsg;
@@ -503,11 +489,7 @@ SmPointer	clientData;
 
 
 void
-SmcInteractDone (smcConn, cancelShutdown)
-
-SmcConn smcConn;
-Bool 	cancelShutdown;
-
+SmcInteractDone(SmcConn smcConn, Bool cancelShutdown)
 {
     IceConn		iceConn = smcConn->iceConn;
     smInteractDoneMsg	*pMsg;
@@ -523,16 +505,8 @@ Bool 	cancelShutdown;
 
 
 void
-SmcRequestSaveYourself (smcConn, saveType, shutdown, interactStyle,
-	fast, global)
-
-SmcConn smcConn;
-int	saveType;
-Bool 	shutdown;
-int	interactStyle;
-Bool	fast;
-Bool	global;
-
+SmcRequestSaveYourself(SmcConn smcConn, int saveType, Bool shutdown,
+		       int interactStyle, Bool fast, Bool global)
 {
     IceConn			iceConn = smcConn->iceConn;
     smSaveYourselfRequestMsg	*pMsg;
@@ -552,12 +526,9 @@ Bool	global;
 
 
 Status
-SmcRequestSaveYourselfPhase2 (smcConn, saveYourselfPhase2Proc, clientData)
-
-SmcConn 			smcConn;
-SmcSaveYourselfPhase2Proc	saveYourselfPhase2Proc;
-SmPointer			clientData;
-
+SmcRequestSaveYourselfPhase2(SmcConn smcConn,
+			     SmcSaveYourselfPhase2Proc saveYourselfPhase2Proc,
+			     SmPointer clientData)
 {
     IceConn		iceConn = smcConn->iceConn;
     _SmcPhase2Wait 	*wait;
@@ -587,11 +558,7 @@ SmPointer			clientData;
 
 
 void
-SmcSaveYourselfDone (smcConn, success)
-
-SmcConn smcConn;
-Bool	success;
-
+SmcSaveYourselfDone(SmcConn smcConn, Bool success)
 {
     IceConn			iceConn = smcConn->iceConn;
     smSaveYourselfDoneMsg	*pMsg;
@@ -607,12 +574,7 @@ Bool	success;
 
 
 static void
-set_callbacks (smcConn, mask, callbacks)
-
-SmcConn    	smcConn;
-unsigned long 	mask;
-SmcCallbacks	*callbacks;
-
+set_callbacks(SmcConn smcConn, unsigned long mask, SmcCallbacks *callbacks)
 {
     if (mask & SmcSaveYourselfProcMask)
     {

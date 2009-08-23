@@ -73,7 +73,7 @@ _SmsProtocolSetupProc (IceConn    iceConn,
 
     if ((smsConn = (SmsConn) malloc (sizeof (struct _SmsConn))) == NULL)
     {
-	char *str = "Memory allocation failed";
+	const char *str = "Memory allocation failed";
 
 	if ((*failureReasonRet = (char *) malloc (strlen (str) + 1)) != NULL)
 	    strcpy (*failureReasonRet, str);
@@ -114,18 +114,19 @@ _SmsProtocolSetupProc (IceConn    iceConn,
 
 
 Status
-SmsInitialize (vendor, release, newClientProc, managerData,
-    hostBasedAuthProc, errorLength, errorStringRet)
-
-char 		 		*vendor;
-char 		 		*release;
-SmsNewClientProc 		newClientProc;
-SmPointer	 		managerData;
-IceHostBasedAuthProc		hostBasedAuthProc;
-int  		 		errorLength;
-char 		 		*errorStringRet;
-
+SmsInitialize(char *vendor, char *release, SmsNewClientProc newClientProc,
+	      SmPointer managerData, IceHostBasedAuthProc hostBasedAuthProc,
+	      int errorLength, char *errorStringRet)
 {
+    const char *auth_names[] = {"MIT-MAGIC-COOKIE-1"};
+    IcePaAuthProc auth_procs[] = {_IcePaMagicCookie1Proc};
+    int auth_count = 1;
+
+    IcePaVersionRec versions[] = {
+        {SmProtoMajor, SmProtoMinor, _SmsProcessMessage}
+    };
+    int version_count = 1;
+
     if (errorStringRet && errorLength > 0)
 	*errorStringRet = '\0';
 
@@ -145,8 +146,8 @@ char 		 		*errorStringRet;
     {
 
 	if ((_SmsOpcode = IceRegisterForProtocolReply ("XSMP",
-	    vendor, release, _SmVersionCount, _SmsVersions,
-	    _SmAuthCount, _SmAuthNames, _SmsAuthProcs, hostBasedAuthProc,
+	    vendor, release, version_count, versions,
+	    auth_count, auth_names, auth_procs, hostBasedAuthProc,
 	    _SmsProtocolSetupProc,
 	    NULL,	/* IceProtocolActivateProc - we don't care about
 			   when the Protocol Reply is sent, because the
@@ -174,10 +175,7 @@ char 		 		*errorStringRet;
 
 
 char *
-SmsClientHostName (smsConn)
-
-SmsConn smsConn;
-
+SmsClientHostName(SmsConn smsConn)
 {
     return (IceGetPeerName (smsConn->iceConn));
 }
@@ -185,11 +183,7 @@ SmsConn smsConn;
 
 
 Status
-SmsRegisterClientReply (smsConn, clientId)
-
-SmsConn smsConn;
-char	*clientId;
-
+SmsRegisterClientReply(SmsConn smsConn, char *clientId)
 {
     IceConn			iceConn = smsConn->iceConn;
     int				extra;
@@ -219,14 +213,8 @@ char	*clientId;
 
 
 void
-SmsSaveYourself (smsConn, saveType, shutdown, interactStyle, fast)
-
-SmsConn smsConn;
-int	saveType;
-Bool 	shutdown;
-int	interactStyle;
-Bool	fast;
-
+SmsSaveYourself(SmsConn smsConn, int saveType, Bool shutdown,
+		int interactStyle, Bool fast)
 {
     IceConn		iceConn = smsConn->iceConn;
     smSaveYourselfMsg	*pMsg;
@@ -262,10 +250,7 @@ Bool	fast;
 
 
 void
-SmsSaveYourselfPhase2 (smsConn)
-
-SmsConn smsConn;
-
+SmsSaveYourselfPhase2(SmsConn smsConn)
 {
     IceConn	iceConn = smsConn->iceConn;
 
@@ -276,10 +261,7 @@ SmsConn smsConn;
 
 
 void
-SmsInteract (smsConn)
-
-SmsConn smsConn;
-
+SmsInteract(SmsConn smsConn)
 {
     IceConn	iceConn = smsConn->iceConn;
 
@@ -292,10 +274,7 @@ SmsConn smsConn;
 
 
 void
-SmsDie (smsConn)
-
-SmsConn smsConn;
-
+SmsDie(SmsConn smsConn)
 {
     IceConn	iceConn = smsConn->iceConn;
 
@@ -306,10 +285,7 @@ SmsConn smsConn;
 
 
 void
-SmsSaveComplete (smsConn)
-
-SmsConn smsConn;
-
+SmsSaveComplete(SmsConn smsConn)
 {
     IceConn	iceConn = smsConn->iceConn;
 
@@ -320,10 +296,7 @@ SmsConn smsConn;
 
 
 void
-SmsShutdownCancelled (smsConn)
-
-SmsConn smsConn;
-
+SmsShutdownCancelled(SmsConn smsConn)
 {
     IceConn	iceConn = smsConn->iceConn;
 
@@ -336,12 +309,7 @@ SmsConn smsConn;
 
 
 void
-SmsReturnProperties (smsConn, numProps, props)
-
-SmsConn	smsConn;
-int	numProps;
-SmProp  **props;
-
+SmsReturnProperties(SmsConn smsConn, int numProps, SmProp **props)
 {
     IceConn			iceConn = smsConn->iceConn;
     int 			bytes;
@@ -366,10 +334,7 @@ SmProp  **props;
 
 
 void
-SmsCleanUp (smsConn)
-
-SmsConn smsConn;
-
+SmsCleanUp(SmsConn smsConn)
 {
     IceProtocolShutdown (smsConn->iceConn, _SmsOpcode);
 
