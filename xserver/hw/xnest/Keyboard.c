@@ -36,7 +36,7 @@ is" without express or implied warranty.
 
 #ifdef XKB
 #include <X11/extensions/XKB.h>
-#include <X11/extensions/XKBsrv.h>
+#include <xkbsrv.h>
 #include <X11/extensions/XKBconfig.h>
 
 extern Bool
@@ -89,6 +89,12 @@ DeviceIntPtr xnestKeyboardDevice = NULL;
 
 void
 xnestBell(int volume, DeviceIntPtr pDev, pointer ctrl, int cls)
+{
+  XBell(xnestDisplay, volume);
+}
+
+void
+DDXRingBell(int volume, int pitch, int duration)
 {
   XBell(xnestDisplay, volume);
 }
@@ -230,11 +236,7 @@ XkbError:
 	XkbFreeKeyboard(xkb, 0, False);
       }
 #endif
-#ifdef _XSERVER64
       xfree(keymap);
-#else
-      XFree(keymap);
-#endif
       break;
     case DEVICE_ON: 
       xnestEventMask |= XNEST_KEYBOARD_EVENT_MASK;
@@ -253,7 +255,7 @@ XkbError:
 }
 
 Bool
-LegalModifier(unsigned int key, DevicePtr pDev)
+LegalModifier(unsigned int key, DeviceIntPtr pDev)
 {
   return TRUE;
 }

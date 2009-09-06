@@ -1,4 +1,3 @@
-/* $XFree86$ */
 /*
  * Copyright 2001 by J. Kean Johnston <jkj@caldera.com>
  *
@@ -20,7 +19,6 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-/* $XConsortium$ */
 
 
 #ifdef HAVE_XORG_CONFIG_H
@@ -89,48 +87,4 @@ xf86DisableIO(void)
 
 	sysi86(SI86V86, V86SC_IOPL, 0);
 	IOEnabled = FALSE;
-}
-
-/***************************************************************************/
-/* Interrupt Handling section                                              */
-/***************************************************************************/
-
-_X_EXPORT Bool
-xf86DisableInterrupts(void)
-{
-  if (!IOEnabled) {
-    if (sysi86(SI86V86, V86SC_IOPL, PS_IOPL) < 0)
-      return FALSE;
-  }
-
-#ifdef __GNUC__
-  __asm__ __volatile__("cli");
-#else 
-  asm("cli");
-#endif /* __GNUC__ */
-
-  if (!IOEnabled) {
-    sysi86(SI86V86, V86SC_IOPL, PS_IOPL);
-  }
-
-  return(TRUE);
-}
-
-_X_EXPORT void
-xf86EnableInterrupts(void)
-{
-  if (!IOEnabled) {
-    if (sysi86(SI86V86, V86SC_IOPL, PS_IOPL) < 0)
-      return;
-  }
-
-#ifdef __GNUC__
-  __asm__ __volatile__("sti");
-#else 
-  asm("sti");
-#endif /* __GNUC__ */
-
-  if (!IOEnabled) {
-    sysi86(SI86V86, V86SC_IOPL, PS_IOPL);
-  }
 }

@@ -1,4 +1,3 @@
-/* $TOG: panoramiX.h /main/4 1998/03/17 06:51:02 kaleb $ */
 /*****************************************************************
 
 Copyright (c) 1991, 1997 Digital Equipment Corporation, Maynard, Massachusetts.
@@ -41,7 +40,10 @@ Equipment Corporation.
 #ifndef _PANORAMIX_H_
 #define _PANORAMIX_H_
 
+#define _PANORAMIX_SERVER
 #include <X11/extensions/panoramiXext.h>
+#undef _PANORAMIX_SERVER
+
 #include "gcstruct.h"
 
 
@@ -92,18 +94,6 @@ typedef struct {
     (a).rootX += panoramiXdataPtr[_j].x;             \
     (a).rootY += panoramiXdataPtr[_j].y;             \
     (a).root = WindowTable[0]->drawable.id;          \
-}
-
-#define FORCE_WIN(a) {                                  \
-    if ((win = PanoramiXFindIDOnAnyScreen(XRT_WINDOW, a))) { \
-        (a) = win->info[0].id; /* Real ID */       	   \
-    }                                                      \
-}
-
-#define FORCE_CMAP(a) {                                  \
-    if ((win = PanoramiXFindIDOnAnyScreen(XRT_COLORMAP, a))) { \
-        (a) = win->info[0].id; /* Real ID */       	   \
-    }                                                      \
 }
 
 #define IS_SHARED_PIXMAP(r) (((r)->type == XRT_PIXMAP) && (r)->u.pix.shared)

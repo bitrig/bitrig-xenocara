@@ -36,7 +36,7 @@
 #endif
 #include "win.h"
 
-#if defined(XFree86Server) && defined(XINPUT)
+#if defined(XFree86Server)
 #include "inputstr.h"
 
 /* Peek the internal button mapping */
@@ -100,12 +100,13 @@ winMouseProc (DeviceIntPtr pDeviceInt, int iState)
       InitPointerDeviceStruct (pDevice,
 			       map,
 			       lngMouseButtons + lngWheelEvents,
-			       miPointerGetMotionEvents,
+			       GetMotionHistory,
 			       winMouseCtrl,
-			       miPointerGetMotionBufferSize ());
+			       GetMotionHistorySize(),
+			       2);
       free(map);
 
-#if defined(XFree86Server) && defined(XINPUT)
+#if defined(XFree86Server)
       g_winMouseButtonMap = pDeviceInt->button->map;
 #endif
       break;
@@ -115,7 +116,7 @@ winMouseProc (DeviceIntPtr pDeviceInt, int iState)
       break;
 
     case DEVICE_CLOSE:
-#if defined(XFree86Server) && defined(XINPUT)
+#if defined(XFree86Server)
       g_winMouseButtonMap = NULL;
 #endif
     case DEVICE_OFF:
@@ -224,7 +225,7 @@ winMouseButtonsSendEvent (int iEventType, int iButton)
 
   /* Load an xEvent and enqueue the event */
   xCurrentEvent.u.u.type = iEventType;
-#if defined(XFree86Server) && defined(XINPUT)
+#if defined(XFree86Server)
   if (g_winMouseButtonMap)
     xCurrentEvent.u.u.detail = g_winMouseButtonMap[iButton];
   else

@@ -1,4 +1,3 @@
-/* $XFree86$ */
 /*
  * Copyright 2001,2002 Red Hat Inc., Durham, North Carolina.
  *
@@ -142,8 +141,8 @@ extern void dmxUpdateWindowInfo(DMXUpdateType type, WindowPtr pWindow);
 
 /* These functions are defined in input/dmxeq.c */
 extern Bool dmxeqInitialized(void);
-extern void dmxeqEnqueue(xEvent *e);
-extern void dmxeqSwitchScreen(ScreenPtr pScreen, Bool fromDIX);
+extern void dmxeqEnqueue(DeviceIntPtr pDev, xEvent *e);
+extern void dmxeqSwitchScreen(DeviceIntPtr pDev, ScreenPtr pScreen, Bool fromDIX);
 
 /* This type is used in input/dmxevents.c.  Also, these functions are
  * defined in input/dmxevents.c */
@@ -154,7 +153,7 @@ typedef enum {
 
 extern void          dmxGetGlobalPosition(int *x, int *y);
 extern DMXScreenInfo *dmxFindFirstScreen(int x, int y);
-extern void          dmxCoreMotion(int x, int y, int delta,
+extern void          dmxCoreMotion(DevicePtr pDev, int x, int y, int delta,
                                    DMXBlockType block);
 
 /* Support for dynamic addition of inputs.  This functions is defined in

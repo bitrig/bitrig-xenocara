@@ -1,5 +1,3 @@
-/* $XFree86$ */
-
 #ifdef HAVE_XORG_CONFIG_H
 #include <xorg-config.h>
 #endif
@@ -10,5 +8,5 @@
 #include "xf86Priv.h"
 
 /* Dummy variables */
-xf86InfoRec xf86Info = {NULL, };
+xf86InfoRec xf86Info;
 

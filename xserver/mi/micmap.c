@@ -48,12 +48,6 @@ THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 _X_EXPORT ColormapPtr miInstalledMaps[MAXSCREENS];
 
-static Bool miDoInitVisuals(VisualPtr *visualp, DepthPtr *depthp, int *nvisualp,
-		int *ndepthp, int *rootDepthp, VisualID *defaultVisp,
-		unsigned long sizes, int bitsPerRGB, int preferredVis);
-
-_X_EXPORT miInitVisualsProcPtr miInitVisualsProc = miDoInitVisuals;
-
 _X_EXPORT int
 miListInstalledColormaps(ScreenPtr pScreen, Colormap *pmaps)
 {
@@ -125,8 +119,8 @@ miResolveColor(unsigned short *pred, unsigned short *pgreen,
 _X_EXPORT Bool
 miInitializeColormap(ColormapPtr pmap)
 {
-    register unsigned i;
-    register VisualPtr pVisual;
+    unsigned i;
+    VisualPtr pVisual;
     unsigned lim, maxent, shift;
 
     pVisual = pmap->pVisual;
@@ -211,13 +205,13 @@ _X_EXPORT int
 miExpandDirectColors(ColormapPtr pmap, int ndef, xColorItem *indefs,
 			xColorItem *outdefs)
 {
-    register int    red, green, blue;
-    int		    maxred, maxgreen, maxblue;
-    int		    stepred, stepgreen, stepblue;
-    VisualPtr	    pVisual;
-    register int    pixel;
-    register int    nresult;
-    register int    i;
+    int	        red, green, blue;
+    int	        maxred, maxgreen, maxblue;
+    int	        stepred, stepgreen, stepblue;
+    VisualPtr   pVisual;
+    int         pixel;
+    int         nresult;
+    int         i;
 
     pVisual = pmap->pVisual;
 
@@ -385,7 +379,7 @@ static int  miVisualPriority[] = {
 static miVisualsPtr	miVisuals;
 
 _X_EXPORT void
-miClearVisualTypes()
+miClearVisualTypes(void)
 {
     miVisualsPtr v;
 
@@ -479,20 +473,6 @@ miSetPixmapDepths (void)
     return TRUE;
 }
 
-_X_EXPORT Bool
-miInitVisuals(VisualPtr *visualp, DepthPtr *depthp, int *nvisualp,
-		int *ndepthp, int *rootDepthp, VisualID *defaultVisp,
-		unsigned long sizes, int bitsPerRGB, int preferredVis)
-
-{
-    if (miInitVisualsProc)
-	return miInitVisualsProc(visualp, depthp, nvisualp, ndepthp,
-				 rootDepthp, defaultVisp, sizes, bitsPerRGB,
-				 preferredVis);
-    else
-	return FALSE;
-}
-
 /*
  * Distance to least significant one bit
  */
@@ -517,10 +497,11 @@ maskShift (Pixel p)
  * the set which can be used with this version of cfb.
  */
 
-static Bool
-miDoInitVisuals(VisualPtr *visualp, DepthPtr *depthp, int *nvisualp,
+_X_EXPORT Bool
+miInitVisuals(VisualPtr *visualp, DepthPtr *depthp, int *nvisualp,
 		int *ndepthp, int *rootDepthp, VisualID *defaultVisp,
 		unsigned long sizes, int bitsPerRGB, int preferredVis)
+
 {
     int		i, j = 0, k;
     VisualPtr	visual;
@@ -688,10 +669,3 @@ miDoInitVisuals(VisualPtr *visualp, DepthPtr *depthp, int *nvisualp,
 
     return TRUE;
 }
-
-void
-miResetInitVisuals()
-{
-    miInitVisualsProc = miDoInitVisuals;
-}
-

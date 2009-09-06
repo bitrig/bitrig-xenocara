@@ -12,8 +12,9 @@
 #include <X11/X.h>
 #include "windowstr.h"
 #define XKBSRV_NEED_FILE_FUNCS
-#include <X11/extensions/XKBsrv.h>
+#include <xkbsrv.h>
 
+#include "os.h"
 #include "xf86.h"
 
 int
@@ -29,12 +30,6 @@ XkbDDXPrivate(DeviceIntPtr dev,KeyCode key,XkbAction *act)
             xf86ProcessActionEvent(ACTION_PREV_MODE, NULL);
         else if (strcasecmp(msgbuf, "+vmode")==0)
             xf86ProcessActionEvent(ACTION_NEXT_MODE, NULL);
-        else if (strcasecmp(msgbuf, "ungrab")==0)
-            xf86ProcessActionEvent(ACTION_DISABLEGRAB, NULL);
-        else if (strcasecmp(msgbuf, "clsgrb")==0)
-            xf86ProcessActionEvent(ACTION_CLOSECLIENT, NULL);
-        else
-            xf86ProcessActionEvent(ACTION_MESSAGE, (void *) msgbuf);
     }
 
     return 0;

@@ -49,6 +49,7 @@ DMXSRCS = dmxinputinit.c \
 
 libdmxinput_a_SOURCES = ChkNotMaskEv.c \
                         ChkNotMaskEv.h \
+                        atKeynames.h \
                         $(RAWSRCS) \
                         $(USBSRCS) \
                         $(DRVSRCS) \
@@ -60,9 +61,8 @@ GLX_DEFS = @GL_CFLAGS@
 GLX_INCS = -I@MESA_SOURCE@/include
 endif	    
 
-AM_CFLAGS = \
+AM_CFLAGS = $(DIX_CFLAGS) \
             -I$(top_srcdir)/hw/dmx \
-            -I$(top_srcdir)/hw/xfree86/common \
             $(GLX_INCS) \
             -DHAVE_DMX_CONFIG_H \
             $(GLX_DEFS) \

@@ -48,7 +48,7 @@ SOFTWARE.
 #ifndef REGIONSTRUCT_H
 #define REGIONSTRUCT_H
 
-typedef struct _Region RegionRec, *RegionPtr;
+typedef struct pixman_region16 RegionRec, *RegionPtr;
 
 #include "miscstruct.h"
 
@@ -64,16 +64,7 @@ typedef struct _Region RegionRec, *RegionPtr;
  *   clip region
  */
 
-typedef struct _RegData {
-    long	size;
-    long 	numRects;
-/*  BoxRec	rects[size];   in memory but not explicitly declared */
-} RegDataRec, *RegDataPtr;
-
-struct _Region {
-    BoxRec 	extents;
-    RegDataPtr	data;
-};
+typedef struct pixman_region16_data RegDataRec, *RegDataPtr;
 
 extern BoxRec miEmptyBox;
 extern RegDataRec miEmptyData;
@@ -140,34 +131,9 @@ extern RegDataRec miBrokenData;
 #define REGION_BREAK(_pScreen, _pReg) \
     miRegionBreak(_pReg)
 
-#ifdef DONT_INLINE_REGION_OPS
-
-#define REGION_INIT(_pScreen, _pReg, _rect, _size) \
-    miRegionInit(_pReg, _rect, _size)
-
-#define REGION_UNINIT(_pScreen, _pReg) \
-    miRegionUninit(_pReg)
-
-#define REGION_RESET(_pScreen, _pReg, _pBox) \
-    miRegionReset(_pReg, _pBox)
-
-#define REGION_NOTEMPTY(_pScreen, _pReg) \
-    miRegionNotEmpty(_pReg)
-
-#define REGION_BROKEN(_pScreen, _pReg) \
-    miRegionBroken(_pReg)
-
-#define REGION_EMPTY(_pScreen, _pReg) \
-    miRegionEmpty(_pReg)
-
-#define REGION_EXTENTS(_pScreen, _pReg) \
-    miRegionExtents(_pReg)
-
-#else /* inline certain simple region ops for performance */
-
 #define REGION_INIT(_pScreen, _pReg, _rect, _size) \
 { \
-    if (_rect) \
+    if ((_rect) != NULL)				\
     { \
         (_pReg)->extents = *(_rect); \
         (_pReg)->data = (RegDataPtr)NULL; \
@@ -225,14 +191,14 @@ extern RegDataRec miBrokenData;
     (_pReg)->data = &miEmptyData; \
 }
 
-#endif /* DONT_INLINE_REGION_OPS */
-
 #ifndef REGION_NULL
 #define REGION_NULL(_pScreen, _pReg) \
     REGION_INIT(_pScreen, _pReg, NullBox, 1)
 #endif
 
 /* moved from mi.h */
+
+extern void InitRegions (void);
 
 extern RegionPtr miRegionCreate(
     BoxPtr /*rect*/,
@@ -319,6 +285,9 @@ extern void miRegionEmpty(
     RegionPtr /*pReg*/);
 
 extern BoxPtr miRegionExtents(
+    RegionPtr /*pReg*/);
+
+extern void miPrintRegion(
     RegionPtr /*pReg*/);
 
 #endif /* REGIONSTRUCT_H */

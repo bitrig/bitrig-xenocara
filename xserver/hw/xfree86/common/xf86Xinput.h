@@ -1,4 +1,3 @@
-/* $XConsortium: xf86Xinput.h /main/11 1996/10/27 11:05:29 kaleb $ */
 /*
  * Copyright 1995-1999 by Frederic Lepied, France. <Lepied@XFree86.org>
  *                                                                            
@@ -58,11 +57,9 @@
 #endif
 #include "xf86str.h"
 #include "inputstr.h"
-#ifdef XINPUT
 #include <X11/extensions/XI.h>
 #include <X11/extensions/XIproto.h>
 #include "XIstubs.h"
-#endif
 
 /* Input device flags */
 #define XI86_OPEN_ON_INIT       0x01 /* open the device at startup time */
@@ -86,17 +83,10 @@
 #define XI_PRIVATE(dev) \
 	(((LocalDevicePtr)((dev)->public.devicePrivate))->private)
 
-#ifdef DBG
-#undef DBG
-#endif
-#define DBG(lvl, f) {if ((lvl) <= xf86GetVerbosity()) f;}
+/* Stupid API backwards-compatibility. */
+#define TS_Raw 60
+#define TS_Scaled 61
 
-#ifdef HAS_MOTION_HISTORY
-#undef HAS_MOTION_HISTORY
-#endif
-#define HAS_MOTION_HISTORY(local) ((local)->dev->valuator && (local)->dev->valuator->numMotionEvents)
-
-#ifdef XINPUT
 /* This holds the input driver entry and module information. */
 typedef struct _InputDriverRec {
     int			    driverVersion;
@@ -110,7 +100,6 @@ typedef struct _InputDriverRec {
     pointer		    module;
     int			    refCount;
 } InputDriverRec, *InputDriverPtr;
-#endif
 
 /* This is to input devices what the ScrnInfoRec is to screens. */
 
@@ -118,7 +107,7 @@ typedef struct _LocalDeviceRec {
     struct _LocalDeviceRec *next;
     char *		    name;
     int			    flags;
-    
+
     Bool		    (*device_control)(DeviceIntPtr device, int what);
     void		    (*read_input)(struct _LocalDeviceRec *local);
     int			    (*control_proc)(struct _LocalDeviceRec *local,
@@ -133,27 +122,27 @@ typedef struct _LocalDeviceRec {
     Bool		    (*reverse_conversion_proc)(
 					struct _LocalDeviceRec *local,
 					int x, int y, int *valuators);
-    
+    int                     (*set_device_valuators)
+				(struct _LocalDeviceRec *local,
+				 int *valuators, int first_valuator,
+				 int num_valuators);
+
     int			    fd;
     Atom		    atom;
     DeviceIntPtr	    dev;
     pointer		    private;
     int			    private_flags;
-    pointer		    motion_history;
-    ValuatorMotionProcPtr   motion_history_proc;
-    unsigned int	    history_size;   /* only for configuration purpose */
     unsigned int	    first;
     unsigned int	    last;
     int			    old_x;
     int			    old_y;
-    float		    dxremaind;
-    float		    dyremaind;
     char *		    type_name;
     IntegerFeedbackPtr	    always_core_feedback;
     IDevPtr		    conf_idev;
     InputDriverPtr	    drv;
     pointer		    module;
     pointer		    options;
+    unsigned int            history_size;
 } LocalDeviceRec, *LocalDevicePtr, InputInfoRec, *InputInfoPtr;
 
 typedef struct _DeviceAssocRec 
@@ -166,18 +155,11 @@ typedef struct _DeviceAssocRec
 extern InputInfoPtr xf86InputDevs;
 
 /* xf86Xinput.c */
-int xf86IsCorePointer(DeviceIntPtr dev);
-int xf86IsCoreKeyboard(DeviceIntPtr dev);
-void xf86XInputSetSendCoreEvents(LocalDevicePtr local, Bool always);
-#define xf86AlwaysCore(a,b) xf86XInputSetSendCoreEvents(a,b)
-
 void InitExtInput(void);
-Bool xf86eqInit(DevicePtr pKbd, DevicePtr pPtr);
-void xf86eqEnqueue(struct _xEvent *event);
-void xf86eqProcessInputEvents (void);
-void xf86eqSwitchScreen(ScreenPtr pScreen, Bool fromDIX);
 void xf86PostMotionEvent(DeviceIntPtr device, int is_absolute,
 			 int first_valuator, int num_valuators, ...);
+void xf86PostMotionEventP(DeviceIntPtr device, int is_absolute,
+			 int first_valuator, int num_valuators, int *valuators);
 void xf86PostProximityEvent(DeviceIntPtr device, int is_in,
 			    int first_valuator, int num_valuators, ...);
 void xf86PostButtonEvent(DeviceIntPtr device, int is_absolute, int button,
@@ -188,14 +170,7 @@ void xf86PostKeyEvent(DeviceIntPtr device, unsigned int key_code, int is_down,
 		      ...);
 void xf86PostKeyboardEvent(DeviceIntPtr device, unsigned int key_code,
                            int is_down);
-void xf86MotionHistoryAllocate(LocalDevicePtr local);
-int xf86GetMotionEvents(DeviceIntPtr dev, xTimecoord *buff,
-			unsigned long start, unsigned long stop,
-			ScreenPtr pScreen);
-void xf86XinputFinalizeInit(DeviceIntPtr dev);
-void xf86ActivateDevice(LocalDevicePtr local);
-Bool xf86CheckButton(int button, int down);
-void xf86SwitchCoreDevice(LocalDevicePtr device, DeviceIntPtr core);
+int xf86ActivateDevice(LocalDevicePtr local);
 LocalDevicePtr xf86FirstLocalDevice(void);
 int xf86ScaleAxis(int Cx, int Sxhigh, int Sxlow, int Rxhigh, int Rxlow);
 void xf86XInputSetScreen(LocalDevicePtr local, int screen_number, int x, int y);
@@ -206,15 +181,29 @@ void xf86InitValuatorAxisStruct(DeviceIntPtr dev, int axnum, int minval,
 void xf86InitValuatorDefaults(DeviceIntPtr dev, int axnum);
 void xf86AddEnabledDevice(InputInfoPtr pInfo);
 void xf86RemoveEnabledDevice(InputInfoPtr pInfo);
+void xf86DisableDevice(DeviceIntPtr dev, Bool panic);
+void xf86EnableDevice(DeviceIntPtr dev);
+int xf86NewInputDevice(IDevPtr idev, DeviceIntPtr *pdev, BOOL is_auto);
 
 /* xf86Helper.c */
 void xf86AddInputDriver(InputDriverPtr driver, pointer module, int flags);
 void xf86DeleteInputDriver(int drvIndex);
 InputInfoPtr xf86AllocateInput(InputDriverPtr drv, int flags);
+InputDriverPtr xf86LookupInputDriver(const char *name);
+InputInfoPtr xf86LookupInput(const char *name);
 void xf86DeleteInput(InputInfoPtr pInp, int flags);
+void xf86MotionHistoryAllocate(LocalDevicePtr local);
+int xf86GetMotionEvents(DeviceIntPtr dev, xTimecoord *buff,
+                        unsigned long start, unsigned long stop,
+                        ScreenPtr pScreen, BOOL core);
 
 /* xf86Option.c */
 void xf86CollectInputOptions(InputInfoPtr pInfo, const char **defaultOpts,
 			     pointer extraOpts);
+
+
+/* Legacy hatred */
+#define SendCoreEvents 59
+#define DontSendCoreEvents 60
 
 #endif /* _xf86Xinput_h */

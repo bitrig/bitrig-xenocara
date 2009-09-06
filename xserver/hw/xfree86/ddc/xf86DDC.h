@@ -35,6 +35,8 @@ extern xf86MonPtr xf86DoEDID_DDC2(
    I2CBusPtr pBus
 );
 
+extern xf86MonPtr xf86DoEEDID(int scrnIndex, I2CBusPtr pBus, Bool);
+
 extern xf86MonPtr xf86PrintEDID(
     xf86MonPtr monPtr
 );
@@ -43,8 +45,8 @@ extern xf86MonPtr xf86InterpretEDID(
     int screenIndex, Uchar *block
 );
 
-extern xf86vdifPtr xf86InterpretVdif(
-    CARD8 *c
+extern xf86MonPtr xf86InterpretEEDID(
+    int screenIndex, Uchar *block
 );
 
 extern void 
@@ -55,10 +57,9 @@ extern Bool xf86SetDDCproperties(
     xf86MonPtr DDC
 );
 
-extern void xf86print_vdif(
-    xf86vdifPtr v
-);
+DisplayModePtr xf86DDCGetModes(int scrnIndex, xf86MonPtr DDC);
+
+extern Bool
+xf86MonitorIsHDMI(xf86MonPtr mon);
 
 #endif
-
-

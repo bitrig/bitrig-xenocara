@@ -1,4 +1,3 @@
-/* $XFree86$ */
 /*
  * Copyright 2001-2004 Red Hat Inc., Durham, North Carolina.
  *
@@ -44,7 +43,12 @@
 #include "dmxinput.h"
 #include "dmxlog.h"
 
-extern char    *ConnectionInfo;
+#undef Xmalloc
+#undef Xcalloc
+#undef Xrealloc
+#undef Xfree
+
+
 extern int     connBlockScreenStart;
 
 #ifdef PANORAMIX

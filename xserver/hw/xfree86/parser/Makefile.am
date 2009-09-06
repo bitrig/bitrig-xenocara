@@ -1,8 +1,5 @@
 if INSTALL_LIBXF86CONFIG
 lib_LIBRARIES = libxf86config.a
-LIBHEADERS = \
-	xf86Optrec.h \
-	xf86Parser.h
 else
 noinst_LIBRARIES = libxf86config.a
 endif
@@ -12,7 +9,6 @@ libxf86config_a_SOURCES = \
 	Files.c \
 	Flags.c \
 	Input.c \
-	Keyboard.c \
 	Layout.c \
 	Module.c \
 	Video.c \
@@ -26,15 +22,13 @@ libxf86config_a_SOURCES = \
 	DRI.c \
 	Extensions.c
 
-AM_CFLAGS = $(XORG_CFLAGS)
+AM_CFLAGS = $(DIX_CFLAGS) $(XORG_CFLAGS)
 
 EXTRA_DIST = \
 	Configint.h \
 	configProcs.h \
-	xf86Optrec.h \
-	xf86Parser.h \
-	xf86tokens.h \
-	cpconfig.c
+	xf86tokens.h
 
 sdk_HEADERS = \
-	$(LIBHEADERS)
+	xf86Optrec.h \
+	xf86Parser.h

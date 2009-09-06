@@ -1,4 +1,3 @@
-/* $XFree86$ */
 /*
  * Copyright 2002-2003 Red Hat Inc., Durham, North Carolina.
  *
@@ -114,8 +113,7 @@ void dmxPointerPutMotionEvent(DeviceIntPtr pDevice,
                                      * DMX_MOTION_SIZE);
         dmxLocal->head      = 0;
         dmxLocal->tail      = 0;
-        dmxLocal->valuators = xalloc(sizeof(*dmxLocal->valuators) * numAxes);
-        memset(dmxLocal->valuators, 0, sizeof(*dmxLocal->valuators) * numAxes);
+        dmxLocal->valuators = calloc(sizeof(*dmxLocal->valuators), numAxes);
     } else {
         if (++dmxLocal->tail >= DMX_MOTION_SIZE) dmxLocal->tail = 0;
         if (dmxLocal->head == dmxLocal->tail)

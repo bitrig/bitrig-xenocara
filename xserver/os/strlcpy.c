@@ -1,5 +1,3 @@
-/*	$OpenBSD: strlcpy.c,v 1.1 2006/11/26 18:16:07 matthieu Exp $	*/
-
 /*
  * Copyright (c) 1998 Todd C. Miller <Todd.Miller@courtesan.com>
  *
@@ -15,7 +13,6 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-/* $XFree86$ */
 
 #ifdef HAVE_XORG_CONFIG_H
 #include <xorg-config.h>
@@ -23,6 +20,7 @@
 
 #include <sys/types.h>
 #include <string.h>
+#include "os.h"
 
 /*
  * Copy src to string dst of size siz.  At most siz-1 characters

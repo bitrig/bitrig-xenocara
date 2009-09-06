@@ -1,4 +1,3 @@
-/* $XFree86$ */
 /*
  * Copyright 2002 Red Hat Inc., Durham, North Carolina.
  *
@@ -66,12 +65,11 @@ void dmxConfigLog(const char *format, ...)
 
 void *dmxConfigAlloc(unsigned long bytes)
 {
-    void *area = malloc(bytes);
+    void *area = calloc(1, bytes);
     if (!area) {
         dmxConfigLog("dmxConfigAlloc: out of memory\n");
         return NULL;
     }
-    memset(area, 0, bytes);
     return area;
 }
 
@@ -249,8 +247,6 @@ DMXConfigDisplayPtr dmxConfigCreateDisplay(DMXConfigTokenPtr pStart,
                                            DMXConfigTokenPtr pEnd)
 {
     DMXConfigDisplayPtr pDisplay = dmxConfigAlloc(sizeof(*pDisplay));
-
-    memset(pDisplay, 0, sizeof(*pDisplay));
 
     pDisplay->start          = pStart;
     pDisplay->dname          = pName;

@@ -1,4 +1,3 @@
-/* $XFree86$ */
 /*
  * Copyright 2003 Red Hat Inc., Raleigh, North Carolina.
  *
@@ -403,7 +402,7 @@ void SwapBarrierReset(void)
     int  i;
 
     for (i = 0; i <= GLX_MAX_SWAP_BARRIERS; i++) {
-	SwapBarrierPtr  pBarrier, pNextBarrier;;
+	SwapBarrierPtr  pBarrier, pNextBarrier;
 	for (pBarrier = SwapBarrierList[i];
 	     pBarrier;
 	     pBarrier = pNextBarrier) {

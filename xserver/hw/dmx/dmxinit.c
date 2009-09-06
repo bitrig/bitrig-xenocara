@@ -1,4 +1,3 @@
-/* $XFree86$ */
 /*
  * Copyright 2001-2004 Red Hat Inc., Durham, North Carolina.
  *
@@ -509,7 +508,7 @@ static void dmxDisplayInit(DMXScreenInfo *dmxScreen)
 /* If this doesn't compile, just add || defined(yoursystem) to the line
  * below.  This information is to help with bug reports and is not
  * critical. */
-#if !defined(_POSIX_SOURCE) && !defined(__sgi)
+#if !defined(_POSIX_SOURCE) 
 static const char *dmxExecOS(void) { return ""; }
 #else
 #include <sys/utsname.h>
@@ -539,14 +538,6 @@ static const char *dmxBuildCompiler(void)
 #if defined(__GNUC__) && defined(__GNUC_MINOR__) &&defined(__GNUC_PATCHLEVEL__)
         XmuSnprintf(buffer, sizeof(buffer)-1, "gcc %d.%d.%d",
                     __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
-#elif defined(__sgi) && defined(_COMPILER_VERSION) && !defined(__GNUC__)
-        {
-            int a = _COMPILER_VERSION / 100;
-            int b = (_COMPILER_VERSION - a * 100) / 10;
-            int c = _COMPILER_VERSION - a * 100 - b * 10;
-            XmuSnprintf(buffer, sizeof(buffer)-1, "SGI MIPSpro %d.%d.%d",
-                        a, b, c);
-        }
 #endif
     }
     return buffer;
@@ -624,7 +615,7 @@ void InitOutput(ScreenInfo *pScreenInfo, int argc, char *argv[])
     }
 
     /* Make sure that the command-line arguments are sane. */
-    if (dmxAddRemoveScreens && (!noRenderExtension || dmxGLXProxy)) {
+    if (dmxAddRemoveScreens && dmxGLXProxy) {
 	/* Currently it is not possible to support GLX and Render
 	 * extensions with dynamic screen addition/removal due to the
 	 * state that each extension keeps, which cannot be restored. */
@@ -747,8 +738,7 @@ void InitOutput(ScreenInfo *pScreenInfo, int argc, char *argv[])
 		nconfigs = dmxScreen->numGlxVisuals;
 	    }
 
-	    configprivs = xalloc(dmxScreen->beNumVisuals *
-				 sizeof(dmxGlxVisualPrivate*));
+	    configprivs = xalloc(nconfigs * sizeof(dmxGlxVisualPrivate*));
 
 	    if (configs != NULL && configprivs != NULL) {
 
@@ -780,6 +770,8 @@ void InitOutput(ScreenInfo *pScreenInfo, int argc, char *argv[])
 
 		/* Hand out the glx configs to glx extension */
 		GlxSetVisualConfigs(nconfigs, configs, (void**)configprivs);
+
+                XFlush(dmxScreen->beDisplay);
 	    }
 	}
 #endif  /* GLXEXT */
@@ -871,13 +863,6 @@ void OsVendorInit(void)
  * two routines mentioned here, as well as by others) to use the
  * referenced routine instead of \a vfprintf().) */
 void OsVendorFatalError(void)
-{
-}
-
-/** This funciton is called by InitGlobals from Xserver/os/utils.c to
- * initialize any ddx specific globals at a very early point in the
- * server startup. */
-void ddxInitGlobals(void)
 {
 }
 

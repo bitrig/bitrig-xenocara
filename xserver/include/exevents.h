@@ -30,8 +30,25 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #ifndef EXEVENTS_H
 #define EXEVENTS_H
 
+#include <X11/extensions/XIproto.h>
+
+/**
+ * Attached to the devPrivates of each client. Specifies the version number as
+ * supported by the client.
+ */
+typedef struct _XIClientRec {
+        int major_version;
+        int minor_version;
+} XIClientRec, *XIClientPtr;
+
 extern void RegisterOtherDevice (
 	DeviceIntPtr           /* device */);
+
+extern int
+UpdateDeviceState (
+	DeviceIntPtr           /* device */,
+	xEventPtr              /*  xE    */,
+        int                    /* count  */);
 
 extern void ProcessOtherEvent (
 	xEventPtr /* FIXME deviceKeyButtonPointer * xE */,
@@ -129,6 +146,7 @@ extern int SetModifierMapping(
 	KeyClassPtr *          /* k */);
 
 extern void SendDeviceMappingNotify(
+        ClientPtr              /* client, */,
 	CARD8                  /* request, */,
 	KeyCode                /* firstKeyCode */,
 	CARD8                  /* count */,
@@ -148,10 +166,6 @@ extern void DeleteWindowFromAnyExtEvents(
 	WindowPtr              /* pWin */,
 	Bool                   /* freeResources */);
 
-extern void DeleteDeviceFromAnyExtEvents(
-	WindowPtr              /* pWin */,
-	DeviceIntPtr           /* dev */);
-
 extern int MaybeSendDeviceMotionNotifyHint (
 	deviceKeyButtonPointer * /* pEvents */,
 	Mask                   /* mask */);
@@ -164,11 +178,6 @@ extern void CheckDeviceGrabAndHintWindow (
 	ClientPtr              /* client */,
 	Mask                   /* deliveryMask */);
 
-extern Mask DeviceEventMaskForClient(
-	DeviceIntPtr           /* dev */,
-	WindowPtr              /* pWin */,
-	ClientPtr              /* client */);
-
 extern void MaybeStopDeviceHint(
 	DeviceIntPtr           /* dev */,
 	ClientPtr              /* client */);
@@ -178,5 +187,80 @@ extern int DeviceEventSuppressForWindow(
 	ClientPtr              /* client */,
 	Mask                   /* mask */,
 	int                    /* maskndx */);
+
+extern void SendEventToAllWindows(
+        DeviceIntPtr           /* dev */,
+        Mask                   /* mask */,
+        xEvent *               /* ev */,
+        int                    /* count */);
+
+/* Input device properties */
+extern void XIDeleteAllDeviceProperties(
+        DeviceIntPtr            /* device */
+);
+
+extern int XIDeleteDeviceProperty(
+        DeviceIntPtr            /* device */,
+        Atom                    /* property */,
+        Bool                    /* fromClient */
+);
+
+extern int XIChangeDeviceProperty(
+        DeviceIntPtr            /* dev */,
+        Atom                    /* property */,
+        Atom                    /* type */,
+        int                     /* format*/,
+        int                     /* mode*/,
+        unsigned long           /* len*/,
+        pointer                 /* value*/,
+        Bool                    /* sendevent*/
+        );
+
+extern int XIGetDeviceProperty(
+        DeviceIntPtr            /* dev */,
+        Atom                    /* property */,
+        XIPropertyValuePtr*     /* value */
+);
+
+extern int XISetDevicePropertyDeletable(
+        DeviceIntPtr            /* dev */,
+        Atom                    /* property */,
+        Bool                    /* deletable */
+);
+
+extern long XIRegisterPropertyHandler(
+        DeviceIntPtr         dev,
+        int (*SetProperty) (DeviceIntPtr dev,
+                            Atom property,
+                            XIPropertyValuePtr prop,
+                            BOOL checkonly),
+        int (*GetProperty) (DeviceIntPtr dev,
+                            Atom property),
+        int (*DeleteProperty) (DeviceIntPtr dev,
+                               Atom property)
+);
+
+extern _X_EXPORT void XIUnregisterPropertyHandler(
+        DeviceIntPtr          dev,
+        long                  id
+);
+
+extern Atom XIGetKnownProperty(
+        char*                 name
+);
+
+extern DeviceIntPtr XIGetDevice(xEvent *ev);
+
+extern _X_EXPORT int XIPropToInt(
+        XIPropertyValuePtr val,
+        int *nelem_return,
+        int **buf_return
+);
+
+extern _X_EXPORT int XIPropToFloat(
+        XIPropertyValuePtr val,
+        int *nelem_return,
+        float **buf_return
+);
 
 #endif /* EXEVENTS_H */

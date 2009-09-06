@@ -1,4 +1,3 @@
-/* $XFree86$ */
 /*
  * Copyright 2001 Red Hat Inc., Durham, North Carolina.
  *
@@ -43,10 +42,8 @@
 #include "dmx.h"
 #include "dmxlog.h"
 #include "dmxinput.h"
-#ifdef XINPUT
 #include <X11/extensions/XI.h>
 #include <X11/extensions/XIproto.h>
-#endif
 
 static dmxLogLevel dmxCurrentLogLevel = dmxDebug;
 
@@ -280,7 +277,6 @@ void dmxLogVisual(DMXScreenInfo *dmxScreen, XVisualInfo *vi, int defaultVisual)
     }
 }
 
-#ifdef XINPUT
 /** Translate a (normalized) XInput event \a type into a human-readable
  * string. */
 const char *dmxXInputEventName(int type)
@@ -305,7 +301,6 @@ const char *dmxXInputEventName(int type)
     }
 }
 
-#endif
 #endif
 
 /** Translate an event \a type into a human-readable string. */

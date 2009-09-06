@@ -10,10 +10,6 @@ if TSLIB
 TSLIB_C = tslib.c
 endif
 
-if H3600_TS
-TS_C = ts.c
-endif
-
 if KDRIVE_HW
 KDRIVE_HW_SOURCES =	\
 	agp.c		\
@@ -30,18 +26,4 @@ liblinux_a_SOURCES = 	\
 	ms.c		\
 	ps2.c		\
 	$(KDRIVE_HW_SOURCES) \
-	$(TSLIB_C)	\
-	$(TS_C)
-
-liblinux_a_DEPENDENCIES = \
-	agp.c		\
-	bus.c		\
-	keyboard.c	\
-	linux.c		\
-	mouse.c		\
-	evdev.c		\
-	ms.c		\
-	ps2.c		\
-	$(TSLIB_C)	\
-	$(TS_C)
-
+	$(TSLIB_C)

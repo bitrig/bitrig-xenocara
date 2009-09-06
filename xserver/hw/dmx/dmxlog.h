@@ -1,4 +1,3 @@
-/* $XFree86$ */
 /*
  * Copyright 2001 Red Hat Inc., Durham, North Carolina.
  *
@@ -71,9 +70,7 @@ extern void dmxLogInputCont(DMXInputInfo *dmxInput, const char *format, ...);
 extern void dmxLogArgs(dmxLogLevel logLevel, int argc, char **argv);
 extern void dmxLogVisual(DMXScreenInfo *dmxScreen, XVisualInfo *vi,
                          int defaultVisual);
-#ifdef XINPUT
 extern const char *dmxXInputEventName(int type);
-#endif
 #endif
 
 #endif
