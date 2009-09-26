@@ -21,7 +21,7 @@
 
 bin_PROGRAMS = appres
 
-appres_CFLAGS = $(APPRES_CFLAGS)
+AM_CFLAGS = $(APPRES_CFLAGS) $(CWARNFLAGS)
 appres_LDADD = $(APPRES_LIBS)
 
 appres_SOURCES =		\
@@ -34,8 +34,17 @@ appmandir = $(APP_MAN_DIR)
 
 appman_DATA = $(appman_PRE:man=@APP_MAN_SUFFIX@)
 
-EXTRA_DIST = $(appman_PRE)
+EXTRA_DIST = $(appman_PRE) ChangeLog autogen.sh
 CLEANFILES = $(appman_DATA)
+
+MAINTAINERCLEANFILES=ChangeLog
+
+.PHONY: ChangeLog
+
+ChangeLog:
+	$(CHANGELOG_CMD)
+
+dist-hook: ChangeLog
 
 SED = sed
 
