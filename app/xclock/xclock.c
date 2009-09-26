@@ -1,5 +1,5 @@
 /* $Xorg: xclock.c,v 1.4 2001/02/09 02:05:39 xorgcvs Exp $ */
-/* $XdotOrg: app/xclock/xclock.c,v 1.4 2005/07/16 17:31:45 alanc Exp $ */
+/* $XdotOrg: $ */
 
 /*
  * xclock --  Hacked from Tony Della Fera's much hacked clock program.
@@ -57,6 +57,10 @@ in this Software without prior written authorization from The Open Group.
 Boolean no_locale = True; /* if True, use old behavior */
 #endif
 
+#ifdef HAVE_GETPID
+# include <unistd.h>
+#endif
+
 /* Command line options table.  Only resources are entered here...there is a
    pass over the remaining options after XtParseCommand is let loose. */
 
@@ -84,7 +88,7 @@ static XrmOptionDescRec options[] = {
 #endif
 };
 
-static void quit ( Widget w, XEvent *event, String *params, 
+static void quit ( Widget w, XEvent *event, String *params,
 		   Cardinal *num_params );
 
 static XtActionsRec xclock_actions[] = {
@@ -112,14 +116,14 @@ Syntax(char *call)
 	exit(1);
 }
 
-static void 
+static void
 die(Widget w, XtPointer client_data, XtPointer call_data)
 {
     XCloseDisplay(XtDisplayOfObject(w));
     exit(0);
 }
 
-static void 
+static void
 quit(Widget w, XEvent *event, String *params, Cardinal *num_params)
 {
     Arg arg;
@@ -139,7 +143,7 @@ quit(Widget w, XEvent *event, String *params, Cardinal *num_params)
     }
 }
 
-static void 
+static void
 save(Widget w, XtPointer client_data, XtPointer call_data)
 {
     XtCheckpointToken token = (XtCheckpointToken) call_data;
@@ -147,7 +151,7 @@ save(Widget w, XtPointer client_data, XtPointer call_data)
     token->save_success = True;
 }
 
-int 
+int
 main(int argc, char *argv[])
 {
     Widget toplevel;
@@ -179,7 +183,7 @@ main(int argc, char *argv[])
      * This is a hack so that wm_delete_window will do something useful
      * in this single-window application.
      */
-    XtOverrideTranslations(toplevel, 
+    XtOverrideTranslations(toplevel,
 		    XtParseTranslationTable ("<Message>WM_PROTOCOLS: quit()"));
 
     XtSetArg(arg, XtNiconPixmap, &icon_pixmap);
@@ -197,7 +201,7 @@ main(int argc, char *argv[])
     if (icon_pixmap == None) {
 	arg.value = (XtArgVal)XCreateBitmapFromData(XtDisplay(toplevel),
 				       XtScreen(toplevel)->root,
-				       (char *)clock_mask_bits, clock_mask_width, 
+				       (char *)clock_mask_bits, clock_mask_width,
 				       clock_mask_height);
 	XtSetValues (toplevel, &arg, ONE);
     }
@@ -208,6 +212,17 @@ main(int argc, char *argv[])
 				    False);
     (void) XSetWMProtocols (XtDisplay(toplevel), XtWindow(toplevel),
 			    &wm_delete_window, 1);
+
+#ifdef HAVE_GETPID
+    {
+	pid_t pid = getpid();
+	XChangeProperty(XtDisplay(toplevel), XtWindow(toplevel),
+			XInternAtom(XtDisplay(toplevel), "_NET_WM_PID", False),
+			XA_CARDINAL, 32, PropModeReplace,
+			(unsigned char *) &pid, 1);
+    }
+#endif
+
     XtAppMainLoop (app_con);
     exit(0);
 }
