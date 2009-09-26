@@ -21,7 +21,7 @@
 
 bin_PROGRAMS = bdftopcf
 
-bdftopcf_CFLAGS = @BDFTOPCF_CFLAGS@
+bdftopcf_CFLAGS = $(CWARNFLAGS) @BDFTOPCF_CFLAGS@
 bdftopcf_LDADD  = @BDFTOPCF_LIBS@
 
 bdftopcf_SOURCES = bdftopcf.c
@@ -32,7 +32,7 @@ appmandir = $(APP_MAN_DIR)
 
 appman_DATA = $(appman_PRE:man=@APP_MAN_SUFFIX@)
 
-EXTRA_DIST = $(appman_PRE)
+EXTRA_DIST = $(appman_PRE) ChangeLog
 CLEANFILES = $(appman_DATA)
 
 SED = sed
@@ -58,3 +58,18 @@ SUFFIXES = .$(APP_MAN_SUFFIX) .man
 
 .man.$(APP_MAN_SUFFIX):
 	sed $(MAN_SUBSTS) < $< > $@
+
+.PHONY: ChangeLog
+
+ChangeLog:
+	$(CHANGELOG_CMD)
+
+dist-hook: ChangeLog
+
+if LINT
+ALL_LINT_FLAGS=$(LINT_FLAGS) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
+                $(AM_CPPFLAGS) $(CPPFLAGS) $(bdftopcf_CFLAGS)
+
+lint:
+	$(LINT) $(ALL_LINT_FLAGS) $(bdftopcf_SOURCES)
+endif LINT
