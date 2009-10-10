@@ -1,18 +1,15 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/nv/riva_include.h $ */
-
 #ifndef __RIVA_INCLUDE_H__
 #define __RIVA_INCLUDE_H__
 
-#if !USE_LIBC_WRAPPER
 #include <string.h>
-#endif
 
 /* All drivers should typically include these */
 #include "xf86.h"
 #include "xf86_OSproc.h"
+
+#if GET_ABI_MAJOR(ABI_VIDEODRV_VERSION) < 6
 #include "xf86Resources.h"
-#if USE_LIBC_WRAPPER
-#include "xf86_ansic.h"
+#include "xf86RAC.h"
 #endif
 #include "compiler.h"
 
@@ -34,7 +31,6 @@
 
 #include "vbe.h"
 
-#include "xf86RAC.h"
 
 #include "riva_const.h"
 
