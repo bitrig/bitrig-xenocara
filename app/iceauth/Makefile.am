@@ -21,7 +21,7 @@
 
 bin_PROGRAMS = iceauth
 
-iceauth_CFLAGS = $(ICEAUTH_CFLAGS)
+AM_CFLAGS = $(CWARNFLAGS) $(ICEAUTH_CFLAGS)
 iceauth_LDADD = $(ICEAUTH_LIBS)
 
 iceauth_SOURCES =	\
@@ -37,8 +37,17 @@ appmandir = $(APP_MAN_DIR)
 
 appman_DATA = $(appman_PRE:man=@APP_MAN_SUFFIX@)
 
-EXTRA_DIST = $(appman_PRE)
+EXTRA_DIST = $(appman_PRE) ChangeLog autogen.sh
 CLEANFILES = $(appman_DATA)
+
+MAINTAINERCLEANFILES=ChangeLog
+
+.PHONY: ChangeLog
+
+ChangeLog:
+	$(CHANGELOG_CMD)
+
+dist-hook: ChangeLog
 
 SED = sed
 
@@ -62,4 +71,11 @@ MAN_SUBSTS = \
 SUFFIXES = .$(APP_MAN_SUFFIX) .man
 
 .man.$(APP_MAN_SUFFIX):
-	sed $(MAN_SUBSTS) < $< > $@
+	$(AM_V_GEN)$(SED) $(MAN_SUBSTS) < $< > $@
+
+if LINT
+ALL_LINT_FLAGS=$(LINT_FLAGS) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
+                $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS)
+lint:
+	$(LINT) $(ALL_LINT_FLAGS) $(iceauth_SOURCES)
+endif LINT

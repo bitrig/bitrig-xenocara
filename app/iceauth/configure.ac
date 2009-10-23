@@ -22,23 +22,29 @@ dnl
 dnl Process this file with autoconf to create configure.
 
 AC_PREREQ([2.57])
-AC_INIT(iceauth,[1.0.1], [https://bugs.freedesktop.org/enter_bug.cgi?product=xorg],iceauth)
+AC_INIT(iceauth,[1.0.3], [https://bugs.freedesktop.org/enter_bug.cgi?product=xorg],iceauth)
 AM_INIT_AUTOMAKE([dist-bzip2])
 AM_MAINTAINER_MODE
 
 AM_CONFIG_HEADER(config.h)
+
+# Require xorg-macros 1.3 or later: XORG_DEFAULT_OPTIONS
+m4_ifndef([XORG_MACROS_VERSION],
+	  [m4_fatal([must install xorg-macros 1.3 or later before running autoconf/autogen])])
+XORG_MACROS_VERSION(1.3)
 
 AC_PROG_CC
 AC_PROG_INSTALL
 
 AC_TYPE_SIGNAL
 
+XORG_DEFAULT_OPTIONS
+
 # Checks for pkg-config packages
 PKG_CHECK_MODULES(ICEAUTH, xproto ice)
 AC_SUBST(ICEAUTH_CFLAGS)
 AC_SUBST(ICEAUTH_LIBS)
 
-XORG_MANPAGE_SECTIONS
-XORG_RELEASE_VERSION
+XORG_WITH_LINT
 
 AC_OUTPUT([Makefile])
