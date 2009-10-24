@@ -94,8 +94,8 @@ This option is like \fB\-children\fP but displays all children recursively.
 This option causes the display of various attributes pertaining to 
 the location and appearance of the selected window.
 Information displayed includes the location of the window,
-its width and height, its depth, border width, class, colormap id if any,
-map state, backing-store hint, and location of the corners.
+its width and height, its depth, border width, visual id and class,
+colormap id if any, map state, backing-store hint, and location of the corners.
 .PP
 .TP 8
 .B \-bits
@@ -169,6 +169,7 @@ xwininfo: Window id: 0x60000f "xterm"
   Width: 579
   Height: 316
   Depth: 8
+  Visual: 0x1e
   Visual Class: PseudoColor
   Border width: 0
   Class: InputOutput
@@ -188,11 +189,16 @@ xwininfo: Window id: 0x60000f "xterm"
 .B DISPLAY
 To get the default host and display number.
 .SH SEE ALSO
-X(__miscmansuffix__), xprop(1)
+.IR X (__miscmansuffix__), 
+.IR xprop (__appmansuffix__),
+.IR xdpyinfo (__appmansuffix__), 
+.IR xdriinfo (__appmansuffix__),
+.IR xvinfo (__appmansuffix__), 
+.IR glxinfo (__appmansuffix__)
 .SH BUGS
 Using \fB\-stats \-bits\fP shows some redundant information.
 .PP
-The -geometry string displayed must make assumptions about the
+The \fB-geometry\fP string displayed must make assumptions about the
 window's border width and the behavior of the application and the
 window manager.  As a result, the location given is not always
 correct.
