@@ -21,7 +21,7 @@
 
 bin_PROGRAMS = xsetroot
 
-xsetroot_CFLAGS = $(XSETROOT_CFLAGS)
+AM_CFLAGS = $(CWARNFLAGS) $(XSETROOT_CFLAGS)
 xsetroot_LDADD = $(XSETROOT_LIBS)
 
 xsetroot_SOURCES =	\
@@ -35,8 +35,17 @@ appmandir = $(APP_MAN_DIR)
 
 appman_DATA = $(appman_PRE:man=@APP_MAN_SUFFIX@)
 
-EXTRA_DIST = $(appman_PRE)
+EXTRA_DIST = $(appman_PRE) ChangeLog
 CLEANFILES = $(appman_DATA)
+
+MAINTAINERCLEANFILES = ChangeLog
+
+.PHONY: ChangeLog
+
+ChangeLog:
+	$(CHANGELOG_CMD)
+
+dist-hook: ChangeLog
 
 SED = sed
 
@@ -60,4 +69,11 @@ MAN_SUBSTS = \
 SUFFIXES = .$(APP_MAN_SUFFIX) .man
 
 .man.$(APP_MAN_SUFFIX):
-	sed $(MAN_SUBSTS) < $< > $@
+	$(AM_V_GEN)$(SED) $(MAN_SUBSTS) < $< > $@
+
+if LINT
+ALL_LINT_FLAGS=$(LINT_FLAGS) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
+		$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS)
+lint:
+	$(LINT) $(ALL_LINT_FLAGS) $(xsetroot_SOURCES)
+endif LINT
