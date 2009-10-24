@@ -21,7 +21,7 @@
 
 bin_PROGRAMS = xgamma
 
-xgamma_CFLAGS = $(XGAMMA_CFLAGS)
+AM_CFLAGS = $(CWARNFLAGS) $(XGAMMA_CFLAGS)
 xgamma_LDADD = $(XGAMMA_LIBS)
 
 xgamma_SOURCES =	\
@@ -35,8 +35,18 @@ appmandir = $(APP_MAN_DIR)
 
 appman_DATA = $(appman_PRE:man=@APP_MAN_SUFFIX@)
 
-EXTRA_DIST = $(appman_PRE)
+EXTRA_DIST = $(appman_PRE) ChangeLog
 CLEANFILES = $(appman_DATA)
+
+MAINTAINERCLEANFILES=ChangeLog
+
+.PHONY: ChangeLog
+
+ChangeLog:
+	$(CHANGELOG_CMD)
+
+dist-hook: ChangeLog
+
 
 SED = sed
 
@@ -60,4 +70,4 @@ MAN_SUBSTS = \
 SUFFIXES = .$(APP_MAN_SUFFIX) .man
 
 .man.$(APP_MAN_SUFFIX):
-	sed $(MAN_SUBSTS) < $< > $@
+	$(AM_V_GEN)$(SED) $(MAN_SUBSTS) < $< > $@
