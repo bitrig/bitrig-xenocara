@@ -2,9 +2,8 @@ bin_PROGRAMS = xhost
 
 xhost_SOURCES = xhost.c
 
-xhost_CFLAGS = @XHOST_CFLAGS@
-
-xhost_LDADD = @XHOST_LIBS@
+AM_CFLAGS = $(CWARNFLAGS) $(XHOST_CFLAGS)
+xhost_LDADD = $(XHOST_LIBS)
 
 appman_PRE = xhost.man
 
@@ -12,8 +11,16 @@ appmandir = $(APP_MAN_DIR)
 
 appman_DATA = $(appman_PRE:man=@APP_MAN_SUFFIX@)
 
-EXTRA_DIST = $(appman_PRE)
+EXTRA_DIST = $(appman_PRE) ChangeLog
 CLEANFILES = $(appman_DATA)
+MAINTAINERCLEANFILES = ChangeLog
+
+.PHONY: ChangeLog
+
+ChangeLog:
+	$(CHANGELOG_CMD)
+
+dist-hook: ChangeLog
 
 SED = sed
 
@@ -37,4 +44,4 @@ MAN_SUBSTS = \
 SUFFIXES = .$(APP_MAN_SUFFIX) .man
 
 .man.$(APP_MAN_SUFFIX):
-	sed $(MAN_SUBSTS) < $< > $@
+	$(AM_V_GEN)$(SED) $(MAN_SUBSTS) < $< > $@

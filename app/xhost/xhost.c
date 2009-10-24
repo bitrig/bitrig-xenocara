@@ -1,5 +1,5 @@
 /* $Xorg: xhost.c,v 1.4 2001/02/09 02:05:46 xorgcvs Exp $ */
-/* $XdotOrg: app/xhost/xhost.c,v 1.5 2006/04/15 00:10:10 ajax Exp $ */
+/* $XdotOrg: app/xhost/xhost.c,v 1.4 2005/06/18 08:03:35 alanc Exp $ */
 /*
 
 Copyright 1985, 1986, 1987, 1998  The Open Group
@@ -141,9 +141,9 @@ static signal_t nameserver_lost(int sig);
 
 #define NAMESERVER_TIMEOUT 5	/* time to wait for nameserver */
 
-volatile int nameserver_timedout;
- 
-char *ProgramName;
+static volatile int nameserver_timedout;
+
+static char *ProgramName;
 
 #ifdef NEEDSOCKETS
 static int 
@@ -175,7 +175,7 @@ XFamily(int af)
 }
 #endif /* NEEDSOCKETS */
 
-Display *dpy;
+static Display *dpy;
 
 int
 main(int argc, char *argv[])
