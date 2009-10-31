@@ -1,5 +1,5 @@
 /*
- * $Id: Xdamage.h,v 1.1 2006/11/25 17:01:38 matthieu Exp $
+ * $Id: Xdamage.h,v 1.2 2009/10/31 17:48:42 matthieu Exp $
  *
  * Copyright © 2003 Keith Packard
  *
@@ -29,6 +29,8 @@
 #include <X11/extensions/Xfixes.h>
 #include <X11/Xfuncproto.h>
 
+#define XDAMAGE_1_1_INTERFACE
+
 typedef XID Damage;
 
 typedef struct {
@@ -47,11 +49,13 @@ typedef struct {
 
 _XFUNCPROTOBEGIN
 
-Bool XDamageQueryExtension (Display *dpy, int *event_basep, int *error_basep);
+Bool XDamageQueryExtension (Display *dpy,
+                            int *event_base_return,
+                            int *error_base_return);
 
 Status XDamageQueryVersion (Display *dpy,
-			    int     *major_versionp,
-			    int     *minor_versionp);
+			    int     *major_version_return,
+			    int     *minor_version_return);
 
 Damage
 XDamageCreate (Display	*dpy, Drawable drawable, int level);
@@ -62,6 +66,9 @@ XDamageDestroy (Display *dpy, Damage damage);
 void
 XDamageSubtract (Display *dpy, Damage damage, 
 		 XserverRegion repair, XserverRegion parts);
+
+void
+XDamageAdd (Display *dpy, Drawable drawable, XserverRegion region);
 
 _XFUNCPROTOEND
 
