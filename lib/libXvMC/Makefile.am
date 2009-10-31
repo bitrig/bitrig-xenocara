@@ -24,5 +24,19 @@ SUBDIRS = src include
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = xvmc.pc
 
-EXTRA_DIST = xvmc.pc.in autogen.sh
+xvmcdocdir = $(datadir)/doc/$(PACKAGE)
+dist_xvmcdoc_DATA = XvMC_API.txt
 
+EXTRA_DIST = xvmc.pc.in ChangeLog
+
+.PHONY: ChangeLog
+
+ChangeLog:
+	$(CHANGELOG_CMD)
+
+dist-hook: ChangeLog
+
+if LINT
+lint:
+	(cd src && $(MAKE) $(MFLAGS) lint)
+endif LINT

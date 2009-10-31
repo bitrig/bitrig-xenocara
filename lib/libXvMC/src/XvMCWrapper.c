@@ -232,7 +232,7 @@ static int preInitW(Display *dpy)
      * Resolve functions that are not hw driver specific.
      */
 
-    void *handleZ = 0;
+    void *handleZ = NULL;
 
     wrapperPreInit = 1;
     xW.preInitialised = 0;
@@ -315,15 +315,15 @@ static void initW(Display *dpy, XvPortID port)
       
 	xW.initialised = 0;
 	xW.vldextension = 0;
-      
-	if (0 == configFile) {
+
+	if (NULL == configFile) {
 	    fprintf(stderr,"XvMCWrapper: Could not open config file \"%s\".\n",
 		    STRS(XVMC_CONFIGDIR) "/XvMCConfig");
 	    perror("XvMCWrapper");
 	    return;
 	}
 
-	if (0 == fgets(nameBuffer, BUFLEN, configFile)) {
+	if (NULL == fgets(nameBuffer, BUFLEN, configFile)) {
 	    fclose(configFile);
 	    fprintf(stderr,"XvMCWrapper: Could not read XvMC library name.\n");
 	    perror("XvMCWrapper");
