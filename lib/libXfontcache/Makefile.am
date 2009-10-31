@@ -24,10 +24,12 @@ SUBDIRS = src man
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = xfontcache.pc
 
-EXTRA_DIST = xfontcache.pc.in autogen.sh ChangeLog
+EXTRA_DIST = xfontcache.pc.in ChangeLog
+MAINTAINERCLEANFILES = ChangeLog
 
-CLEANFILES = ChangeLog
+.PHONY: ChangeLog
 
-ChangeLog: FORCE
-	git-log > ChangeLog
-FORCE:
+ChangeLog:
+	$(CHANGELOG_CMD)
+
+dist-hook: ChangeLog
