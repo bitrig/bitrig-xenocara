@@ -81,10 +81,6 @@ FILE*		/* auth_file */,
 Xauth*		/* auth */
 );
 
-Xauth *XauGetAuthByName(
-_Xconst char*	/* display_name */
-);
-
 Xauth *XauGetAuthByAddr(
 #if NeedWidePrototypes
 unsigned int	/* family */,
@@ -131,23 +127,6 @@ _Xconst int*	/* type_lengths */
 void XauDisposeAuth(
 Xauth*		/* auth */
 );
-
-#ifdef K5AUTH
-#include <krb5/krb5.h>
-/* 9/93: krb5.h leaks some symbols */
-#undef BITS32
-#undef xfree
-
-int XauKrb5Encode(
-     krb5_principal	/* princ */,
-     krb5_data *	/* outbuf */
-);
-
-int XauKrb5Decode(
-     krb5_data		/* inbuf */,
-     krb5_principal *	/* princ */
-);
-#endif /* K5AUTH */
 
 _XFUNCPROTOEND
 
