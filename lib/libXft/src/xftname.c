@@ -1,6 +1,4 @@
 /*
- * $Id: xftname.c,v 1.1 2006/11/25 17:21:38 matthieu Exp $
- *
  * Copyright © 2000 Keith Packard
  *
  * Permission to use, copy, modify, distribute, and sell this software and its
@@ -28,11 +26,12 @@ static const FcObjectType	_XftObjectTypes[] = {
     { XFT_CORE,		FcTypeBool, },
     { XFT_XLFD,		FcTypeString, },
     { XFT_RENDER,	FcTypeBool, },
+    { XFT_MAX_GLYPH_MEMORY, FcTypeInteger, },
 };
 
 #define NUM_OBJECT_TYPES    (sizeof _XftObjectTypes / sizeof _XftObjectTypes[0])
 
-_X_HIDDEN FcBool	_XftNameInitialized;
+static FcBool _XftNameInitialized;
 
 _X_HIDDEN void 
 _XftNameInit (void)
@@ -50,7 +49,7 @@ _X_EXPORT FcPattern
     return FcNameParse ((FcChar8 *) name); 
 }
 
-_X_HIDDEN FcBool
+_X_EXPORT FcBool
 XftNameUnparse (FcPattern *pat, char *dest, int len)
 {
     FcChar8 *name;
