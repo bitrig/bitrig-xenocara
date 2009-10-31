@@ -36,6 +36,8 @@ from The Open Group.
 #ifndef _PCF_H_
 #define _PCF_H_
 
+#include <X11/fonts/fntfilio.h>
+
 /*
  * Information used to read/write PCF fonts
  */
@@ -92,8 +94,6 @@ typedef struct _PCFTable {
 extern int pcfReadFont ( FontPtr pFont, FontFilePtr file, 
 			 int bit, int byte, int glyph, int scan );
 extern int pcfReadFontInfo ( FontInfoPtr pFontInfo, FontFilePtr file );
-extern int pmfReadFont ( FontPtr pFont, FontFilePtr file, 
-			 int bit, int byte, int glyph, int scan );
 extern int pcfWriteFont ( FontPtr pFont, FontFilePtr file );
 extern void pcfError ( const char *, ... );
 

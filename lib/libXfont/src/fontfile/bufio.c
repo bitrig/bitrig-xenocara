@@ -51,7 +51,7 @@ BufFileCreate (char *private,
 {
     BufFilePtr	f;
 
-    f = (BufFilePtr) xalloc (sizeof *f);
+    f = malloc (sizeof *f);
     if (!f)
 	return 0;
     f->private = private;
@@ -125,7 +125,7 @@ BufFileRawClose (BufFilePtr f, int doClose)
 BufFilePtr
 BufFileOpenRead (int fd)
 {
-#if defined(__UNIXOS2__) || defined (WIN32)
+#if defined (WIN32)
     /* hv: I'd bet WIN32 has the same effect here */
     setmode(fd,O_BINARY);
 #endif
@@ -147,12 +147,20 @@ BufFileRawFlush (int c, BufFilePtr f)
     return c;
 }
 
+static int
+BufFileFlush (BufFilePtr f, int doClose)
+{
+    if (f->bufp != f->buffer)
+	return (*f->output) (BUFFILEEOF, f);
+    return 0;
+}
+
 BufFilePtr
 BufFileOpenWrite (int fd)
 {
     BufFilePtr	f;
 
-#if defined(__UNIXOS2__) || defined(WIN32)
+#if defined(WIN32)
     /* hv: I'd bet WIN32 has the same effect here */
     setmode(fd,O_BINARY);
 #endif
@@ -189,24 +197,10 @@ BufFileWrite (BufFilePtr f, char *b, int n)
 }
 
 int
-BufFileFlush (BufFilePtr f, int doClose)
-{
-    if (f->bufp != f->buffer)
-	return (*f->output) (BUFFILEEOF, f);
-    return 0;
-}
-
-int
 BufFileClose (BufFilePtr f, int doClose)
 {
     int ret;
     ret = (*f->close) (f, doClose);
-    xfree (f);
+    free (f);
     return ret;
-}
-
-void
-BufFileFree (BufFilePtr f)
-{
-    xfree (f);
 }

@@ -34,13 +34,6 @@ from The Open Group.
 
 #include <X11/Xfuncproto.h>
 
-#ifdef TEST
-
-#define xalloc(s)   malloc(s)
-#define xfree(s)    free(s)
-
-#endif
-
 #define BUFFILESIZE	8192
 #define BUFFILEEOF	-1
 
@@ -71,11 +64,12 @@ extern BufFilePtr BufFilePushCompressed ( BufFilePtr );
 #ifdef X_GZIP_FONT_COMPRESSION
 extern BufFilePtr BufFilePushZIP ( BufFilePtr );
 #endif
+#ifdef X_BZIP2_FONT_COMPRESSION
+extern BufFilePtr BufFilePushBZIP2 ( BufFilePtr );
+#endif
 extern int BufFileClose ( BufFilePtr, int );
-extern int BufFileFlush ( BufFilePtr, int );
 extern int BufFileRead ( BufFilePtr, char*, int );
 extern int BufFileWrite ( BufFilePtr, char*, int );
-extern void BufFileFree ( BufFilePtr );
 
 #define BufFileGet(f)	((f)->left-- ? *(f)->bufp++ : ((f)->eof = (*(f)->input) (f)))
 #define BufFilePut(c,f)	(--(f)->left ? *(f)->bufp++ = ((unsigned char)(c)) : (*(f)->output) ((unsigned char)(c),f))

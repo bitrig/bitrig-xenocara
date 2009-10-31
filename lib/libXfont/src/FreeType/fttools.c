@@ -27,14 +27,8 @@
 #include <config.h>
 #endif
 #include <X11/fonts/fontmisc.h>
-#ifndef FONTMODULE
 #include <ctype.h>
 #include <string.h>
-#else
-#include "Xmd.h"
-#include "Xdefs.h"
-#include "xf86_ansic.h"
-#endif
 
 #include <X11/fonts/font.h>
 #include <ft2build.h>
@@ -42,13 +36,6 @@
 #include FT_SFNT_NAMES_H
 #include FT_TRUETYPE_IDS_H
 #include "ft.h"
-
-/* backward compatibility hack */
-#if (FREETYPE_VERSION < 2001008)
-# ifndef ft_isdigit
-#  define ft_isdigit isdigit
-# endif
-#endif
 
 #ifndef LSBFirst
 #define LSBFirst 0
@@ -152,51 +139,4 @@ FTGetEnglishName(FT_Face face, int nid, char *name_return, int name_len)
 
     /* Must be some font that can only be named in Polish or something. */
     return -1;
-}
-
-int
-FTcheckForTTCName(char *fileName, char **realFileName, int *faceNumber)
-{
-    int length;
-    int fn;
-    int i, j;
-    char *start, *realName;
-
-    length = strlen(fileName);
-    if(length < 4)
-        return 0;
-
-    if(strcasecmp(fileName + (length-4), ".ttc") != 0 &&
-       strcasecmp(fileName + (length-4), ".otc") != 0)
-        return 0;
-
-    realName = xalloc(length + 1);
-    if(realName == NULL)
-        return 0;
-
-    strcpy(realName, fileName);
-    *realFileName=realName;
-    start = strchr(realName, ':');
-    if(start) {
-        fn=0;
-        i=1;
-        while(ft_isdigit(start[i])) {
-            fn *= 10;
-            fn += start[i]-'0';
-            i++;
-        }
-        if(start[i]==':') {
-            *faceNumber = fn;
-            i++;
-            j = 0;
-            while(start[i]) {
-                start[j++] = start[i++];
-            }
-            start[j] = '\0';
-            return 1;
-        }
-    }
-
-    *faceNumber = 0;
-    return 1;
 }

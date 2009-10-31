@@ -1,5 +1,3 @@
-/* $Xorg: register.c,v 1.4 2001/02/09 02:04:03 xorgcvs Exp $ */
-
 /*
 
 Copyright 1994, 1998  The Open Group
@@ -25,13 +23,6 @@ used in advertising or otherwise to promote the sale, use or other dealings
 in this Software without prior written authorization from The Open Group.
 
 */
-/* $XFree86: xc/lib/font/fontfile/register.c,v 1.14 2001/01/17 19:43:30 dawes Exp $ */
-
-/*
- * This is in a separate source file so that small programs
- * such as mkfontdir that want to use the fontfile utilities don't
- * end up dragging in code from all the renderers, which is not small.
- */
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -43,10 +34,6 @@ in this Software without prior written authorization from The Open Group.
 #include <X11/fonts/fntfilst.h>
 #include <X11/fonts/bitmap.h>
 
-#ifdef LOADABLEFONTS
-#include <X11/fonts/fontmod.h>
-#endif
-
 /*
  * Translate monolithic build symbols to modular build symbols.
  * I chose to make the modular symbols 'canonical' because they
@@ -54,18 +41,6 @@ in this Software without prior written authorization from The Open Group.
  * with other packages.
  */
 
-#ifndef CRAY
-# ifdef BUILD_SPEEDO
-#  define XFONT_SPEEDO 1
-# endif
-# ifdef BUILD_TYPE1
-#  define XFONT_TYPE1 1
-# endif
-#endif
-
-#ifdef BUILD_CID
-# define XFONT_CID 1
-#endif
 #ifdef BUILD_FREETYPE
 # define XFONT_FREETYPE 1
 #endif
@@ -73,37 +48,15 @@ in this Software without prior written authorization from The Open Group.
 void
 FontFileRegisterFpeFunctions(void)
 {
-#ifndef LOADABLEFONTS
-
 #ifdef XFONT_BITMAP
+    /* bitmap is always builtin to libXfont now */
     BitmapRegisterFontFileFunctions ();
-#endif
-#ifdef XFONT_SPEEDO
-    SpeedoRegisterFontFileFunctions ();
-#endif
-#ifdef XFONT_TYPE1
-    Type1RegisterFontFileFunctions();
-#endif
-#ifdef XFONT_CID
-    CIDRegisterFontFileFunctions();
 #endif
 #ifdef XFONT_FREETYPE
     FreeTypeRegisterFontFileFunctions();
 #endif
-
-#else
-    {
-	int i;
-
-	if (FontModuleList) {
-	    for (i = 0; FontModuleList[i].name; i++) {
-		if (FontModuleList[i].initFunc)
-		    FontModuleList[i].initFunc();
-	    }
-	}
-    }
-#endif
     
     FontFileRegisterLocalFpeFunctions ();
+    CatalogueRegisterLocalFpeFunctions ();
 }
 
