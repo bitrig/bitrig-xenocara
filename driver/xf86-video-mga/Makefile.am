@@ -27,6 +27,6 @@ EXTRA_DIST = README_HALLIB mga_PInS.txt ChangeLog
 .PHONY: ChangeLog
 
 ChangeLog:
-	git-log > ChangeLog
+	$(CHANGELOG_CMD)
 
 dist-hook: ChangeLog
