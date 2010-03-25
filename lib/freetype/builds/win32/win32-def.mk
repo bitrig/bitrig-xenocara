@@ -14,6 +14,7 @@
 
 
 DELETE    := del
+CAT       := type
 SEP       := $(strip \ )
 BUILD_DIR := $(TOP_DIR)/builds/win32
 PLATFORM  := win32
@@ -21,6 +22,7 @@ PLATFORM  := win32
 # The executable file extension (for tools). NOTE: WE INCLUDE THE DOT HERE !!
 #
 E := .exe
+E_BUILD := .exe
 
 
 # The directory where all library files are placed.
