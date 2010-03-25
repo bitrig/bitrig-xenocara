@@ -1,5 +1,5 @@
 /*
- * $RCSId: xc/lib/fontconfig/fontconfig/fcfreetype.h,v 1.2 2002/02/15 06:01:27 keithp Exp $
+ * fontconfig/fontconfig/fcfreetype.h
  *
  * Copyright © 2001 Keith Packard
  *
@@ -13,9 +13,9 @@
  * representations about the suitability of this software for any purpose.  It
  * is provided "as is" without express or implied warranty.
  *
- * KEITH PACKARD DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
+ * THE AUTHOR(S) DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
  * INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
- * EVENT SHALL KEITH PACKARD BE LIABLE FOR ANY SPECIAL, INDIRECT OR
+ * EVENT SHALL THE AUTHOR(S) BE LIABLE FOR ANY SPECIAL, INDIRECT OR
  * CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
  * DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
@@ -47,6 +47,12 @@ FcPatternGetFTFace (const FcPattern *p, const char *object, int n, FT_Face *f);
 
 FcPublic FcBool
 FcPatternAddFTFace (FcPattern *p, const char *object, const FT_Face f);
+
+FcPublic FcPattern *
+FcFreeTypeQueryFace (const FT_Face  face,
+		     const FcChar8  *file,
+		     int	    id,
+		     FcBlanks	    *blanks);
 
 _FCFUNCPROTOEND
 
