@@ -4,7 +4,7 @@
 /*                                                                         */
 /*    CID-keyed Type1 parser (body).                                       */
 /*                                                                         */
-/*  Copyright 1996-2001, 2002, 2003, 2004, 2005, 2006 by                   */
+/*  Copyright 1996-2001, 2002, 2003, 2004, 2005, 2006, 2007, 2009 by       */
 /*  David Turner, Robert Wilhelm, and Werner Lemberg.                      */
 /*                                                                         */
 /*  This file is part of the FreeType project, and may only be used,       */
@@ -18,7 +18,6 @@
 
 #include <ft2build.h>
 #include FT_INTERNAL_DEBUG_H
-#include FT_INTERNAL_CALC_H
 #include FT_INTERNAL_OBJECTS_H
 #include FT_INTERNAL_STREAM_H
 
@@ -83,21 +82,26 @@
       goto Exit;
 
   Again:
-    /* now, read the rest of the file until we find a `StartData' */
+    /* now, read the rest of the file until we find */
+    /* `StartData' or `/sfnts'                      */
     {
       FT_Byte   buffer[256 + 10];
-      FT_Int    read_len = 256 + 10;
+      FT_Long   read_len = 256 + 10; /* same as signed FT_Stream->size */
       FT_Byte*  p        = buffer;
 
 
-      for ( offset = (FT_ULong)FT_STREAM_POS(); ; offset += 256 )
+      for ( offset = FT_STREAM_POS(); ; offset += 256 )
       {
-        FT_Int    stream_len;
+        FT_Long  stream_len; /* same as signed FT_Stream->size */
 
 
         stream_len = stream->size - FT_STREAM_POS();
         if ( stream_len == 0 )
+        {
+          FT_TRACE2(( "cid_parser_new: no `StartData' keyword found\n" ));
+          error = CID_Err_Unknown_File_Format;
           goto Exit;
+        }
 
         read_len = FT_MIN( read_len, stream_len );
         if ( FT_STREAM_READ( p, read_len ) )
@@ -116,6 +120,11 @@
             offset += p - buffer + 10;
             goto Found;
           }
+          else if ( p[1] == 's' && ft_strncmp( (char*)p, "/sfnts", 6 ) == 0 )
+          {
+            offset += p - buffer + 7;
+            goto Found;
+          }
         }
 
         FT_MEM_MOVE( buffer, p, 10 );
@@ -125,8 +134,9 @@
     }
 
   Found:
-    /* We have found the start of the binary data.  Now rewind and */
-    /* extract the frame corresponding to the PostScript section.  */
+    /* We have found the start of the binary data or the `/sfnts' token. */
+    /* Now rewind and extract the frame corresponding to this PostScript */
+    /* section.                                                          */
 
     ps_len = offset - base_offset;
     if ( FT_STREAM_SEEK( base_offset )                  ||
@@ -140,9 +150,10 @@
     parser->root.limit     = parser->root.cursor + ps_len;
     parser->num_dict       = -1;
 
-    /* Finally, we check whether `StartData' was real -- it could be  */
-    /* in a comment or string.  We also get its arguments to find out */
-    /* whether the data is represented in binary or hex format.       */
+    /* Finally, we check whether `StartData' or `/sfnts' was real --  */
+    /* it could be in a comment or string.  We also get the arguments */
+    /* of `StartData' to find out whether the data is represented in  */
+    /* binary or hex format.                                          */
 
     arg1 = parser->root.cursor;
     cid_parser_skip_PS_token( parser );
@@ -157,15 +168,24 @@
     while ( cur < limit )
     {
       if ( parser->root.error )
-        break;
+      {
+        error = parser->root.error;
+        goto Exit;
+      }
 
-      if ( *cur == 'S' && ft_strncmp( (char*)cur, "StartData", 9 ) == 0 )
+      if ( cur[0] == 'S' && ft_strncmp( (char*)cur, "StartData", 9 ) == 0 )
       {
         if ( ft_strncmp( (char*)arg1, "(Hex)", 5 ) == 0 )
           parser->binary_length = ft_atol( (const char *)arg2 );
 
         limit = parser->root.limit;
         cur   = parser->root.cursor;
+        goto Exit;
+      }
+      else if ( cur[1] == 's' && ft_strncmp( (char*)cur, "/sfnts", 6 ) == 0 )
+      {
+        FT_TRACE2(( "cid_parser_new: cannot handle Type 11 fonts\n" ));
+        error = CID_Err_Unknown_File_Format;
         goto Exit;
       }
 

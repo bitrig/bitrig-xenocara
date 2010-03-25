@@ -52,7 +52,7 @@
     {
       AFM_KernPair  kp = fi->KernPairs + i;
 
-      
+
       printf( "\t%3d + %3d => (%4d, %4d)\n", kp->index1,
                                              kp->index2,
                                              kp->x,
@@ -63,7 +63,7 @@
 
   int
   dummy_get_index( const char*  name,
-                   FT_UInt      len,
+                   FT_Offset    len,
                    void*        user_data )
   {
     if ( len )

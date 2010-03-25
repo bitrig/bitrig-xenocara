@@ -189,7 +189,7 @@
   gxv_mort_subtable_type2_entry_validate(
     FT_Byte                         state,
     FT_UShort                       flags,
-    GXV_StateTable_GlyphOffsetDesc  glyphOffset,
+    GXV_StateTable_GlyphOffsetCPtr  glyphOffset_p,
     FT_Bytes                        table,
     FT_Bytes                        limit,
     GXV_Validator                   valid )
@@ -199,13 +199,13 @@
     FT_UShort offset;
 
     FT_UNUSED( state );
-    FT_UNUSED( glyphOffset );
+    FT_UNUSED( glyphOffset_p );
     FT_UNUSED( limit );
 
 
     setComponent = (FT_UShort)( ( flags >> 15 ) & 1 );
     dontAdvance  = (FT_UShort)( ( flags >> 14 ) & 1 );
-    
+
     offset = (FT_UShort)( flags & 0x3FFFU );
 
     if ( 0 < offset )

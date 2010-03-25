@@ -4,7 +4,7 @@
 /*                                                                         */
 /*    FreeType PFR loader (body).                                          */
 /*                                                                         */
-/*  Copyright 2002, 2003, 2004, 2005 by                                    */
+/*  Copyright 2002, 2003, 2004, 2005, 2007, 2009 by                        */
 /*  David Turner, Robert Wilhelm, and Werner Lemberg.                      */
 /*                                                                         */
 /*  This file is part of the FreeType project, and may only be used,       */
@@ -428,7 +428,8 @@
 
   Too_Short:
     error = PFR_Err_Invalid_Table;
-    FT_ERROR(( "pfr_extra_item_load_bitmap_info: invalid bitmap info table\n" ));
+    FT_ERROR(( "pfr_extra_item_load_bitmap_info:"
+               " invalid bitmap info table\n" ));
     goto Exit;
   }
 
@@ -506,7 +507,8 @@
 
   Too_Short:
     error = PFR_Err_Invalid_Table;
-    FT_ERROR(( "pfr_exta_item_load_stem_snaps: invalid stem snaps table\n" ));
+    FT_ERROR(( "pfr_exta_item_load_stem_snaps:"
+               " invalid stem snaps table\n" ));
     goto Exit;
   }
 
@@ -603,8 +605,8 @@
     FT_FREE( item );
 
     error = PFR_Err_Invalid_Table;
-    FT_ERROR(( "pfr_extra_item_load_kerning_pairs: "
-               "invalid kerning pairs table\n" ));
+    FT_ERROR(( "pfr_extra_item_load_kerning_pairs:"
+               " invalid kerning pairs table\n" ));
     goto Exit;
   }
 
@@ -714,7 +716,8 @@
   {
     FT_Error   error;
     FT_Memory  memory = stream->memory;
-    FT_UInt    flags, num_aux;
+    FT_UInt    flags;
+    FT_ULong   num_aux;
     FT_Byte*   p;
     FT_Byte*   limit;
 
@@ -743,7 +746,7 @@
     phy_font->bbox.yMax          = PFR_NEXT_SHORT( p );
     phy_font->flags      = flags = PFR_NEXT_BYTE( p );
 
-    /* get the standard advance for non-proprotional fonts */
+    /* get the standard advance for non-proportional fonts */
     if ( !(flags & PFR_PHY_PROPORTIONAL) )
     {
       PFR_CHECK( 2 );
