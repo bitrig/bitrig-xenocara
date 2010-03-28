@@ -1,4 +1,3 @@
-static char*id="$XConsortium: xmessage.c,v 1.6 95/01/04 16:29:54 gildea Exp $";
 /*
 
 Copyright (c) 1988, 1991, 1994  X Consortium
@@ -30,6 +29,7 @@ from the X Consortium.
 */
 /* $XFree86: xc/programs/xmessage/xmessage.c,v 1.4 2000/02/17 16:53:03 dawes Exp $ */
 
+#include <assert.h>
 #include <X11/Intrinsic.h>
 #include <X11/StringDefs.h>
 #include <X11/Shell.h>
@@ -72,11 +72,11 @@ static XtResource resources[] = {
     { "nearMouse", "NearMouse", XtRBoolean, sizeof (Boolean),
       offset(nearmouse), XtRString, "false" },
     { "timeout", "Timeout", XtRInt, sizeof (int),
-      offset(timeout_secs), XtRInt, 0 },
+      offset(timeout_secs), XtRInt, NULL },
     { "maxHeight", "Maximum", XtRDimension, sizeof (Dimension),
-      offset(maxHeight), XtRDimension, 0 },
+      offset(maxHeight), XtRDimension, NULL },
     { "maxWidth", "Maximum", XtRDimension, sizeof (Dimension),
-      offset(maxWidth), XtRDimension, 0 },
+      offset(maxWidth), XtRDimension, NULL },
 };
 #undef offset
 
@@ -120,7 +120,6 @@ NULL};
     fprintf (outf, "where options include:\n");
     for (cpp = options; *cpp; cpp++)
 	fprintf (outf, "%s\n", *cpp);
-    fprintf (outf, "%s\n", id+1);
 }
 
 /*
@@ -152,6 +151,60 @@ default_exit_action(Widget w, XEvent *event, String *params,
 {
     if (default_exitstatus >= 0)
 	exit(default_exitstatus);
+}
+
+/* Convert tabs to spaces in *messagep,*lengthp, copying to a new block of
+   memory.  */
+static void
+detab (char **messagep, int *lengthp)
+{
+  int   i, n, col, psize;
+  char  *p;
+  
+  /* count how many tabs there are */
+  n = 0;
+  for (i = 0; i < *lengthp; i++)
+    if ((*messagep)[i] == '\t')
+      n++;
+
+  /* length increases by at most seven extra spaces for each tab */
+  psize = *lengthp + n*7 + 1;
+  p = XtMalloc (psize);
+
+  /* convert tabs to spaces, copying into p */
+  n = 0;
+  col = 0;
+  for (i = 0; i < *lengthp; i++)
+    {
+      switch ((*messagep)[i]) {
+      case '\n':
+        p[n++] = '\n';
+        col = 0;
+        break;
+      case '\t':
+        do
+          {
+            p[n++] = ' ';
+            col++;
+          }
+        while ((col % 8) != 0);
+        break;
+      default:
+        p[n++] = (*messagep)[i];
+        col++;
+        break;
+      }
+    }
+
+  assert (n < psize);
+
+  /* null-terminator needed by Label widget */
+  p[n] = '\0';
+
+  free (*messagep);
+
+  *messagep = p;
+  *lengthp = n;
 }
 
 static XtActionsRec actions_list[] = {
@@ -303,6 +356,8 @@ main (int argc, char *argv[])
     wm_delete_window = XInternAtom(XtDisplay(top), "WM_DELETE_WINDOW", False);
     XtAppAddActions(app_con, actions_list, XtNumber(actions_list));
     XtOverrideTranslations(top, XtParseTranslationTable(top_trans));
+
+    detab (&message_str, &message_len);
 
     /*
      * create the query form; this is where most of the real work is done
