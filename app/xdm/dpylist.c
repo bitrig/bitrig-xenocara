@@ -1,4 +1,3 @@
-/* $Xorg: dpylist.c,v 1.4 2001/02/09 02:05:40 xorgcvs Exp $ */
 /*
 
 Copyright 1988, 1998  The Open Group
@@ -26,7 +25,6 @@ other dealings in this Software without prior written authorization
 from The Open Group.
 
 */
-/* $XFree86: xc/programs/xdm/dpylist.c,v 1.5tsi Exp $ */
 
 /*
  * xdm - display manager daemon
@@ -35,8 +33,8 @@ from The Open Group.
  * a simple linked list of known displays
  */
 
-# include "dm.h"
-# include "dm_error.h"
+#include "dm.h"
+#include "dm_error.h"
 
 static struct display	*displays;
 
@@ -65,29 +63,29 @@ FindDisplayByName (char *name)
 	for (d = displays; d; d = d->next)
 		if (!strcmp (name, d->name))
 			return d;
-	return 0;
+	return NULL;
 }
 
 struct display *
-FindDisplayByPid (int pid)
+FindDisplayByPid (pid_t pid)
 {
 	struct display	*d;
 
 	for (d = displays; d; d = d->next)
 		if (pid == d->pid)
 			return d;
-	return 0;
+	return NULL;
 }
 
 struct display *
-FindDisplayByServerPid (int serverPid)
+FindDisplayByServerPid (pid_t serverPid)
 {
 	struct display	*d;
 
 	for (d = displays; d; d = d->next)
 		if (serverPid == d->serverPid)
 			return d;
-	return 0;
+	return NULL;
 }
 
 #ifdef XDMCP
@@ -100,7 +98,7 @@ FindDisplayBySessionID (CARD32 sessionID)
     for (d = displays; d; d = d->next)
 	if (sessionID == d->sessionID)
 	    return d;
-    return 0;
+    return NULL;
 }
 
 struct display *
@@ -115,13 +113,13 @@ FindDisplayByAddress (XdmcpNetaddr addr, int addrlen, CARD16 displayNumber)
 	{
 	    return d;
 	}
-    return 0;
+    return NULL;
 }
 
 #endif /* XDMCP */
 
 #define IfFree(x)  if (x) free ((char *) x)
-    
+
 void
 RemoveDisplay (struct display *old)
 {
@@ -129,7 +127,7 @@ RemoveDisplay (struct display *old)
     char		**x;
     int			i;
 
-    p = 0;
+    p = NULL;
     for (d = displays; d; d = d->next) {
 	if (d == old) {
 	    if (p)
@@ -172,6 +170,7 @@ RemoveDisplay (struct display *old)
 	    IfFree (d->from);
 	    XdmcpDisposeARRAY8 (&d->clientAddr);
 #endif
+	    IfFree (d->windowPath);
 	    free ((char *) d);
 	    break;
 	}
@@ -184,36 +183,34 @@ NewDisplay (char *name, char *class)
 {
     struct display	*d;
 
-    d = (struct display *) malloc (sizeof (struct display));
+    d = (struct display *) calloc (1, sizeof (struct display));
     if (!d) {
 	LogOutOfMem ("NewDisplay");
-	return 0;
+	return NULL;
     }
     d->next = displays;
-    d->name = malloc ((unsigned) (strlen (name) + 1));
+    d->name = strdup (name);
     if (!d->name) {
 	LogOutOfMem ("NewDisplay");
 	free ((char *) d);
-	return 0;
+	return NULL;
     }
-    strcpy (d->name, name);
     if (class)
     {
-	d->class = malloc ((unsigned) (strlen (class) + 1));
+	d->class = strdup (class);
 	if (!d->class) {
 	    LogOutOfMem ("NewDisplay");
 	    free (d->name);
 	    free ((char *) d);
-	    return 0;
+	    return NULL;
 	}
-	strcpy (d->class, class);
     }
     else
     {
-	d->class = (char *) 0;
+	d->class = NULL;
     }
     /* initialize every field to avoid possible problems */
-    d->argv = 0;
+    d->argv = NULL;
     d->status = notRunning;
     d->pid = -1;
     d->serverPid = -1;
@@ -249,9 +246,9 @@ NewDisplay (char *name, char *class)
     d->grabTimeout = 0;
 #ifdef XDMCP
     d->sessionID = 0;
-    d->peer = 0;
+    d->peer = NULL;
     d->peerlen = 0;
-    d->from = 0;
+    d->from = NULL;
     d->fromlen = 0;
     d->displayNumber = 0;
     d->useChooser = 0;
@@ -261,6 +258,9 @@ NewDisplay (char *name, char *class)
     d->xdmcpFd = -1;
 #endif
     d->version = 1;		/* registered with The Open Group */
+    d->willing = NULL;
+    d->dpy = NULL;
+    d->windowPath = NULL;
     displays = d;
     return d;
 }

@@ -1,5 +1,3 @@
-/* $XdotOrg: xc/programs/xdm/xdmcp.c,v 1.4 2004/08/07 19:22:01 alanc Exp $ */
-/* $Xorg: xdmcp.c,v 1.4 2001/02/09 02:05:41 xorgcvs Exp $ */
 /*
 
 Copyright 1988, 1998  The Open Group
@@ -27,7 +25,6 @@ other dealings in this Software without prior written authorization
 from The Open Group.
 
 */
-/* $XFree86: xc/programs/xdm/xdmcp.c,v 3.25 2003/11/23 22:36:03 herrb Exp $ */
 
 /*
  * xdm - display manager daemon
@@ -36,9 +33,9 @@ from The Open Group.
  * xdmcp.c - Support for XDMCP
  */
 
-# include "dm.h"
-# include "dm_auth.h"
-# include "dm_error.h"
+#include "dm.h"
+#include "dm_auth.h"
+#include "dm_error.h"
 
 #ifdef XDMCP
 
@@ -49,20 +46,16 @@ from The Open Group.
 
 # include	"dm_socket.h"
 
-#ifndef X_NO_SYS_UN
-#ifndef Lynx
-#include	<sys/un.h>
-#else
-#include	<un.h>
-#endif
-#endif
-#include	<netdb.h>
-#include	<arpa/inet.h>
+# ifndef X_NO_SYS_UN
+#  include	<sys/un.h>
+# endif
+# include	<netdb.h>
+# include	<arpa/inet.h>
 
-#include <time.h>
-#define Time_t time_t
+# include <time.h>
+# define Time_t time_t
 
-#define getString(name,len)	((name = malloc (len + 1)) ? 1 : 0)
+# define getString(name,len)	((name = malloc (len + 1)) ? 1 : 0)
 
 /*
  * misc externs
@@ -86,44 +79,44 @@ static void send_refuse (struct sockaddr *from, int fromlen, CARD32 sessionID, i
 static void send_unwilling (struct sockaddr *from, int fromlen, ARRAY8Ptr authenticationName, ARRAY8Ptr status, int fd);
 static void send_willing (struct sockaddr *from, int fromlen, ARRAY8Ptr authenticationName, ARRAY8Ptr status, int fd);
 
-#ifdef STREAMSCONN
+# ifdef STREAMSCONN
 int	xdmcpFd = -1;
-#endif
+# endif
 int	chooserFd = -1;
-#if defined(IPv6) && defined(AF_INET6)
+# if defined(IPv6) && defined(AF_INET6)
 int	chooserFd6 = -1;
-#endif
+# endif
 
 FD_TYPE	WellKnownSocketsMask;
 int	WellKnownSocketsMax;
 
-#define pS(s)	((s) ? ((char *) (s)) : "empty string")
+# define pS(s)	((s) ? ((char *) (s)) : "empty string")
 
 void
 DestroyWellKnownSockets (void)
 {
-#ifdef STREAMSCONN
+# ifdef STREAMSCONN
     if (xdmcpFd != -1)
     {
 	close (xdmcpFd);
 	FD_CLR(xdmcpFd, &WellKnownSocketsMask);
 	xdmcpFd = -1;
     }
-#endif
+# endif
     if (chooserFd != -1)
     {
 	close (chooserFd);
 	FD_CLR(chooserFd, &WellKnownSocketsMask);
 	chooserFd = -1;
     }
-#if defined(IPv6) && defined(AF_INET6)
+# if defined(IPv6) && defined(AF_INET6)
     if (chooserFd6 != -1)
     {
 	close (chooserFd6);
 	FD_CLR(chooserFd6, &WellKnownSocketsMask);
 	chooserFd6 = -1;
     }
-#endif
+# endif
     CloseListenSockets();
 }
 
@@ -143,13 +136,13 @@ FD_ANYSET(fd_set *fds)
 int
 AnyWellKnownSockets (void)
 {
-    return 
-#ifdef STREAMS_CONN
+    return
+# ifdef STREAMS_CONN
       xdmcpFd != -1 ||
-#endif
-#if defined(IPv6) && defined(AF_INET6)
+# endif
+# if defined(IPv6) && defined(AF_INET6)
       chooserFd6 != -1 ||
-#endif
+# endif
       chooserFd != -1 || FD_ANYSET(&WellKnownSocketsMask);
 }
 
@@ -162,26 +155,26 @@ sendForward (
     ARRAY8Ptr	address,
     char	*closure)
 {
-#ifdef AF_INET
+# ifdef AF_INET
     struct sockaddr_in	    in_addr;
-#endif
-#if defined(IPv6) && defined(AF_INET6)
+# endif
+# if defined(IPv6) && defined(AF_INET6)
     struct sockaddr_in6	    in6_addr;
-#endif
-#ifdef AF_DECnet
-#endif
+# endif
+# ifdef AF_DECnet
+# endif
     struct sockaddr	    *addr;
     int			    addrlen;
 
     switch (connectionType)
     {
-#ifdef AF_INET
+# ifdef AF_INET
     case FamilyInternet:
 	addr = (struct sockaddr *) &in_addr;
 	bzero ((char *) &in_addr, sizeof (in_addr));
-#ifdef BSD44SOCKETS
+#  ifdef BSD44SOCKETS
 	in_addr.sin_len = sizeof(in_addr);
-#endif
+#  endif
 	in_addr.sin_family = AF_INET;
 	in_addr.sin_port = htons ((short) XDM_UDP_PORT);
 	if (address->length != 4)
@@ -189,14 +182,14 @@ sendForward (
 	memmove( (char *) &in_addr.sin_addr, address->data, address->length);
 	addrlen = sizeof (struct sockaddr_in);
 	break;
-#endif
-#if defined(IPv6) && defined(AF_INET6)
+# endif
+# if defined(IPv6) && defined(AF_INET6)
     case FamilyInternet6:
 	addr = (struct sockaddr *) &in6_addr;
 	bzero ((char *) &in6_addr, sizeof (in6_addr));
-#ifdef SIN6_LEN
+#  ifdef SIN6_LEN
 	in6_addr.sin6_len = sizeof(in6_addr);
-#endif
+#  endif
 	in6_addr.sin6_family = AF_INET6;
 	in6_addr.sin6_port = htons ((short) XDM_UDP_PORT);
 	if (address->length != 16)
@@ -204,10 +197,10 @@ sendForward (
 	memmove( (char *) &in6_addr.sin6_addr, address->data, address->length);
 	addrlen = sizeof (struct sockaddr_in6);
 	break;
-#endif
-#ifdef AF_DECnet
+# endif
+# ifdef AF_DECnet
     case FamilyDECnet:
-#endif
+# endif
     default:
 	return;
     }
@@ -247,20 +240,20 @@ all_query_respond (
     int			fd)
 {
     ARRAY8Ptr	authenticationName;
-    ARRAY8	status;
-    ARRAY8	addr;
+    ARRAY8	status = {0, NULL};
+    ARRAY8	addr  = {0, NULL};
     CARD16	connectionType;
     int		family;
     int		length;
     const char	*addrstring;
-#if defined(IPv6) && defined(AF_INET6) 
+# if defined(IPv6) && defined(AF_INET6)
     char	addrbuf[INET6_ADDRSTRLEN] = "";
-#endif
+# endif
 
     family = ConvertAddr((XdmcpNetaddr) from, &length, (char **)&(addr.data));
     addr.length = length;	/* convert int to short */
     if (debugLevel > 0) {
-#if defined(IPv6) && defined(AF_INET6) 
+# if defined(IPv6) && defined(AF_INET6)
 	void *ipaddr;
 	int af_type;
 	if (family == FamilyInternet6) {
@@ -271,9 +264,9 @@ all_query_respond (
 	    af_type = AF_INET;
 	}
 	addrstring = inet_ntop(af_type, ipaddr, addrbuf, sizeof(addrbuf));
-#else
+# else
 	addrstring = inet_ntoa(((struct sockaddr_in *)from)->sin_addr);
-#endif
+# endif
 	Debug("all_query_respond: conntype=%d, addr=%s, len=%d\n",
 	    family, addrstring, addr.length);
     }
@@ -302,15 +295,15 @@ indirect_respond (
     int		    length,
     int		    fd)
 {
-    ARRAYofARRAY8   queryAuthenticationNames;
-    ARRAY8	    clientAddress;
-    ARRAY8	    clientPort;
+    ARRAYofARRAY8   queryAuthenticationNames = {0, NULL};
+    ARRAY8	    clientAddress = {0, NULL};
+    ARRAY8	    clientPort = {0, NULL};
     CARD16	    connectionType;
     int		    expectedLen;
     int		    i;
     XdmcpHeader	    header;
     int		    localHostAsWell;
-    
+
     Debug ("Indirect respond %d\n", length);
     if (!XdmcpReadARRAYofARRAY8 (&buffer, &queryAuthenticationNames))
 	return;
@@ -337,7 +330,7 @@ indirect_respond (
     	XdmcpWriteARRAYofARRAY8 (&buffer, &queryAuthenticationNames);
 
 	localHostAsWell = ForEachMatchingIndirectHost (&clientAddress, connectionType, sendForward, (char *) &fd);
-	
+
 	XdmcpDisposeARRAY8 (&clientAddress);
 	XdmcpDisposeARRAY8 (&clientPort);
 	if (localHostAsWell)
@@ -355,11 +348,11 @@ void
 ProcessRequestSocket (int fd)
 {
     XdmcpHeader		header;
-#if defined(IPv6) && defined(AF_INET6)
+# if defined(IPv6) && defined(AF_INET6)
     struct sockaddr_storage	addr;
-#else
+# else
     struct sockaddr	addr;
-#endif
+# endif
     int			addrlen = sizeof addr;
 
     Debug ("ProcessRequestSocket\n");
@@ -413,37 +406,37 @@ WaitForSomething (void)
     Debug ("WaitForSomething\n");
     if (AnyWellKnownSockets () && !ChildReady) {
 	reads = WellKnownSocketsMask;
-	nready = select (WellKnownSocketsMax + 1, &reads, 0, 0, 0);
+	nready = select (WellKnownSocketsMax + 1, &reads, NULL, NULL, NULL);
 	Debug ("select returns %d.  Rescan: %d  ChildReady: %d\n",
 		nready, Rescan, ChildReady);
 	if (nready > 0)
 	{
-#ifdef STREAMSCONN
+# ifdef STREAMSCONN
 	    if (xdmcpFd >= 0 && FD_ISSET (xdmcpFd, &reads))
 		ProcessRequestSocket (xdmcpFd);
-#endif
+# endif
 	    if (chooserFd >= 0 && FD_ISSET (chooserFd, &reads))
 	    {
-#ifdef ISC
+# ifdef ISC
 	        if (!ChildReady) {
 	           WaitForSomething ();
                 } else
-#endif
+# endif
 		ProcessChooserSocket (chooserFd);
 		FD_CLR(chooserFd, &reads);
 	    }
-#if defined(IPv6) && defined(AF_INET6)
+# if defined(IPv6) && defined(AF_INET6)
 	    if (chooserFd6 >= 0 && FD_ISSET (chooserFd6, &reads))
 	    {
-#ifdef ISC
+#  ifdef ISC
 	        if (!ChildReady) {
 	           WaitForSomething ();
                 } else
-#endif
+#  endif
 		ProcessChooserSocket (chooserFd6);
 		FD_CLR(chooserFd6, &reads);
 	    }
-#endif 
+# endif
 	    ProcessListenSockets(&reads);
 	}
 	if (ChildReady)
@@ -481,10 +474,10 @@ direct_query_respond (
     xdmOpCode	    type,
     int		    fd)
 {
-    ARRAYofARRAY8   queryAuthenticationNames;
+    ARRAYofARRAY8   queryAuthenticationNames = {0, NULL};
     int		    expectedLen;
     int		    i;
-    
+
     if (!XdmcpReadARRAYofARRAY8 (&buffer, &queryAuthenticationNames))
 	return;
     expectedLen = 1;
@@ -528,7 +521,7 @@ NetworkAddressToName(
     switch (connectionType)
     {
     case FamilyInternet:
-#if defined(IPv6) && defined(AF_INET6)
+# if defined(IPv6) && defined(AF_INET6)
     case FamilyInternet6:
 	{
 	    CARD8		*data;
@@ -570,24 +563,26 @@ NetworkAddressToName(
 
 	    localhost = localHostname ();
 
-	    /* 
-	     * protect against bogus host names 
+	    /*
+	     * protect against bogus host names
 	     */
-	    if (hostname && hostname[0] && (hostname[0] != '.') 
+	    if (hostname && hostname[0] && (hostname[0] != '.')
 			&& !multiHomed)
 	    {
 		if (!strcmp (localhost, hostname))
 		{
-		    if (!getString (name, 10))
-			return 0;
-		    sprintf (name, ":%d", displayNumber);
+		    if (asprintf(&name, ":%d", displayNumber) < 0) {
+			if (ai)
+			    freeaddrinfo(ai);
+			return NULL;
+		    }
 		}
 		else
 		{
 		    if (removeDomainname)
 		    {
 		    	char    *localDot, *remoteDot;
-    
+
 			/* check for a common domain name.  This
 			 * could reduce names by recognising common
 			 * super-domain names as well, but I don't think
@@ -605,36 +600,44 @@ NetworkAddressToName(
 			}
 		    }
 
-		    if (!getString (name, strlen (hostname) + 10))
-			return 0;
-		    sprintf (name, "%s:%d", hostname, displayNumber);
+		    if (asprintf (&name, "%s:%d",
+				  hostname, displayNumber) < 0) {
+			if (ai)
+			    freeaddrinfo(ai);
+			return NULL;
+		    }
 		}
 	    }
 	    else
 	    {
-		if (!getString (name, INET6_ADDRSTRLEN + 10))
-		    return 0;
+		if (!getString (name, INET6_ADDRSTRLEN + 10)) {
+		    if (ai)
+			freeaddrinfo(ai);
+		    return NULL;
+		}
 		if (multiHomed) {
 		    if (connectionType == FamilyInternet) {
-			data = (CARD8 *) 
+			data = (CARD8 *)
 			  &((struct sockaddr_in *)originalAddress)->
 			  sin_addr;
 		    } else {
-			data = (CARD8 *) 
+			data = (CARD8 *)
 			  &((struct sockaddr_in6 *)originalAddress)->sin6_addr;
 		    }
 		}
 		if (inet_ntop(type, data, name, INET6_ADDRSTRLEN) == NULL) {
 		    free(name);
-		    return 0;
-		} 
-		sprintf(name + strlen(name), ":%d", displayNumber);
+		    if (ai)
+			freeaddrinfo(ai);
+		    return NULL;
+		}
+		snprintf(name + strlen(name), 10, ":%d", displayNumber);
 	    }
 	    if (ai)
 		freeaddrinfo(ai);
 	    return name;
 	}
-#else /* IPv6 */
+# else /* IPv6 */
 	{
 	    CARD8		*data;
 	    struct hostent	*hostent;
@@ -653,25 +656,25 @@ NetworkAddressToName(
 
 	    localhost = localHostname ();
 
-	    /* 
-	     * protect against bogus host names 
+	    /*
+	     * protect against bogus host names
 	     */
 	    if (hostent && hostent->h_name && hostent->h_name[0]
-			&& (hostent->h_name[0] != '.') 
+			&& (hostent->h_name[0] != '.')
 			&& !multiHomed)
 	    {
 		if (!strcmp (localhost, hostent->h_name))
 		{
-		    if (!getString (name, 10))
-			return 0;
-		    sprintf (name, ":%d", displayNumber);
+		    if (asprintf(&name, ":%d", displayNumber) < 0) {
+			return NULL;
+		    }
 		}
 		else
 		{
 		    if (removeDomainname)
 		    {
 		    	char    *localDot, *remoteDot;
-    
+
 			/* check for a common domain name.  This
 			 * could reduce names by recognising common
 			 * super-domain names as well, but I don't think
@@ -689,28 +692,31 @@ NetworkAddressToName(
 			}
 		    }
 
-		    if (!getString (name, strlen (hostent->h_name) + 10))
-			return 0;
-		    sprintf (name, "%s:%d", hostent->h_name, displayNumber);
+		    if (asprintf(&name, "%s:%d",
+				 hostent->h_name, displayNumber) < 0) {
+			return NULL;
+		    }
 		}
 	    }
 	    else
 	    {
-		if (!getString (name, 25))
-		    return 0;
 		if (multiHomed)
 		    data = (CARD8 *) &((struct sockaddr_in *)originalAddress)->
 				sin_addr.s_addr;
-		sprintf(name, "%d.%d.%d.%d:%d",
-			data[0], data[1], data[2], data[3], displayNumber);
+
+		if (asprintf(&name, "%d.%d.%d.%d:%d",
+			     data[0], data[1], data[2], data[3],
+			     displayNumber) < 0) {
+		    return NULL;
+		}
 	    }
 	    return name;
 	}
-#endif /* IPv6 */
-#ifdef DNET
+# endif /* IPv6 */
+# ifdef DNET
     case FamilyDECnet:
 	return NULL;
-#endif /* DNET */
+# endif /* DNET */
     default:
 	return NULL;
     }
@@ -724,21 +730,15 @@ forward_respond (
     int			length,
     int			fd)
 {
-    ARRAY8	    clientAddress;
-    ARRAY8	    clientPort;
-    ARRAYofARRAY8   authenticationNames;
+    ARRAY8	    clientAddress = {0, NULL};
+    ARRAY8	    clientPort = {0, NULL};
+    ARRAYofARRAY8   authenticationNames = {0, NULL};
     struct sockaddr *client;
     int		    clientlen;
     int		    expectedLen;
     int		    i;
-    
+
     Debug ("Forward respond %d\n", length);
-    clientAddress.length = 0;
-    clientAddress.data = 0;
-    clientPort.length = 0;
-    clientPort.data = 0;
-    authenticationNames.length = 0;
-    authenticationNames.data = 0;
     if (XdmcpReadARRAY8 (&buffer, &clientAddress) &&
 	XdmcpReadARRAY8 (&buffer, &clientPort) &&
 	XdmcpReadARRAYofARRAY8 (&buffer, &authenticationNames))
@@ -762,7 +762,7 @@ forward_respond (
 	    Debug ("\n");
     	    switch (from->sa_family)
     	    {
-#ifdef AF_INET
+# ifdef AF_INET
 	    case AF_INET:
 		{
 		    struct sockaddr_in	in_addr;
@@ -773,9 +773,9 @@ forward_respond (
 			goto badAddress;
 		    }
 		    bzero ((char *) &in_addr, sizeof (in_addr));
-#ifdef BSD44SOCKETS
+#  ifdef BSD44SOCKETS
 		    in_addr.sin_len = sizeof(in_addr);
-#endif
+#  endif
 		    in_addr.sin_family = AF_INET;
 		    memmove( &in_addr.sin_addr, clientAddress.data, 4);
 		    memmove( (char *) &in_addr.sin_port, clientPort.data, 2);
@@ -785,8 +785,8 @@ forward_respond (
 			       FORWARD_QUERY, fd);
 		}
 		break;
-#endif
-#if defined(IPv6) && defined(AF_INET6)
+# endif
+# if defined(IPv6) && defined(AF_INET6)
 	    case AF_INET6:
 		{
 		    struct sockaddr_in6	in6_addr;
@@ -797,11 +797,11 @@ forward_respond (
 			goto badAddress;
 		    }
 		    bzero ((char *) &in6_addr, sizeof (in6_addr));
-#ifdef SIN6_LEN
+#  ifdef SIN6_LEN
 		    in6_addr.sin6_len = sizeof(in6_addr);
-#endif
+#  endif
 		    in6_addr.sin6_family = AF_INET6;
-		    memmove(&in6_addr,clientAddress.data,clientAddress.length);
+		    memmove(&in6_addr.sin6_addr,clientAddress.data,clientAddress.length);
 		    memmove((char *) &in6_addr.sin6_port, clientPort.data, 2);
 		    client = (struct sockaddr *) &in6_addr;
 		    clientlen = sizeof (in6_addr);
@@ -809,8 +809,8 @@ forward_respond (
 			       FORWARD_QUERY, fd);
 		}
 		break;
-#endif
-#ifdef AF_UNIX
+# endif
+# ifdef AF_UNIX
 	    case AF_UNIX:
 		{
 		    struct sockaddr_un	un_addr;
@@ -822,25 +822,25 @@ forward_respond (
 		    memmove( un_addr.sun_path, clientAddress.data, clientAddress.length);
 		    un_addr.sun_path[clientAddress.length] = '\0';
 		    client = (struct sockaddr *) &un_addr;
-#if defined(BSD44SOCKETS) && !defined(Lynx) && defined(UNIXCONN)
+#  if defined(BSD44SOCKETS) && defined(UNIXCONN)
 		    un_addr.sun_len = strlen(un_addr.sun_path);
 		    clientlen = SUN_LEN(&un_addr);
-#else
+#  else
 		    clientlen = sizeof (un_addr);
-#endif
+#  endif
 		    all_query_respond (client, clientlen, &authenticationNames,
 			       FORWARD_QUERY, fd);
 		}
 		break;
-#endif
-#ifdef AF_CHAOS
+# endif
+# ifdef AF_CHAOS
 	    case AF_CHAOS:
 		goto badAddress;
-#endif
-#ifdef AF_DECnet
+# endif
+# ifdef AF_DECnet
 	    case AF_DECnet:
 		goto badAddress;
-#endif
+# endif
     	    }
 	}
 	else
@@ -908,7 +908,7 @@ send_unwilling (
 
 static unsigned long	globalSessionID;
 
-#define NextSessionID()    (++globalSessionID)
+# define NextSessionID()    (++globalSessionID)
 
 void init_session_id(void)
 {
@@ -916,9 +916,9 @@ void init_session_id(void)
      * incarnation so we don't say "Alive" to those displays.
      * Start with low digits 0 to make debugging easier.
      */
-    globalSessionID = (time((Time_t)0)&0x7fff) * 16000;
+    globalSessionID = (time((Time_t *)0)&0x7fff) * 16000;
 }
-    
+
 static ARRAY8 outOfMemory = { (CARD16) 13, (CARD8Ptr) "Out of memory" };
 static ARRAY8 noValidAddr = { (CARD16) 16, (CARD8Ptr) "No valid address" };
 static ARRAY8 noValidAuth = { (CARD16) 22, (CARD8Ptr) "No valid authorization" };
@@ -932,35 +932,21 @@ request_respond (
     int		    fd)
 {
     CARD16	    displayNumber;
-    ARRAY16	    connectionTypes;
-    ARRAYofARRAY8   connectionAddresses;
-    ARRAY8	    authenticationName;
-    ARRAY8	    authenticationData;
-    ARRAYofARRAY8   authorizationNames;
-    ARRAY8	    manufacturerDisplayID;
-    ARRAY8Ptr	    reason = 0;
+    ARRAY16	    connectionTypes = {0, NULL};
+    ARRAYofARRAY8   connectionAddresses = {0, NULL};
+    ARRAY8	    authenticationName = {0, NULL};
+    ARRAY8	    authenticationData = {0, NULL};
+    ARRAYofARRAY8   authorizationNames = {0, NULL};
+    ARRAY8	    manufacturerDisplayID = {0, NULL};
+    ARRAY8Ptr	    reason = NULL;
     int		    expectlen;
     int		    i, j;
-    struct protoDisplay  *pdpy;
-    ARRAY8	    authorizationName, authorizationData;
+    struct protoDisplay  *pdpy = NULL;
+    ARRAY8	    authorizationName = {0, NULL},
+		    authorizationData = {0, NULL};
     ARRAY8Ptr	    connectionAddress;
 
     Debug ("Request respond %d\n", length);
-    connectionTypes.length = 0;
-    connectionTypes.data = 0;
-    connectionAddresses.length = 0;
-    connectionAddresses.data = 0;
-    authenticationName.length = 0;
-    authenticationName.data = 0;
-    authenticationData.length = 0;
-    authenticationData.data = 0;
-    authorizationNames.length = 0;
-    authorizationNames.data = 0;
-    authorizationName.length = 0;
-    authorizationName.data = 0;
-    authorizationData.length = 0;
-    authorizationData.data = 0;
-    manufacturerDisplayID.data = 0;
     if (XdmcpReadCARD16 (&buffer, &displayNumber) &&
 	XdmcpReadARRAY16 (&buffer, &connectionTypes) &&
 	XdmcpReadARRAYofARRAY8 (&buffer, &connectionAddresses) &&
@@ -990,7 +976,6 @@ request_respond (
 	    connectionAddresses.length != connectionTypes.length)
 	{
 	    reason = &noValidAddr;
-	    pdpy = 0;
 	    goto decline;
 	}
 	pdpy = FindProtoDisplay ((XdmcpNetaddr) from, fromlen, displayNumber);
@@ -1008,7 +993,7 @@ request_respond (
 		reason = &noValidAddr;
 		goto decline;
 	    }
-	
+
 	    /* The Manager considers this a new session */
 	    connectionAddress = &connectionAddresses.data[i];
 	    pdpy = NewProtoDisplay ((XdmcpNetaddr) from, fromlen, displayNumber,
@@ -1111,7 +1096,7 @@ send_accept (
     XdmcpWriteARRAY8 (&buffer, authorizationData);
     XdmcpFlush (fd, &buffer, (XdmcpNetaddr) to, tolen);
 }
-   
+
 static void
 send_decline (
     struct sockaddr *to,
@@ -1146,19 +1131,18 @@ manage (
 {
     CARD32		sessionID;
     CARD16		displayNumber;
-    ARRAY8		displayClass;
+    ARRAY8		displayClass = {0, NULL};
     int			expectlen;
     struct protoDisplay	*pdpy;
     struct display	*d;
     char		*name = NULL;
     char		*class = NULL;
     XdmcpNetaddr	from_save;
-    ARRAY8		clientAddress, clientPort;
+    ARRAY8		clientAddress = {0, NULL},
+			clientPort = {0, NULL};
     CARD16		connectionType;
 
     Debug ("Manage %d\n", length);
-    displayClass.data = 0;
-    displayClass.length = 0;
     if (XdmcpReadCARD32 (&buffer, &sessionID) &&
 	XdmcpReadCARD16 (&buffer, &displayNumber) &&
 	XdmcpReadARRAY8 (&buffer, &displayClass))
@@ -1183,7 +1167,7 @@ manage (
 	     * If all this is true, then we have a duplicate request that
 	     * can be ignored.
 	     */
-	    if (!pdpy 
+	    if (!pdpy
 		&& (d = FindDisplayByAddress((XdmcpNetaddr) from, fromlen, displayNumber))
 		&& d->sessionID == sessionID) {
 		     Debug("manage: got duplicate pkt, ignoring\n");
@@ -1204,7 +1188,7 @@ manage (
 		   name, (char *)pdpy->connectionAddress.data);
 	    if (!name)
 	    {
-		send_failed (from, fromlen, "(no name)", sessionID, 
+		send_failed (from, fromlen, "(no name)", sessionID,
 		  "out of memory", fd);
 		goto abort;
 	    }
@@ -1217,7 +1201,7 @@ manage (
 	    class = malloc (displayClass.length + 1);
 	    if (!class)
 	    {
-		send_failed (from, fromlen, name, sessionID, 
+		send_failed (from, fromlen, name, sessionID,
 		  "out of memory", fd);
 		goto abort;
 	    }
@@ -1243,7 +1227,7 @@ manage (
 	    if (!d)
 	    {
 		free ((char *) from_save);
-		send_failed (from, fromlen, name, sessionID, 
+		send_failed (from, fromlen, name, sessionID,
 		  "out of memory", fd);
 		goto abort;
 	    }
@@ -1283,7 +1267,7 @@ manage (
 		}
 		d->authorizations[0] = pdpy->fileAuthorization;
 		d->authNum = 1;
-		pdpy->fileAuthorization = 0;
+		pdpy->fileAuthorization = NULL;
 	    }
 	    DisposeProtoDisplay (pdpy);
 	    Debug ("Starting display %s,%s\n", d->name, d->class);
@@ -1302,7 +1286,7 @@ SendFailed (
     char	    *reason)
 {
     Debug ("Display start failed, sending Failed\n");
-    send_failed ((struct sockaddr *)(d->from), d->fromlen, d->name, 
+    send_failed ((struct sockaddr *)(d->from), d->fromlen, d->name,
       d->sessionID, reason, d->xdmcpFd);
 }
 
@@ -1319,8 +1303,8 @@ send_failed (
     XdmcpHeader	header;
     ARRAY8	status;
 
-    sprintf (buf, "Session %ld failed for display %.100s: %.100s",
-	     (long) sessionID, name, reason);
+    snprintf (buf, sizeof(buf), "Session %ld failed for display %.100s: %s",
+	      (long) sessionID, name, reason);
     Debug ("Send failed %ld %s\n", (long) sessionID, buf);
     status.length = strlen (buf);
     status.data = (CARD8Ptr) buf;
@@ -1405,24 +1389,24 @@ NetworkAddressToHostname (
     switch (connectionType)
     {
     case FamilyInternet:
-#if defined(IPv6) && defined(AF_INET6)
+# if defined(IPv6) && defined(AF_INET6)
     case FamilyInternet6:
-#endif
+# endif
 	{
 	    struct hostent	*hostent = NULL;
-#if defined(IPv6) && defined(AF_INET6)
+# if defined(IPv6) && defined(AF_INET6)
 	    char dotted[INET6_ADDRSTRLEN];
-#else
+# else
 	    char dotted[20];
-#endif
+# endif
 	    char *local_name = "";
 	    int af_type;
 
-#if defined(IPv6) && defined(AF_INET6)
+# if defined(IPv6) && defined(AF_INET6)
 	    if (connectionType == FamilyInternet6)
 		af_type = AF_INET6;
 	    else
-#endif
+# endif
 		af_type = AF_INET;
 
 	    hostent = gethostbyaddr ((char *)connectionAddress->data,
@@ -1430,76 +1414,82 @@ NetworkAddressToHostname (
 
 	    if (hostent) {
 		/* check for DNS spoofing */
-#if defined(IPv6) && defined(AF_INET6)
+# if defined(IPv6) && defined(AF_INET6)
 		struct addrinfo	*ai = NULL, *nai;
 		if (getaddrinfo(hostent->h_name, NULL, NULL, &ai) == 0) {
 		    for (nai = ai; nai != NULL; nai = nai->ai_next) {
-			if ((af_type == nai->ai_family) &&
-			  (connectionAddress->length == nai->ai_addrlen) &&
-			  (memcmp(connectionAddress->data,nai->ai_addr,
-			    nai->ai_addrlen) == 0) ) {
+			if ((af_type == nai->ai_family) && (
+			  ((nai->ai_family == AF_INET) &&
+			    (connectionAddress->length == sizeof(struct in_addr)) &&
+			    (memcmp(connectionAddress->data,
+				    &((struct sockaddr_in *)nai->ai_addr)->sin_addr,
+				    connectionAddress->length) == 0)) ||
+			  ((nai->ai_family == AF_INET6) &&
+			    (connectionAddress->length == sizeof(struct in6_addr)) &&
+			    (memcmp(connectionAddress->data,
+				    &((struct sockaddr_in6 *)nai->ai_addr)->sin6_addr,
+				    connectionAddress->length) == 0))))
 			    break;
-			}
 		    }
-		    if (ai == NULL) {
-			inet_ntop(af_type, connectionAddress->data, 
+		    if (nai == NULL) {
+			inet_ntop(af_type, connectionAddress->data,
 			  dotted, sizeof(dotted));
 
-			LogError("Possible DNS spoof attempt %s->%s.", dotted,
+			LogError("Possible DNS spoof attempt %s->%s.\n", dotted,
 			  hostent->h_name);
 			hostent = NULL;
+		    } else {
+		      local_name = hostent->h_name;
 		    }
 		    freeaddrinfo(ai);
 		} else {
 		    hostent = NULL;
 		}
-#else
+# else
 		char *s = strdup(hostent->h_name); /* fscking non-reentrancy of getXXX() */
 		if ((hostent = gethostbyname(s))) {
 			if (memcmp((char*)connectionAddress->data, hostent->h_addr,
 			    hostent->h_length) != 0) {
-				LogError("Possible DNS spoof attempt.");
+				LogError("Possible DNS spoof attempt.\n");
 				hostent = NULL; /* so it enters next if() */
 			} else {
 				local_name = hostent->h_name;
 			}
 		}
 		free(s);
-#endif
+# endif
 	    }
 
 	    if (!hostent) {
 		/* can't get name, so use emergency fallback */
-#if defined(IPv6) && defined(AF_INET6)
-		inet_ntop(af_type, connectionAddress->data, 
+# if defined(IPv6) && defined(AF_INET6)
+		inet_ntop(af_type, connectionAddress->data,
 		  	  dotted, sizeof(dotted));
-#else
-		sprintf(dotted, "%d.%d.%d.%d",
-			connectionAddress->data[0],
-			connectionAddress->data[1],
-			connectionAddress->data[2],
-			connectionAddress->data[3]);
-#endif
+# else
+		snprintf(dotted, sizeof(dotted), "%d.%d.%d.%d",
+			 connectionAddress->data[0],
+			 connectionAddress->data[1],
+			 connectionAddress->data[2],
+			 connectionAddress->data[3]);
+# endif
 		local_name = dotted;
 		LogError ("Cannot convert Internet address %s to host name\n",
 			  dotted);
 	    }
-	    if (!getString (name, strlen (local_name)))
-		break;
-	    strcpy (name, local_name);
+	    name = strdup (local_name);
 	    break;
 	}
-#ifdef DNET
+# ifdef DNET
     case FamilyDECnet:
 	break;
-#endif /* DNET */
+# endif /* DNET */
     default:
 	break;
     }
     return name;
 }
 
-#if 0
+# if 0
 static int
 HostnameToNetworkAddress (
 char	    *name,
@@ -1520,10 +1510,10 @@ ARRAY8Ptr   connectionAddress)
 	    memmove( connectionAddress->data, hostent->h_addr, hostent->h_length);
 	    return TRUE;
 	}
-#ifdef DNET
+#  ifdef DNET
     case FamilyDECnet:
 	return FALSE;
-#endif
+#  endif
     }
     return FALSE;
 }
@@ -1564,10 +1554,10 @@ CARD16Ptr   displayNumber)
 	dnet = TRUE;
 	colon++;
     }
-#ifndef DNETCONN
+#  ifndef DNETCONN
     if (dnet)
 	return FALSE;
-#endif
+#  endif
     display_number = colon + 1;
     while (*display_number && *display_number != '.')
     {
@@ -1577,11 +1567,11 @@ CARD16Ptr   displayNumber)
     if (display_number == colon + 1)
 	return FALSE;
     number = atoi (colon + 1);
-#ifdef DNETCONN
+#  ifdef DNETCONN
     if (dnet)
 	connectionType = FamilyDECnet;
     else
-#endif
+#  endif
 	connectionType = FamilyInternet;
     if (!HostnameToNetworkAddress (hostname, connectionType, connectionAddress))
 	return FALSE;
@@ -1589,6 +1579,6 @@ CARD16Ptr   displayNumber)
     *connectionTypep = connectionType;
     return TRUE;
 }
-#endif
+# endif
 
 #endif /* XDMCP */

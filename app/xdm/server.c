@@ -1,4 +1,3 @@
-/* $Xorg: server.c,v 1.5 2001/02/09 02:05:40 xorgcvs Exp $ */
 /*
 
 Copyright 1988, 1998  The Open Group
@@ -26,7 +25,6 @@ other dealings in this Software without prior written authorization
 from The Open Group.
 
 */
-/* $XFree86: xc/programs/xdm/server.c,v 3.13 2001/12/14 20:01:23 dawes Exp $ */
 
 /*
  * xdm - display manager daemon
@@ -35,22 +33,20 @@ from The Open Group.
  * server.c - manage the X server
  */
 
-# include	"dm.h"
-# include	"dm_error.h"
-# include 	"dm_socket.h"
+#include	"dm.h"
+#include	"dm_error.h"
+#include 	"dm_socket.h"
 
-# include	<X11/Xlib.h>
-# include	<X11/Xos.h>
-# include	<stdio.h>
-# include	<signal.h>
-# include	<errno.h>
-# include 	<sys/socket.h>
+#include	<X11/Xlib.h>
+#include	<X11/Xos.h>
+#include	<stdio.h>
+#include	<signal.h>
+#include	<errno.h>
+#include 	<sys/socket.h>
 
 static int receivedUsr1;
 
-static int serverPause (unsigned t, int serverPid);
-
-static Display	*dpy;
+static int serverPause (unsigned t, pid_t serverPid);
 
 /* ARGSUSED */
 static SIGVAL
@@ -78,7 +74,7 @@ StartServerOnce (struct display *d)
     char	**f;
     char	**argv;
     char	arg[1024];
-    int		pid;
+    pid_t	pid;
 
     Debug ("StartServer for %s\n", d->name);
     receivedUsr1 = 0;
@@ -92,7 +88,7 @@ StartServerOnce (struct display *d)
 	DestroyWellKnownSockets();
 #endif
 	if (d->authFile) {
-	    sprintf (arg, "-auth %s", d->authFile);
+	    snprintf (arg, sizeof(arg), "-auth %s", d->authFile);
 	    argv = parseArgs (argv, arg);
 	}
 	if (!argv) {
@@ -169,9 +165,9 @@ serverPauseUsr1 (int n)
 }
 
 static int
-serverPause (unsigned t, int serverPid)
+serverPause (unsigned t, pid_t serverPid)
 {
-    int		pid;
+    pid_t	pid;
 
     serverPauseRet = 0;
     if (!Setjmp (pauseAbort)) {
@@ -189,31 +185,16 @@ serverPause (unsigned t, int serverPid)
 	    Debug ("Already received USR1\n");
 #endif
 	for (;;) {
-#if defined(SYSV) && defined(X_NOT_POSIX)
 	    /*
 	     * wait() is unsafe.  Other Xserver or xdm processes may
 	     * exit at this time and this will remove the wait status.
 	     * This means the main loop will not restart the display.
 	     */
-	    pid = wait ((waitType *) 0);
-#else
 	    if (!receivedUsr1)
-#ifndef X_NOT_POSIX
 		pid = waitpid (serverPid, (int *) 0, 0);
 	    else
 		pid = waitpid (serverPid, (int *) 0, WNOHANG);
-#else
-	    /*
-	     * If you have wait4() but not waitpid(), use that instead
-	     * of wait() and wait3() to make this code safe.  See
-	     * above comment.
-	     */
-	        pid = wait ((waitType *) 0);
-	    else
-		pid = wait3 ((waitType *) 0, WNOHANG,
-			     (struct rusage *) 0);
-#endif /* X_NOT_POSIX */
-#endif /* SYSV */
+
 	    if (pid == serverPid ||
 	       (pid == -1 && errno == ECHILD))
 	    {
@@ -221,12 +202,11 @@ serverPause (unsigned t, int serverPid)
 		serverPauseRet = 1;
 		break;
 	    }
-#if !defined(SYSV) || !defined(X_NOT_POSIX)
+
 	    if (pid == 0) {
 		Debug ("Server alive and kicking\n");
 		break;
 	    }
-#endif
 	}
     }
     (void) alarm ((unsigned) 0);
@@ -259,30 +239,30 @@ abortOpen (int n)
 
 #ifdef XDMCP
 
-#ifdef STREAMSCONN
-#include <tiuser.h>
-#endif
+# ifdef STREAMSCONN
+#  include <tiuser.h>
+# endif
 
 static void
 GetRemoteAddress (struct display *d, int fd)
 {
     char    buf[512];
     int	    len = sizeof (buf);
-#ifdef STREAMSCONN
+# ifdef STREAMSCONN
     struct netbuf	netb;
-#endif
+# endif
 
     if (d->peer)
 	free ((char *) d->peer);
-#ifdef STREAMSCONN
+# ifdef STREAMSCONN
     netb.maxlen = sizeof(buf);
     netb.buf = buf;
     t_getname(fd, &netb, REMOTENAME);
     len = 8;
     /* lucky for us, t_getname returns something that looks like a sockaddr */
-#else
+# else
     getpeername (fd, (struct sockaddr *) buf, (void *)&len);
-#endif
+# endif
     d->peerlen = 0;
     if (len)
     {
@@ -319,7 +299,7 @@ WaitForServer (struct display *d)
 	    Debug ("Before XOpenDisplay(%s)\n", d->name);
 	    errno = 0;
 	    (void) XSetIOErrorHandler (openErrorHandler);
-	    dpy = XOpenDisplay (d->name);
+	    d->dpy = XOpenDisplay (d->name);
 #ifdef STREAMSCONN
 	    {
 		/* For some reason, the next XOpenDisplay we do is
@@ -335,13 +315,13 @@ WaitForServer (struct display *d)
 	    (void) Signal (SIGALRM, SIG_DFL);
 	    (void) XSetIOErrorHandler ((int (*)(Display *)) 0);
 	    Debug ("After XOpenDisplay(%s)\n", d->name);
-	    if (dpy) {
+	    if (d->dpy) {
 #ifdef XDMCP
 	    	if (d->displayType.location == Foreign)
-		    GetRemoteAddress (d, ConnectionNumber (dpy));
+		    GetRemoteAddress (d, ConnectionNumber (d->dpy));
 #endif
-	    	RegisterCloseOnFork (ConnectionNumber (dpy));
-		(void) fcntl (ConnectionNumber (dpy), F_SETFD, 0);
+	    	RegisterCloseOnFork (ConnectionNumber (d->dpy));
+		(void) fcntl (ConnectionNumber (d->dpy), F_SETFD, 0);
 	    	return 1;
 	    } else {
 	    	Debug ("OpenDisplay failed %d (%s) on \"%s\"\n",
@@ -364,8 +344,8 @@ WaitForServer (struct display *d)
 void
 ResetServer (struct display *d)
 {
-    if (dpy && d->displayType.origin != FromXDMCP)
-	pseudoReset (dpy);
+    if (d->dpy && d->displayType.origin != FromXDMCP)
+	pseudoReset (d->dpy);
 }
 
 static Jmp_buf	pingTime;
@@ -398,8 +378,8 @@ PingServer (struct display *d, Display *alternateDpy)
     SIGVAL  (*oldSig)(int);
     int	    oldAlarm;
     static Display *aDpy;
-    
-    aDpy = (alternateDpy != NULL ? alternateDpy : dpy);
+
+    aDpy = (alternateDpy != NULL ? alternateDpy : d->dpy);
     oldError = XSetIOErrorHandler (PingLostIOErr);
     oldAlarm = alarm (0);
     oldSig = Signal (SIGALRM, PingLostSig);

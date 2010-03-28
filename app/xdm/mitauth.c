@@ -1,4 +1,3 @@
-/* $Xorg: mitauth.c,v 1.4 2001/02/09 02:05:40 xorgcvs Exp $ */
 /*
 
 Copyright 1988, 1998  The Open Group
@@ -26,7 +25,6 @@ other dealings in this Software without prior written authorization
 from The Open Group.
 
 */
-/* $XFree86: xc/programs/xdm/mitauth.c,v 1.5 2003/05/27 22:27:00 tsi Exp $ */
 
 /*
  * xdm - display manager daemon
@@ -38,12 +36,12 @@ from The Open Group.
  * for MIT-MAGIC-COOKIE-1 type authorization
  */
 
-# include   <X11/Xos.h>
+#include   <X11/Xos.h>
 
-# include   "dm.h"
-# include   "dm_auth.h"
+#include   "dm.h"
+#include   "dm_auth.h"
 
-# define AUTH_DATA_LEN	16	/* bytes of authorization data */
+#define AUTH_DATA_LEN	16	/* bytes of authorization data */
 static char	auth_name[256];
 
 void
@@ -64,9 +62,9 @@ MitGetAuth (unsigned short namelen, char *name)
 	return (Xauth *) 0;
     new->family = FamilyWild;
     new->address_length = 0;
-    new->address = 0;
+    new->address = NULL;
     new->number_length = 0;
-    new->number = 0;
+    new->number = NULL;
 
     new->data = (char *) malloc (AUTH_DATA_LEN);
     if (!new->data)

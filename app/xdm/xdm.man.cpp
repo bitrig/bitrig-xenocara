@@ -1,5 +1,3 @@
-.\" $XdotOrg: app/xdm/xdm.man.cpp,v 1.5 2005/10/18 02:12:17 alanc Exp $
-.\" $Xorg: xdm.man,v 1.4 2001/02/09 02:05:41 xorgcvs Exp $
 .\" Copyright 1988, 1994, 1998  The Open Group
 .\"
 .\" Permission to use, copy, modify, distribute, and sell this software and its
@@ -24,7 +22,6 @@
 .\" other dealings in this Software without prior written authorization
 .\" from The Open Group.
 .\"
-.\" $XFree86: xc/programs/xdm/xdm.man,v 3.28 2004/01/09 00:25:23 dawes Exp $
 .\"
 .TH XDM 1 __xorgversion__
 .SH NAME
@@ -196,7 +193,7 @@ run during the progress of the session.
 .IP "\fB\-resources\fP \fIresource_file\fP"
 Specifies the value for the \fBDisplayManager*resources\fP resource.  This file
 is loaded using
-.I xrdb
+.IR xrdb (__appmansuffix__)
 to specify configuration parameters for the
 authentication widget.
 .IP "\fB\-server\fP \fIserver_entry\fP"
@@ -208,10 +205,10 @@ for a description of this resource.
 Specifies the value for the \fBDisplayManager.requestPort\fP resource.  This
 sets the port-number which
 .I xdm
-will monitor for XDMCP requests.  As XDMCP
-uses the registered well-known UDP port 177, this resource should
-not be changed except for debugging. If set to 0 xdm will not listen
-for XDMCP or Chooser requests.
+will monitor for XDMCP requests.  If set to 0, xdm will not listen
+for XDMCP or Chooser requests.  As XDMCP uses the registered well-known
+UDP port 177, this resource should not be changed to a value other than 0,
+except for debugging.
 .IP "\fB\-session\fP \fIsession_program\fP"
 Specifies the value for the \fBDisplayManager*session\fP resource.  This
 indicates the program to run as the session after the user has logged in.
@@ -306,7 +303,7 @@ uses the \fIlockf\fP library call, while on BSD it uses \fIflock.\fP
 This names a directory under which
 .I xdm
 stores authorization files while initializing the session.  The
-default value is \fI XDMDIR.\fP
+default value is \fI XDMXAUTHDIR.\fP
 Can be overridden for specific displays by
 DisplayManager.\fIDISPLAY\fP.authFile.
 .IP \fBDisplayManager.autoRescan\fP
@@ -497,16 +494,11 @@ sets the PATH environment variable for the session to this value.  It should
 be a colon separated list of directories; see
 .IR sh (1)
 for a full description.
-``:/bin:/usr/bin:BINDIR:/usr/ucb''
-is a common setting.
-The default value can be specified at build time in the X system
-configuration file with DefaultUserPath.
+The default value is ``DEF_USER_PATH''.
 .IP "\fBDisplayManager.\fP\fIDISPLAY\fP\fB.systemPath\fP"
 .I Xdm
 sets the PATH environment variable for the startup and reset scripts to the
-value of this resource.  The default for this resource is specified
-at build time by the DefaultSystemPath entry in the system configuration file;
-``/etc:/bin:/usr/bin:BINDIR:/usr/ucb'' is a common choice.
+value of this resource.  The default for this resource is ``DEF_SYSTEM_PATH''.
 Note the absence of ``.'' from this entry.  This is a good practice to
 follow for root; it avoids many common Trojan Horse system penetration
 schemes.
@@ -552,7 +544,7 @@ authorization mechanisms are supported, so
 \fBauthName\fP is ignored in this case.  When \fBauthorize\fP is set for a
 display and authorization is not available, the user is informed by having a
 different message displayed in the login widget.  By default, \fBauthorize\fP
-is ``true.''  \fBauthName\fP is ``MIT-MAGIC-COOKIE-1,'' or, if
+is ``true,''  \fBauthName\fP is ``MIT-MAGIC-COOKIE-1,'' or, if
 XDM-AUTHORIZATION-1 is available, ``XDM-AUTHORIZATION-1\0MIT-MAGIC-COOKIE-1.''
 .IP \fBDisplayManager.\fP\fIDISPLAY\fP\fB.authFile\fP
 This file is used to communicate the authorization data from
@@ -797,13 +789,13 @@ LISTEN 10.11.12.13	# Listen only on this interface, as long
 .fi
 .SH "IPv6 MULTICAST ADDRESS SPECIFICATION"
 .PP
-The Internet Assigned Numbers Authority has has assigned 
-ff0\fIX\fP:0:0:0:0:0:0:12b as the permanently assigned range of 
+The Internet Assigned Numbers Authority has has assigned
+ff0\fIX\fP:0:0:0:0:0:0:12b as the permanently assigned range of
 multicast addresses for XDMCP. The \fIX\fP in the prefix may be replaced
-by any valid scope identifier, such as 1 for Node-Local, 2 for Link-Local,
-5 for Site-Local, and so on.  (See IETF RFC 2373 or its replacement for 
+by any valid scope identifier, such as 1 for Interface-Local, 2 for Link-Local,
+5 for Site-Local, and so on.  (See IETF RFC 4291 or its replacement for
 further details and scope definitions.)  xdm defaults to listening on the
-Link-Local scope address ff02:0:0:0:0:0:0:12b to most closely match the 
+Link-Local scope address ff02:0:0:0:0:0:0:12b to most closely match the
 old IPv4 subnet broadcast behavior.
 .SH "LOCAL SERVER SPECIFICATION"
 .PP
@@ -931,19 +923,47 @@ Here is a sample \fIXsetup\fP script:
 
 .fi
 .SH "AUTHENTICATION WIDGET"
-The authentication widget reads a name/password pair
-from the keyboard.  Nearly every imaginable
+The authentication widget prompts the user for the username, password, and/or
+other required authentication data from the keyboard.  Nearly every imaginable
 parameter can be controlled with a resource.  Resources for this widget
 should be put into the file named by
 \fBDisplayManager.\fP\fIDISPLAY\fP\fB.resources\fP.  All of these have reasonable
 default values, so it is not necessary to specify any of them.
+.PP
+The resource file is loaded with
+.IR xrdb (__appmansuffix__)
+so it may use the substitutions defined by that program such as CLIENTHOST
+for the client hostname in the login message, or C pre-processor #ifdef
+statements to produce different displays depending on color depth or other
+variables.
+.PP
+.I Xdm
+can be compiled with support for the
+.IR Xft (__libmansuffix__)
+library for font rendering.   If this support is present, font faces are
+specified using the resources with names ending in ``face'' in the
+fontconfig face format described in the
+.I Font Names
+section of
+.IR fonts.conf (__filemansuffix__).
+If not, then fonts are specified using the resources with names ending
+in ``font'' in the traditional
+.I X Logical Font Description
+format described in the
+.I Font Names
+section of
+.IR X (__miscmansuffix__).
 .IP "\fBxlogin.Login.width, xlogin.Login.height, xlogin.Login.x, xlogin.Login.y\fP"
 The geometry of the Login widget is normally computed automatically.  If you
 wish to position it elsewhere, specify each of these resources.
 .IP "\fBxlogin.Login.foreground\fP"
-The color used to display the typed-in user name.
+The color used to display the input typed by the user.
+.IP "\fBxlogin.Login.face\fP"
+The face used to display the input typed by the user when built with Xft
+support.  The default is ``Serif-18''.
 .IP "\fBxlogin.Login.font\fP"
-The font used to display the typed-in user name.
+The font used to display the input typed by the user when not built with Xft
+support.
 .IP "\fBxlogin.Login.greeting\fP"
 A string which identifies this window.
 The default is ``X Window System.''
@@ -951,8 +971,11 @@ The default is ``X Window System.''
 When X authorization is requested in the configuration file for this
 display and none is in use, this greeting replaces the standard
 greeting.  The default is ``This is an unsecure session''
+.IP "\fBxlogin.Login.greetFace\fP"
+The face used to display the greeting when built with Xft support.
+The default is ``Serif-24:italic''.
 .IP "\fBxlogin.Login.greetFont\fP"
-The font used to display the greeting.
+The font used to display the greeting when not built with Xft support.
 .IP "\fBxlogin.Login.greetColor\fP"
 The color used to display the greeting.
 .IP "\fBxlogin.Login.namePrompt\fP"
@@ -962,22 +985,62 @@ strips trailing white space from resource values, so to add spaces at
 the end of the prompt (usually a nice thing), add spaces escaped with
 backslashes.  The default is ``Login:  ''
 .IP "\fBxlogin.Login.passwdPrompt\fP"
-The string displayed to prompt for a password.
+The string displayed to prompt for a password, when not using an authentication
+system such as PAM that provides its own prompts.
 The default is ``Password:  ''
+.IP "\fBxlogin.Login.promptFace\fP"
+The face used to display prompts when built with Xft support.
+The default is ``Serif-18:bold''.
 .IP "\fBxlogin.Login.promptFont\fP"
-The font used to display both prompts.
+The font used to display prompts when not built with Xft support.
 .IP "\fBxlogin.Login.promptColor\fP"
-The color used to display both prompts.
+The color used to display prompts.
+.IP "\fBxlogin.Login.changePasswdMessage\fP"
+A message which is displayed when the users password has expired.
+The default is ``Password Change Required''
 .IP "\fBxlogin.Login.fail\fP"
-A message which is displayed when the authentication fails.
+A message which is displayed when the authentication fails, when not using an
+authentication system such as PAM that provides its own prompts.
 The default is ``Login incorrect''
+.IP "\fBxlogin.Login.failFace\fP"
+The face used to display the failure message when built with Xft support.
+The default is ``Serif-18:bold''.
 .IP "\fBxlogin.Login.failFont\fP"
-The font used to display the failure message.
+The font used to display the failure message when not built with Xft support.
 .IP "\fBxlogin.Login.failColor\fP"
 The color used to display the failure message.
 .IP "\fBxlogin.Login.failTimeout\fP"
 The number of seconds that the failure message is displayed.
-The default is 30.
+The default is 10.
+.IP "\fBxlogin.Login.logoFileName\fP"
+Name of an XPM format pixmap to display in the greeter window, if built with
+XPM support.   The default is no pixmap.
+.IP "\fBxlogin.Login.logoPadding\fP"
+Number of pixels of space between the logo pixmap and other elements of the
+greeter window, if the pixmap is displayed.
+The default is 5.
+.IP "\fBxlogin.Login.useShape\fP"
+If set to ``true'', when built with XPM support, attempt to use the
+X Non-Rectangular Window Shape Extension to set the window shape.
+The default is ``true''.
+.IP "\fBxlogin.Login.hiColor\fP, \fBxlogin.Login.shdColor\fP"
+Raised appearance bezels may be drawn around
+the greeter frame and text input boxes by setting these resources.  hiColor
+is the highlight color, used on the top and left sides of the frame, and the
+bottom and right sides of text input areas.   shdColor is the shadow color,
+used on the bottom and right sides of the frame, and the top and left sides
+of text input areas.
+The default for both is the foreground color, providing a flat appearance.
+.IP "\fBxlogin.Login.frameWidth\fP"
+frameWidth is the width in pixels of the area
+around the greeter frame drawn in hiColor and shdColor.
+.IP "\fBxlogin.Login.innerFramesWidth\fP"
+innerFramesWidth is the width in pixels of the
+area around text input areas drawn in hiColor and shdColor.
+.IP "\fBxlogin.Login.sepWidth\fP"
+sepWidth is the width in pixels of the
+bezeled line between the greeting and input areas
+drawn in hiColor and shdColor.
 .IP "\fBxlogin.Login.allowRootLogin\fP"
 If set to ``false'', don't allow root (and any other user with uid = 0) to
 log in directly.
@@ -1074,7 +1137,7 @@ root when the user logs in.
 It is typically a shell script.
 Since it is run as root, \fIXstartup\fP should be
 very careful about security.  This is the place to put commands which add
-entries to \fI/etc/utmp\fP
+entries to \fIutmp\fP or \fIwtmp\fP files,
 (the \fIsessreg\fP program may be useful here),
 mount users' home directories from file servers,
 or abort the session if logins are not
@@ -1092,6 +1155,7 @@ the following environment variables are passed:
 	PATH	the value of \fBDisplayManager.\fP\fIDISPLAY\fP\fB.systemPath\fP
 	SHELL	the value of \fBDisplayManager.\fP\fIDISPLAY\fP\fB.systemShell\fP
 	XAUTHORITY	may be set to an authority file
+	WINDOWPATH	may be set to the "window path" leading to the X server
 
 .fi
 .PP
@@ -1146,6 +1210,7 @@ the following environment variables are passed:
 	SHELL	the user's default shell (from \fIgetpwnam\fP)
 	XAUTHORITY	may be set to a non-standard authority file
 	KRB5CCNAME	may be set to a Kerberos credentials cache name
+	WINDOWPATH	may be set to the "window path" leading to the X server
 
 .fi
 .PP
@@ -1154,7 +1219,6 @@ a file \fI\.xsession,\fP
 which contains commands that each user would like to use as a session.
 \fIXsession\fP should also
 implement a system default session if no user-specified session exists.
-See the section \fBTypical Usage\fP.
 .PP
 An argument may be passed to this program from the authentication widget
 using the `set-session-argument' action.  This can be used to select
@@ -1222,8 +1286,8 @@ example.  Don't forget that the file must have execute permission.
 Symmetrical with \fIXstartup\fP,
 the \fIXreset\fP script is run after the user session has
 terminated.  Run as root, it should contain commands that undo
-the effects of commands in \fIXstartup,\fP removing entries
-from \fI/etc/utmp\fP
+the effects of commands in \fIXstartup,\fP updating entries
+in \fIutmp\fP or \fIwtmp\fP files,
 or unmounting directories from file servers.  The environment
 variables that were passed to \fIXstartup\fP are also
 passed to \fIXreset\fP.
@@ -1359,21 +1423,25 @@ the default server
 .I BINDIR/xterm
 the default session program and failsafe client
 .TP 20
-.I XDMDIR/A<display>\-<suffix>
+.I XDMXAUTHDIR/A<display>\-<suffix>
 the default place for authorization files
 .TP 20
 .I /tmp/K5C<display>
 Kerberos credentials cache
 .SH "SEE ALSO"
 .IR X (__miscmansuffix__),
-.IR xinit (1),
-.IR xauth (1),
+.IR xinit (__appmansuffix__),
+.IR xauth (__appmansuffix__),
+.IR xrdb (__appmansuffix__),
 .IR Xsecurity (__miscmansuffix__),
-.IR sessreg (1),
-.IR Xserver (1),
-.\" .IR chooser (1), \" except that there isn't a manual for it yet
-.\" .IR xdmshell (1), \" except that there isn't a manual for it yet
+.IR sessreg (__appmansuffix__),
+.IR Xserver (__appmansuffix__),
+.\" .IR chooser (__appmansuffix__), \" except that there isn't a manual for it yet
+.\" .IR xdmshell (__appmansuffix__), \" except that there isn't a manual for it yet
+.IR fonts.conf (__filemansuffix__).
 .br
 .I "X Display Manager Control Protocol"
+.br
+.RI "IETF RFC 4291: " "IP Version 6 Addressing Architecture" .
 .SH AUTHOR
 Keith Packard, MIT X Consortium

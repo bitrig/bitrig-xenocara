@@ -1,5 +1,3 @@
-/* $XdotOrg: app/xdm/util.c,v 1.5 2006/03/30 21:14:31 alanc Exp $ */
-/* $Xorg: util.c,v 1.4 2001/02/09 02:05:41 xorgcvs Exp $ */
 /*
 
 Copyright 1989, 1998  The Open Group
@@ -27,7 +25,6 @@ other dealings in this Software without prior written authorization
 from The Open Group.
 
 */
-/* $XFree86: xc/programs/xdm/util.c,v 3.20 2002/05/31 18:46:10 dawes Exp $ */
 
 /*
  * xdm - display manager daemon
@@ -38,24 +35,59 @@ from The Open Group.
  * various utility routines
  */
 
-# include   "dm.h"
-# include   "dm_error.h"
+#include   "dm.h"
+#include   "dm_error.h"
 
 #include <X11/Xmu/SysUtil.h>	/* for XmuGetHostname */
 
 #ifdef X_POSIX_C_SOURCE
-#define _POSIX_C_SOURCE X_POSIX_C_SOURCE
-#include <signal.h>
-#undef _POSIX_C_SOURCE
+# define _POSIX_C_SOURCE X_POSIX_C_SOURCE
+# include <signal.h>
+# undef _POSIX_C_SOURCE
 #else
-#if defined(X_NOT_POSIX) || defined(_POSIX_SOURCE)
-#include <signal.h>
-#else
-#define _POSIX_SOURCE
-#include <signal.h>
-#undef _POSIX_SOURCE
+# if defined(X_NOT_POSIX) || defined(_POSIX_SOURCE)
+#  include <signal.h>
+# else
+#  define _POSIX_SOURCE
+#  include <signal.h>
+#  undef _POSIX_SOURCE
+# endif
 #endif
-#endif
+
+#ifndef HAVE_ASPRINTF
+# include <stdarg.h>
+/* Allocating sprintf found in many newer libc's
+ * Since xdm is single threaded, assumes arguments don't change
+ * between initial length calculation and copy to result buffer.
+ */
+int
+Asprintf(char ** ret, const char *restrict format, ...)
+{
+    va_list ap;
+    int len;
+    char buf[256];
+
+    va_start(ap, format);
+    len = vsnprintf(buf, sizeof(buf), format, ap);
+    if (len >= 0) {
+	*ret = malloc(len + 1);
+	if (*ret) {
+	    if (len < sizeof(buf)) {
+		memcpy(*ret, buf, len + 1);
+	    } else {
+		vsnprintf(*ret, len + 1, format, ap);
+	    }
+	} else {
+	    len = -1;
+	}
+    } else {
+	*ret = NULL;
+    }
+    va_end(ap);
+
+    return len;
+}
+#endif /* !HAVE_ASPRINTF */
 
 void
 printEnv (char **e)
@@ -69,12 +101,12 @@ makeEnv (char *name, char *value)
 {
 	char	*result;
 
-	result = malloc ((unsigned) (strlen (name) + strlen (value) + 2));
+	asprintf(&result, "%s=%s", name, value);
+
 	if (!result) {
 		LogOutOfMem ("makeEnv");
-		return 0;
+		return NULL;
 	}
-	sprintf (result, "%s=%s", name, value);
 	return result;
 }
 
@@ -83,7 +115,7 @@ getEnv (char **e, char *name)
 {
 	int	l = strlen (name);
 
-	if (!e) return 0;
+	if (!e) return NULL;
 
 	while (*e) {
 		if ((int)strlen (*e) > l && !strncmp (*e, name, l) &&
@@ -91,7 +123,7 @@ getEnv (char **e, char *name)
 			return (*e) + l + 1;
 		++e;
 	}
-	return 0;
+	return NULL;
 }
 
 char **
@@ -130,7 +162,7 @@ setEnv (char **e, char *name, char *value)
 		return e;
 	}
 	new[envsize] = newe;
-	new[envsize+1] = 0;
+	new[envsize+1] = NULL;
 	return new;
 }
 
@@ -139,21 +171,21 @@ putEnv(const char *string, char **env)
 {
     char *v, *b, *n;
     int nl;
-  
+
     if ((b = strchr(string, '=')) == NULL)
 	return NULL;
     v = b + 1;
-  
+
     nl = b - string;
     if ((n = malloc(nl + 1)) == NULL)
     {
 	LogOutOfMem ("putAllEnv");
 	return NULL;
     }
-  
+
     strncpy(n, string,nl + 1);
     n[nl] = 0;
-  
+
     env = setEnv(env,n,v);
     free(n);
     return env;
@@ -172,7 +204,7 @@ freeEnv (char **env)
     }
 }
 
-# define isblank(c)	((c) == ' ' || c == '\t')
+#define isblank(c)	((c) == ' ' || c == '\t')
 
 char **
 parseArgs (char **argv, char *string)
@@ -189,7 +221,7 @@ parseArgs (char **argv, char *string)
 		argv = (char **) malloc (sizeof (char *));
 		if (!argv) {
 			LogOutOfMem ("parseArgs");
-			return 0;
+			return NULL;
 		}
 	}
 	word = string;
@@ -204,7 +236,7 @@ parseArgs (char **argv, char *string)
 					free ((char *) argv);
 					if (save)
 						free (save);
-					return 0;
+					return NULL;
 				} else {
 				    argv = newargv;
 				}
@@ -218,7 +250,7 @@ parseArgs (char **argv, char *string)
 		}
 		++string;
 	}
-	argv[i] = 0;
+	argv[i] = NULL;
 	return argv;
 }
 
@@ -265,14 +297,14 @@ localHostname (void)
 
 SIGVAL (*Signal (int sig, SIGFUNC handler))(int)
 {
-#if !defined(X_NOT_POSIX) && !defined(__UNIXOS2__)
+#ifdef HAVE_SIGACTION
     struct sigaction sigact, osigact;
     sigact.sa_handler = handler;
     sigemptyset(&sigact.sa_mask);
     sigact.sa_flags = 0;
     sigaction(sig, &sigact, &osigact);
     return osigact.sa_handler;
-#else
+#else /* __UNIXOS2__ */
     return signal(sig, handler);
 #endif
 }

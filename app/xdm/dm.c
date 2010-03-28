@@ -1,4 +1,3 @@
-/* $Xorg: dm.c,v 1.5 2001/02/09 02:05:40 xorgcvs Exp $ */
 /*
 
 Copyright 1988, 1998  The Open Group
@@ -26,7 +25,6 @@ other dealings in this Software without prior written authorization
 from The Open Group.
 
 */
-/* $XFree86: xc/programs/xdm/dm.c,v 3.23 2003/09/17 05:48:32 herrb Exp $ */
 
 /*
  * xdm - display manager daemon
@@ -35,44 +33,46 @@ from The Open Group.
  * display manager
  */
 
-# include	"dm.h"
-# include	"dm_auth.h"
-# include	"dm_error.h"
+#include	"dm.h"
+#include	"dm_auth.h"
+#include	"dm_error.h"
 
-# include	<stdio.h>
+#include	<stdio.h>
 #ifdef X_POSIX_C_SOURCE
-#define _POSIX_C_SOURCE X_POSIX_C_SOURCE
-#include <signal.h>
-#undef _POSIX_C_SOURCE
+# define _POSIX_C_SOURCE X_POSIX_C_SOURCE
+# include <signal.h>
+# undef _POSIX_C_SOURCE
 #else
-#if defined(X_NOT_POSIX) || defined(_POSIX_SOURCE)
-#include <signal.h>
-#else
-#define _POSIX_SOURCE
-#include <signal.h>
-#undef _POSIX_SOURCE
-#endif
+# if defined(X_NOT_POSIX) || defined(_POSIX_SOURCE)
+#  include <signal.h>
+# else
+#  define _POSIX_SOURCE
+#  include <signal.h>
+#  undef _POSIX_SOURCE
+# endif
 #endif
 #ifdef __NetBSD__
-#include <sys/param.h>
+# include <sys/param.h>
 #endif
 #ifdef USESECUREWARE
-#include <prot.h>
+# include <prot.h>
 #endif
 
 #ifndef sigmask
-#define sigmask(m)  (1 << ((m - 1)))
+# define sigmask(m)  (1 << ((m - 1)))
 #endif
 
-# include	<sys/stat.h>
-# include	<errno.h>
-# include	<X11/Xfuncproto.h>
-# include	<stdarg.h>
+#include	<sys/stat.h>
+#include	<errno.h>
+#include	<X11/Xfuncproto.h>
+#include	<X11/Xatom.h>
+#include	<stdarg.h>
+#include	<stdint.h>
 
 #ifndef F_TLOCK
-#ifndef X_NOT_POSIX
-# include	<unistd.h>
-#endif
+# ifndef X_NOT_POSIX
+#  include	<unistd.h>
+# endif
 #endif
 
 
@@ -87,7 +87,7 @@ static void	ScanServers (void);
 static void	SetAccessFileTime (void);
 static void	SetConfigFileTime (void);
 static void	StartDisplays (void);
-static void	TerminateProcess (int pid, int signal);
+static void	TerminateProcess (pid_t pid, int signal);
 
 volatile int	Rescan;
 static long	ServersModTime, ConfigModTime, AccessFileModTime;
@@ -104,13 +104,15 @@ static SIGVAL ChildNotify (int n);
 #endif
 
 static int StorePid (void);
+static void RemovePid (void);
 
-static int parent_pid = -1; 	/* PID of parent xdm process */
+static pid_t parent_pid = -1; 	/* PID of parent xdm process */
 
 int
 main (int argc, char **argv)
 {
-    int	oldpid, oldumask;
+    int	oldpid;
+    mode_t oldumask;
     char cmdbuf[1024];
 
     /* make sure at least world write access is disabled */
@@ -141,6 +143,8 @@ main (int argc, char **argv)
     }
     if (debugLevel == 0 && daemonMode)
 	BecomeDaemon ();
+    if (debugLevel == 0)
+	InitErrorLog ();
     if (debugLevel >= 10)
 	nofork_session = 1;
     /* SUPPRESS 560 */
@@ -153,8 +157,11 @@ main (int argc, char **argv)
 		 pidFile, oldpid);
 	exit (1);
     }
-    if (debugLevel == 0)
-	InitErrorLog ();
+
+    LogInfo ("Starting\n");
+
+    if (atexit (RemovePid))
+	LogError ("could not register RemovePid() with atexit()\n");
 
     if (nofork_session == 0) {
 	/* Clean up any old Authorization files */
@@ -195,6 +202,7 @@ main (int argc, char **argv)
 #ifndef UNRELIABLE_SIGNALS
     (void) Signal (SIGCHLD, ChildNotify);
 #endif
+    Debug ("startup successful; entering main loop\n");
     while (
 #ifdef XDMCP
 	   AnyWellKnownSockets() ||
@@ -213,6 +221,7 @@ main (int argc, char **argv)
 #endif
     }
     Debug ("Nothing left to do, exiting\n");
+    LogInfo ("Exiting\n");
     exit(0);
     /*NOTREACHED*/
 }
@@ -369,20 +378,21 @@ StopAll (int n)
 
     if (parent_pid != getpid())
     {
-	/* 
+	/*
 	 * We are a child xdm process that was killed by the
 	 * master xdm before we were able to return from fork()
 	 * and remove this signal handler.
 	 *
 	 * See defect XWSog08655 for more information.
 	 */
-	Debug ("Child xdm caught SIGTERM before it remove that signal.\n");
+	Debug ("Child xdm caught SIGTERM before it removed that signal.\n");
 	(void) Signal (n, SIG_DFL);
 	TerminateProcess (getpid(), SIGTERM);
 	errno = olderrno;
 	return;
     }
     Debug ("Shutting down entire manager\n");
+    LogInfo ("Shutting down\n");
 #ifdef XDMCP
     DestroyWellKnownSockets ();
 #endif
@@ -410,9 +420,9 @@ ChildNotify (int n)
     int olderrno = errno;
 
     ChildReady = 1;
-#ifdef ISC
+# ifdef ISC
     (void) Signal (SIGCHLD, ChildNotify);
-#endif
+# endif
     errno = olderrno;
 }
 #endif
@@ -420,7 +430,7 @@ ChildNotify (int n)
 void
 WaitForChild (void)
 {
-    int		pid;
+    pid_t		pid;
     struct display	*d;
     waitType	status;
 #if !defined(X_NOT_POSIX) && !defined(__UNIXOS2__)
@@ -433,33 +443,29 @@ WaitForChild (void)
     /* XXX classic System V signal race condition here with RescanNotify */
     if ((pid = wait (&status)) != -1)
 #else
-#ifndef X_NOT_POSIX
+# ifndef X_NOT_POSIX
     sigemptyset(&mask);
     sigaddset(&mask, SIGCHLD);
     sigaddset(&mask, SIGHUP);
     sigprocmask(SIG_BLOCK, &mask, &omask);
     Debug ("signals blocked\n");
-#else
+# else
     omask = sigblock (sigmask (SIGCHLD) | sigmask (SIGHUP));
     Debug ("signals blocked, mask was 0x%x\n", omask);
-#endif
+# endif
     if (!ChildReady && !Rescan)
-#ifndef X_NOT_POSIX
+# ifndef X_NOT_POSIX
 	sigsuspend(&omask);
-#else
+# else
 	sigpause (omask);
-#endif
+# endif
     ChildReady = 0;
-#ifndef X_NOT_POSIX
+# ifndef X_NOT_POSIX
     sigprocmask(SIG_SETMASK, &omask, (sigset_t *)NULL);
-#else
+# else
     sigsetmask (omask);
-#endif
-#ifndef X_NOT_POSIX
+# endif
     while ((pid = waitpid (-1, &status, WNOHANG)) > 0)
-#else
-    while ((pid = wait3 (&status, WNOHANG, (struct rusage *) 0)) > 0)
-#endif
 #endif
     {
 	Debug ("Manager wait returns pid: %d sig %d core %d code %d\n",
@@ -518,7 +524,7 @@ WaitForChild (void)
 		  Time_t Time;
 		  time(&Time);
 		  Debug("time %i %i\n",Time,d->lastCrash);
-		  if (d->lastCrash && 
+		  if (d->lastCrash &&
 		      ((Time - d->lastCrash) < XDM_BROKEN_INTERVAL)) {
 		    Debug("Server crash frequency too high:"
 			  " removing display %s\n",d->name);
@@ -528,7 +534,7 @@ WaitForChild (void)
 		    AddTimerEntropy();
 #endif
 		    RemoveDisplay (d);
-		  } else 
+		  } else
 		    d->lastCrash = Time;
 		}
 		break;
@@ -624,12 +630,80 @@ StartDisplays (void)
     ForEachDisplay (CheckDisplayStatus);
 }
 
+static void
+SetWindowPath(struct display *d)
+{
+	/* setting WINDOWPATH for clients */
+	Atom prop;
+	Atom actualtype;
+	int actualformat;
+	unsigned long nitems;
+	unsigned long bytes_after;
+	unsigned char *buf;
+	const char *windowpath;
+	char *newwindowpath;
+	unsigned long num;
+
+	prop = XInternAtom(d->dpy, "XFree86_VT", False);
+	if (prop == None) {
+		fprintf(stderr, "no XFree86_VT atom\n");
+		return;
+	}
+	if (XGetWindowProperty(d->dpy, DefaultRootWindow(d->dpy), prop, 0, 1,
+		False, AnyPropertyType, &actualtype, &actualformat,
+		&nitems, &bytes_after, &buf)) {
+		fprintf(stderr, "no XFree86_VT property\n");
+		return;
+	}
+	if (nitems != 1) {
+		fprintf(stderr, "%lu items in XFree86_VT property!\n", nitems);
+		XFree(buf);
+		return;
+	}
+	switch (actualtype) {
+	case XA_CARDINAL:
+	case XA_INTEGER:
+	case XA_WINDOW:
+		switch (actualformat) {
+		case  8:
+			num = (*(uint8_t  *)(void *)buf);
+			break;
+		case 16:
+			num = (*(uint16_t *)(void *)buf);
+			break;
+		case 32:
+			num = (*(uint32_t *)(void *)buf);
+			break;
+		default:
+			fprintf(stderr, "format %d in XFree86_VT property!\n", actualformat);
+			XFree(buf);
+			return;
+		}
+		break;
+	default:
+		fprintf(stderr, "type %lx in XFree86_VT property!\n", actualtype);
+		XFree(buf);
+		return;
+	}
+	XFree(buf);
+	windowpath = getenv("WINDOWPATH");
+	if (!windowpath) {
+		asprintf(&newwindowpath, "%lu", num);
+	} else {
+		asprintf(&newwindowpath, "%s:%lu", windowpath, num);
+	}
+	if (d->windowPath)
+		free(d->windowPath);
+	d->windowPath = newwindowpath;
+}
+
 void
 StartDisplay (struct display *d)
 {
-    int	pid;
+    pid_t	pid;
 
     Debug ("StartDisplay %s\n", d->name);
+    LogInfo ("Starting X server on %s\n", d->name);
     LoadServerResources (d);
     if (d->displayType.location == Local)
     {
@@ -679,6 +753,7 @@ StartDisplay (struct display *d)
 	SetAuthorization (d);
 	if (!WaitForServer (d))
 	    exit (OPENFAILED_DISPLAY);
+	SetWindowPath(d);
 #ifdef XDMCP
 	if (d->useChooser)
 	    RunChooser (d);
@@ -697,7 +772,7 @@ StartDisplay (struct display *d)
 }
 
 static void
-TerminateProcess (int pid, int signal)
+TerminateProcess (pid_t pid, int signal)
 {
     kill (pid, signal);
 #ifdef SIGCONT
@@ -801,9 +876,9 @@ StorePid (void)
 	if (lockPidFile)
 	{
 #ifdef F_SETLK
-#ifndef SEEK_SET
-#define SEEK_SET 0
-#endif
+# ifndef SEEK_SET
+#  define SEEK_SET 0
+# endif
 	    struct flock lock_data;
 	    lock_data.l_type = F_WRLCK;
 	    lock_data.l_whence = SEEK_SET;
@@ -816,7 +891,7 @@ StorePid (void)
 		    return -1;
 	    }
 #else
-#ifdef LOCK_EX
+# ifdef LOCK_EX
 	    if (flock (pidFd, LOCK_EX|LOCK_NB) == -1)
 	    {
 		if (errno == EWOULDBLOCK)
@@ -824,7 +899,7 @@ StorePid (void)
 		else
 		    return -1;
 	    }
-#else
+# else
 	    if (lockf (pidFd, F_TLOCK, 0) == -1)
 	    {
 		if (errno == EACCES)
@@ -832,9 +907,10 @@ StorePid (void)
 		else
 		    return -1;
 	    }
-#endif
+# endif
 #endif
 	}
+	ftruncate(pidFd, 0);
 	fprintf (pidFilePtr, "%5ld\n", (long)getpid ());
 	(void) fflush (pidFilePtr);
 	RegisterCloseOnFork (pidFd);
@@ -842,12 +918,25 @@ StorePid (void)
     return 0;
 }
 
+/*
+ * Remove process ID file.  This function is registered with atexit().
+ */
+static void
+RemovePid (void)
+{
+    Debug ("unlinking process ID file %s\n", pidFile);
+    if (unlink (pidFile))
+	if (errno != ENOENT)
+	    LogError ("cannot remove process ID file %s: %s\n", pidFile,
+		      _SysErrorMsg (errno));
+}
+
 #if 0
 void
 UnlockPidFile (void)
 {
     if (lockPidFile)
-#ifdef F_SETLK
+# ifdef F_SETLK
     {
 	struct flock lock_data;
 	lock_data.l_type = F_UNLCK;
@@ -855,13 +944,13 @@ UnlockPidFile (void)
 	lock_data.l_start = lock_data.l_len = 0;
 	(void) fcntl(pidFd, F_SETLK, &lock_data);
     }
-#else
-#ifdef F_ULOCK
+# else
+#  ifdef F_ULOCK
 	lockf (pidFd, F_ULOCK, 0);
-#else
+#  else
 	flock (pidFd, LOCK_UN);
-#endif
-#endif
+#  endif
+# endif
     close (pidFd);
     fclose (pidFilePtr);
 }
@@ -870,7 +959,7 @@ UnlockPidFile (void)
 #ifndef HAS_SETPROCTITLE
 void SetTitle (char *name, ...)
 {
-#ifndef NOXDMTITLE
+# ifndef NOXDMTITLE
     char	*p = Title;
     int	left = TitleLen;
     char	*s;
@@ -895,6 +984,6 @@ void SetTitle (char *name, ...)
 	--left;
     }
     va_end(args);
-#endif	
+# endif
 }
 #endif
