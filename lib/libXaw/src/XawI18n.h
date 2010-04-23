@@ -1,4 +1,4 @@
-/* $XdotOrg: lib/Xaw/src/XawI18n.h,v 1.4 2005/11/08 06:33:25 jkj Exp $ */
+/* $XdotOrg: xc/lib/Xaw/XawI18n.h,v 1.2 2004/04/23 18:43:38 eich Exp $ */
 /* $Xorg: XawI18n.h,v 1.4 2001/02/09 02:03:47 xorgcvs Exp $ */
 
 /************************************************************
@@ -113,10 +113,10 @@ wchar_t _Xaw_atowc
 #endif
 #endif
 
-#ifndef iswalnum
+#if !defined(iswalnum) && !defined(HAVE_ISWALNUM)
 #define iswalnum(c) _Xaw_iswalnum(c)
+#endif
 int _Xaw_iswalnum
 (
  wchar_t		c
  );
-#endif
