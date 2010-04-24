@@ -1,5 +1,6 @@
 /*
- * $Id: compositeproto.h,v 1.1 2006/11/25 15:43:20 matthieu Exp $
+ * $Id: compositeproto.h,v 1.2 2010/04/24 19:49:04 matthieu Exp $
+ *
  *
  * Copyright © 2006 Sun Microsystems
  *
