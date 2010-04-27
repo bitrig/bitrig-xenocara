@@ -62,8 +62,8 @@ Copyright (c) 1995,1996  The XFree86 Project, Inc
 #define NEED_EVENTS
 #define NEED_REPLIES
 #include <X11/Xlibint.h>
-#include <X11/extensions/xf86dga.h>
-#include <X11/extensions/xf86dgastr.h>
+#include <X11/extensions/Xxf86dga.h>
+#include <X11/extensions/xf86dgaproto.h>
 #include <X11/extensions/Xext.h>
 #include <X11/extensions/extutil.h>
 
@@ -98,7 +98,7 @@ Bool XF86DGAQueryVersion(
 Bool XF86DGAGetVideoLL(
     Display* dpy,
     int screen,
-    int *offset,
+    unsigned int *offset,
     int *width, 
     int *bank_size, 
     int *ram_size
@@ -120,7 +120,7 @@ Bool XF86DGAGetVideoLL(
 	return False;
     }
 
-    *offset = /*(char *)*/rep.offset;
+    *offset = rep.offset;
     *width = rep.width;
     *bank_size = rep.bank_size;
     *ram_size = rep.ram_size;
@@ -342,7 +342,6 @@ Bool XF86DGAViewPortChanged(
 /* Helper functions */
 
 #include <X11/Xmd.h>
-#include <X11/extensions/xf86dga.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <fcntl.h>
@@ -678,7 +677,7 @@ XF86DGAGetVideo(
     int *bank, 
     int *ram
 ){
-    /*unsigned long*/ int offset;
+    unsigned int offset;
     static int beenHere = 0;
     ScrPtr sp;
     MapPtr mp;
