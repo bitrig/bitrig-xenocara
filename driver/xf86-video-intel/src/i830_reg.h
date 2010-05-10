@@ -25,11 +25,27 @@
  * 
  **************************************************************************/
 
-
 #ifndef _I830_REG_H_
 #define _I830_REG_H_
 
 #define I830_SET_FIELD( var, mask, value ) (var &= ~(mask), var |= value)
+
+#define CMD_3D (0x3<<29)
+
+#define PRIM3D_INLINE		(CMD_3D | (0x1f<<24))
+#define PRIM3D_TRILIST		(0x0<<18)
+#define PRIM3D_TRISTRIP 	(0x1<<18)
+#define PRIM3D_TRISTRIP_RVRSE	(0x2<<18)
+#define PRIM3D_TRIFAN		(0x3<<18)
+#define PRIM3D_POLY		(0x4<<18)
+#define PRIM3D_LINELIST 	(0x5<<18)
+#define PRIM3D_LINESTRIP	(0x6<<18)
+#define PRIM3D_RECTLIST 	(0x7<<18)
+#define PRIM3D_POINTLIST	(0x8<<18)
+#define PRIM3D_DIB		(0x9<<18)
+#define PRIM3D_CLEAR_RECT	(0xa<<18)
+#define PRIM3D_ZONE_INIT	(0xd<<18)
+#define PRIM3D_MASK		(0x1f<<18)
 
 #define _3DSTATE_AA_CMD			(CMD_3D | (0x06<<24))
 #define AA_LINE_ECAAR_WIDTH_ENABLE	(1<<16)
@@ -57,7 +73,6 @@
 /* Dword 2 */
 #define BUF_3D_ADDR(x)		((x) & ~0x3)
 
-
 #define _3DSTATE_COLOR_FACTOR_CMD	(CMD_3D | (0x1d<<24) | (0x1<<16))
 
 #define _3DSTATE_COLOR_FACTOR_N_CMD(stage)	(CMD_3D | (0x1d<<24) | \
@@ -70,7 +85,6 @@
 #define _3DSTATE_DFLT_SPEC_CMD		(CMD_3D | (0x1d<<24) | (0x9a<<16))
 
 #define _3DSTATE_DFLT_Z_CMD		(CMD_3D | (0x1d<<24) | (0x98<<16))
-
 
 #define _3DSTATE_DST_BUF_VARS_CMD	(CMD_3D | (0x1d<<24) | (0x85<<16))
 /* Dword 1 */
@@ -85,6 +99,8 @@
 #define COLR_BUF_RGB555 		(1<<8)
 #define COLR_BUF_RGB565 		(2<<8)
 #define COLR_BUF_ARGB8888		(3<<8)
+#define COLR_BUF_ARGB4444		(8<<8)
+#define COLR_BUF_ARGB1555		(9<<8)
 #define DEPTH_IS_Z			0
 #define DEPTH_IS_W			(1<<6)
 #define DEPTH_FRMT_16_FIXED		0
@@ -95,7 +111,6 @@
 #define VERT_LINE_STRIDE_0		0
 #define VERT_LINE_STRIDE_OFS_1		1
 #define VERT_LINE_STRIDE_OFS_0		0
-
 
 #define _3DSTATE_DRAW_RECT_CMD		(CMD_3D|(0x1d<<24)|(0x80<<16)|3)
 /* Dword 1 */
@@ -111,7 +126,6 @@
 /* Dword 4 */
 #define DRAW_YORG(x)			((x)<<16)
 #define DRAW_XORG(x)			(x)
-
 
 #define _3DSTATE_ENABLES_1_CMD		(CMD_3D|(0x3<<24))
 #define ENABLE_LOGIC_OP_MASK		((1<<23)|(1<<22))
@@ -202,6 +216,22 @@
 #define ENABLE_DST_ABLEND_FACTOR	(1<<5)
 #define DST_ABLEND_FACT(x)		(x)
 
+#define BLENDFACTOR_ZERO		0x01
+#define BLENDFACTOR_ONE 		0x02
+#define BLENDFACTOR_SRC_COLR		0x03
+#define BLENDFACTOR_INV_SRC_COLR	0x04
+#define BLENDFACTOR_SRC_ALPHA		0x05
+#define BLENDFACTOR_INV_SRC_ALPHA	0x06
+#define BLENDFACTOR_DST_ALPHA		0x07
+#define BLENDFACTOR_INV_DST_ALPHA	0x08
+#define BLENDFACTOR_DST_COLR		0x09
+#define BLENDFACTOR_INV_DST_COLR	0x0a
+#define BLENDFACTOR_SRC_ALPHA_SATURATE	0x0b
+#define BLENDFACTOR_CONST_COLOR		0x0c
+#define BLENDFACTOR_INV_CONST_COLOR	0x0d
+#define BLENDFACTOR_CONST_ALPHA		0x0e
+#define BLENDFACTOR_INV_CONST_ALPHA	0x0f
+#define BLENDFACTOR_MASK		0x0f
 
 /* _3DSTATE_MAP_BLEND_ARG, p152 */
 #define _3DSTATE_MAP_BLEND_ARG_CMD(stage)	(CMD_3D|(0x0e<<24)|((stage)<<20))
@@ -272,7 +302,6 @@
 #define DISABLE_VIEWPORT_TRANSFORM	(1<<31)
 #define DISABLE_PERSPECTIVE_DIVIDE	(1<<29)
 
-
 /* _3DSTATE_MAP_COORD_SET_BINDINGS, p162 */
 #define _3DSTATE_MAP_COORD_SETBIND_CMD	(CMD_3D|(0x1d<<24)|(0x02<<16))
 #define TEXBIND_MASK3			((1<<15)|(1<<14)|(1<<13)|(1<<12))
@@ -301,6 +330,7 @@
 
 /* _3DSTATE_MAP_COORD_SETS, p164 */
 #define _3DSTATE_MAP_COORD_SET_CMD	(CMD_3D|(0x1c<<24)|(0x01<<19))
+#define TEXCOORD_SET(n)			((n)<<16)
 #define ENABLE_TEXCOORD_PARAMS		(1<<15)
 #define TEXCOORDS_ARE_NORMAL		(1<<14)
 #define TEXCOORDS_ARE_IN_TEXELUNITS	0
@@ -329,6 +359,13 @@
 #define CUBE_NEGZ_ENABLE                (1<<1)
 #define CUBE_POSZ_ENABLE                (1<<0)
 
+#define _3DSTATE_MAP_INFO_CMD		(CMD_3D|(0x1d<<24)|(0x0<<16)|3)
+#define TEXMAP_INDEX(x)			((x)<<28)
+#define MAP_SURFACE_8BIT		(1<<24)
+#define MAP_SURFACE_16BIT		(2<<24)
+#define MAP_SURFACE_32BIT		(3<<24)
+#define MAP_FORMAT_2D			(0)
+#define MAP_FORMAT_3D_CUBE		(1<<11)
 
 /* _3DSTATE_MODES_1, p190 */
 #define _3DSTATE_MODES_1_CMD		(CMD_3D|(0x08<<24))
@@ -344,7 +381,6 @@
 #define ENABLE_DST_BLND_FACTOR		(1<<5)
 #define SRC_BLND_FACT(x)		((x)<<6)
 #define DST_BLND_FACT(x)		(x)
-
 
 /* _3DSTATE_MODES_2, p192 */
 #define _3DSTATE_MODES_2_CMD		(CMD_3D|(0x0f<<24))
@@ -480,7 +516,7 @@
 #define VFT0_XYZW_MASK          (7<<1)
 
 /* _3DSTATE_VERTEX_FORMAT_2, p206 */
-#define _3DSTATE_VFT1_CMD	(CMD_3D|(0x0a<<24))
+#define _3DSTATE_VERTEX_FORMAT_2_CMD	(CMD_3D|(0x0a<<24))
 #define VFT1_TEX7_FMT(x)	((x)<<14)
 #define VFT1_TEX6_FMT(x)	((x)<<12)
 #define VFT1_TEX5_FMT(x)	((x)<<10)
@@ -499,7 +535,6 @@
 /*New stuff picked up along the way */
 
 #define MLC_LOD_BIAS_MASK ((1<<7)-1)
-
 
 /* _3DSTATE_VERTEX_TRANSFORM, p207 */
 #define _3DSTATE_VERTEX_TRANS_CMD	(CMD_3D|(0x1d<<24)|(0x8b<<16)|0)
@@ -520,17 +555,59 @@
 /* Dword 2 */
 #define WFAR_VALUE(x)			(x)
 
-
 /* Stipple command, carried over from the i810, apparently:
  */
-#define _3DSTATE_STIPPLE           ((0x3<<29)|(0x1d<<24)|(0x83<<16))
+#define _3DSTATE_STIPPLE           (CMD_3D|(0x1d<<24)|(0x83<<16))
 #define ST1_ENABLE               (1<<16)
 #define ST1_MASK                 (0xffff)
 
+#define _3DSTATE_LOAD_STATE_IMMEDIATE_1	     (CMD_3D|(0x1d<<24)|(0x04<<16))
+#define I1_LOAD_S(n)			     (1<<((n)+4))
+#define S3_POINT_WIDTH_SHIFT		     23
+#define S3_LINE_WIDTH_SHIFT		     19
+#define S3_ALPHA_SHADE_MODE_SHIFT	     18
+#define S3_FOG_SHADE_MODE_SHIFT		     17
+#define S3_SPEC_SHADE_MODE_SHIFT	     16
+#define S3_COLOR_SHADE_MODE_SHIFT	     15
+#define S3_CULL_MODE_SHIFT		     13
+#define    S3_CULLMODE_BOTH		     (0)
+#define    S3_CULLMODE_NONE		     (1<<13)
+#define    S3_CULLMODE_CW		     (2<<13)
+#define    S3_CULLMODE_CCW		     (3<<13)
+#define S3_POINT_WIDTH_PRESENT		     (1<<12)
+#define S3_SPEC_FOG_PRESENT		     (1<<11)
+#define S3_DIFFUSE_PRESENT		     (1<<10)
+#define S3_DEPTH_OFFSET_PRESENT		     (1<<9)
+#define S3_POSITION_SHIFT		     6
+#define    S3_VERTEXHAS_XYZ		     (1<<6)
+#define    S3_VERTEXHAS_XYZW		     (2<<6)
+#define    S3_VERTEXHAS_XY		     (3<<6)
+#define    S3_VERTEXHAS_XYW		     (4<<6)
+#define S3_ENABLE_SPEC_ADD		     (1<<5)
+#define S3_ENABLE_FOG			     (1<<4)
+#define S3_ENABLE_LOCAL_DEPTH_BIAS	     (1<<3)
+#define S3_ENABLE_SPRITE_POINT		     (1<<1)
+#define S3_ENABLE_ANTIALIASING		     1
+#define S8_ENABLE_ALPHA_TEST		     (1<<31)
+#define S8_ALPHA_TEST_FUNC_SHIFT	     28
+#define S8_ALPHA_REFVALUE_SHIFT		     20
+#define S8_ENABLE_DEPTH_TEST		     (1<<19)
+#define S8_DEPTH_TEST_FUNC_SHIFT	     16
+#define S8_ENABLE_COLOR_BLEND		     (1<<15)
+#define S8_COLOR_BLEND_FUNC_SHIFT	     12
+#define    S8_BLENDFUNC_ADD		     (0)
+#define    S8_BLENDFUNC_SUB		     (1<<12)
+#define    S8_BLENDFUNC_RVRSE_SUB	     (2<<12)
+#define    S8_BLENDFUNC_MIN		     (3<<12)
+#define    S8_BLENDFUNC_MAX			     (4<<12)
+#define S8_SRC_BLEND_FACTOR_SHIFT	     8
+#define S8_DST_BLEND_FACTOR_SHIFT	     4
+#define S8_ENABLE_DEPTH_BUFFER_WRITE	     (1<<3)
+#define S8_ENABLE_COLOR_BUFFER_WRITE	     (1<<2)
 
-
-#define _3DSTATE_LOAD_STATE_IMMEDIATE_2      ((0x3<<29)|(0x1d<<24)|(0x03<<16))
-#define LOAD_TEXTURE_MAP0                   (1<<11)
+#define _3DSTATE_LOAD_STATE_IMMEDIATE_2      (CMD_3D|(0x1d<<24)|(0x03<<16))
+#define LOAD_TEXTURE_MAP(x)                   (1<<((x)+11))
+#define LOAD_TEXTURE_BLEND_STAGE(x)	      (1<<((x)+7))
 #define LOAD_GLOBAL_COLOR_FACTOR            (1<<6)
 
 #define TM0S0_ADDRESS_MASK              0xfffffffc
@@ -551,8 +628,8 @@
 #define    MAPSURF_4BIT_INDEXED		   (7<<6)
 #define TM0S1_MT_FORMAT_MASK         (0x7 << 3)
 #define TM0S1_MT_FORMAT_SHIFT        3
-#define    MT_4BIT_IDX_ARGB8888	           (7<<3) /* SURFACE_4BIT_INDEXED */
-#define    MT_8BIT_IDX_RGB565	           (0<<3) /* SURFACE_8BIT_INDEXED */
+#define    MT_4BIT_IDX_ARGB8888	           (7<<3)	/* SURFACE_4BIT_INDEXED */
+#define    MT_8BIT_IDX_RGB565	           (0<<3)	/* SURFACE_8BIT_INDEXED */
 #define    MT_8BIT_IDX_ARGB1555	           (1<<3)
 #define    MT_8BIT_IDX_ARGB4444	           (2<<3)
 #define    MT_8BIT_IDX_AY88		   (3<<3)
@@ -560,9 +637,10 @@
 #define    MT_8BIT_IDX_BUMP_88DVDU 	   (5<<3)
 #define    MT_8BIT_IDX_BUMP_655LDVDU	   (6<<3)
 #define    MT_8BIT_IDX_ARGB8888	           (7<<3)
-#define    MT_8BIT_I8		           (0<<3) /* SURFACE_8BIT */
+#define    MT_8BIT_I8		           (0<<3)	/* SURFACE_8BIT */
 #define    MT_8BIT_L8		           (1<<3)
-#define    MT_16BIT_RGB565 		   (0<<3) /* SURFACE_16BIT */
+#define    MT_8BIT_A8		           (4<<3)
+#define    MT_16BIT_RGB565 		   (0<<3)	/* SURFACE_16BIT */
 #define    MT_16BIT_ARGB1555		   (1<<3)
 #define    MT_16BIT_ARGB4444		   (2<<3)
 #define    MT_16BIT_AY88		   (3<<3)
@@ -570,16 +648,18 @@
 #define    MT_16BIT_BUMP_88DVDU	           (5<<3)
 #define    MT_16BIT_BUMP_655LDVDU	   (6<<3)
 #define    MT_16BIT_DIB_RGB565_8888	   (7<<3)
-#define    MT_32BIT_ARGB8888		   (0<<3) /* SURFACE_32BIT */
+#define    MT_32BIT_ARGB8888		   (0<<3)	/* SURFACE_32BIT */
 #define    MT_32BIT_ABGR8888		   (1<<3)
+#define    MT_32BIT_XRGB8888		   (2<<3)
+#define    MT_32BIT_XBGR8888		   (3<<3)
 #define    MT_32BIT_BUMP_XLDVDU_8888	   (6<<3)
 #define    MT_32BIT_DIB_8888		   (7<<3)
-#define    MT_411_YUV411		   (0<<3) /* SURFACE_411 */
-#define    MT_422_YCRCB_SWAPY	           (0<<3) /* SURFACE_422 */
+#define    MT_411_YUV411		   (0<<3)	/* SURFACE_411 */
+#define    MT_422_YCRCB_SWAPY	           (0<<3)	/* SURFACE_422 */
 #define    MT_422_YCRCB_NORMAL	           (1<<3)
 #define    MT_422_YCRCB_SWAPUV	           (2<<3)
 #define    MT_422_YCRCB_SWAPUVY	           (3<<3)
-#define    MT_COMPRESS_DXT1		   (0<<3) /* SURFACE_COMPRESSED */
+#define    MT_COMPRESS_DXT1		   (0<<3)	/* SURFACE_COMPRESSED */
 #define    MT_COMPRESS_DXT2_3	           (1<<3)
 #define    MT_COMPRESS_DXT4_5	           (2<<3)
 #define    MT_COMPRESS_FXT1		   (3<<3)
@@ -591,6 +671,8 @@
 #define TM0S2_CUBE_FACE_ENA_SHIFT       15
 #define TM0S2_CUBE_FACE_ENA_MASK        (1<<15)
 #define TM0S2_MAP_FORMAT                (1<<14)
+#define    TM0S2_MAP_2D			(0<<14)
+#define    TM0S2_MAP_3D_CUBE		(1<<14)
 #define TM0S2_VERTICAL_LINE_STRIDE      (1<<13)
 #define TM0S2_VERITCAL_LINE_STRIDE_OFF  (1<<12)
 #define TM0S2_OUTPUT_CHAN_SHIFT         10
@@ -619,7 +701,6 @@
 #define TM0S3_KEYED_FILTER		(1<<1)
 #define TM0S3_CHROMA_KEY		(1<<0)
 
-
 /* _3DSTATE_MAP_TEXEL_STREAM, p188 */
 #define _3DSTATE_MAP_TEX_STREAM_CMD	(CMD_3D|(0x1c<<24)|(0x05<<19))
 #define DISABLE_TEX_STREAM_BUMP 	(1<<12)
@@ -631,7 +712,25 @@
 #define ENABLE_TEX_STREAM_MAP_IDX	(1<<3)
 #define TEX_STREAM_MAP_IDX(x)		(x)
 
-
 #define FLUSH_MAP_CACHE    (1<<0)
+
+#define _3DSTATE_MAP_FILTER_CMD    (CMD_3D|(0x1c<<24)|(0x02<<19))
+#define FILTER_TEXMAP_INDEX(x) ((x) << 16)
+#define MAG_MODE_FILTER_ENABLE (1 << 5)
+#define MIN_MODE_FILTER_ENABLE (1 << 2)
+#define MAG_MAPFILTER_NEAREST (0 << 3)
+#define MAG_MAPFILTER_LINEAR  (1 << 3)
+#define MAG_MAPFILTER_ANISOTROPIC (2 << 3)
+#define MIN_MAPFILTER_NEAREST (0)
+#define MIN_MAPFILTER_LINEAR  (1)
+#define MIN_MAPFILTER_ANISOTROPIC (2)
+#define ENABLE_KEYS	(1<<15)
+#define DISABLE_COLOR_KEY	0
+#define DISABLE_CHROMA_KEY	0
+#define DISABLE_KILL_PIXEL	0
+#define ENABLE_MIP_MODE_FILTER	(1 << 9)
+#define MIPFILTER_NONE		0
+#define MIPFILTER_NEAREST	1
+#define MIPFILTER_LINEAR	3
 
 #endif

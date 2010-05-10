@@ -1,17 +1,3 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/i810/i810_dri.c,v 1.41 2003/09/24 02:43:23 dawes Exp $ */
-/*
- * Reformatted with GNU indent (2.2.8), using the following options:
- *
- *    -bad -bap -c41 -cd0 -ncdb -ci6 -cli0 -cp0 -ncs -d0 -di3 -i3 -ip3 -l78
- *    -lp -npcs -psl -sob -ss -br -ce -sc -hnl
- *
- * This provides a good match with the original i810 code and preferred
- * XFree86 formatting conventions.
- *
- * When editing this driver, please follow the existing formatting, and edit
- * with <TAB> characters expanded at 8-column intervals.
- */
-
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -171,9 +157,9 @@ I810InitVisualConfigs(ScreenPtr pScreen)
    ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
    I810Ptr pI810 = I810PTR(pScrn);
    int numConfigs = 0;
-   __GLXvisualConfig *pConfigs = 0;
-   I810ConfigPrivPtr pI810Configs = 0;
-   I810ConfigPrivPtr *pI810ConfigPtrs = 0;
+   __GLXvisualConfig *pConfigs = NULL;
+   I810ConfigPrivPtr pI810Configs = NULL;
+   I810ConfigPrivPtr *pI810ConfigPtrs = NULL;
    int accum, stencil, db, depth;
    int i;
 
@@ -222,6 +208,7 @@ I810InitVisualConfigs(ScreenPtr pScreen)
 	       pConfigs[i].redSize = 5;
 	       pConfigs[i].greenSize = 6;
 	       pConfigs[i].blueSize = 5;
+	       pConfigs[i].alphaSize = 0;
 	       pConfigs[i].redMask = 0x0000F800;
 	       pConfigs[i].greenMask = 0x000007E0;
 	       pConfigs[i].blueMask = 0x0000001F;
@@ -353,9 +340,9 @@ I810DRIScreenInit(ScreenPtr pScreen)
    } else {
       pDRIInfo->busIdString = xalloc(64);
       sprintf(pDRIInfo->busIdString, "PCI:%d:%d:%d",
-	      ((pciConfigPtr) pI810->PciInfo->thisCard)->busnum,
-	      ((pciConfigPtr) pI810->PciInfo->thisCard)->devnum,
-	      ((pciConfigPtr) pI810->PciInfo->thisCard)->funcnum);
+	      ((pI810->PciInfo->domain << 8) | pI810->PciInfo->bus),
+	      pI810->PciInfo->dev, pI810->PciInfo->func
+	      );
    }
    pDRIInfo->ddxDriverMajorVersion = I810_MAJOR_VERSION;
    pDRIInfo->ddxDriverMinorVersion = I810_MINOR_VERSION;
@@ -385,7 +372,7 @@ I810DRIScreenInit(ScreenPtr pScreen)
 
    if (!(pI810DRI = (I810DRIPtr) xcalloc(sizeof(I810DRIRec), 1))) {
       DRIDestroyInfoRec(pI810->pDRIInfo);
-      pI810->pDRIInfo = 0;
+      pI810->pDRIInfo = NULL;
       return FALSE;
    }
    pDRIInfo->devPrivate = pI810DRI;
@@ -413,9 +400,9 @@ I810DRIScreenInit(ScreenPtr pScreen)
       xf86DrvMsg(pScreen->myNum, X_ERROR,
 		 "[dri] DRIScreenInit failed.  Disabling DRI.\n");
       xfree(pDRIInfo->devPrivate);
-      pDRIInfo->devPrivate = 0;
+      pDRIInfo->devPrivate = NULL;
       DRIDestroyInfoRec(pI810->pDRIInfo);
-      pI810->pDRIInfo = 0;
+      pI810->pDRIInfo = NULL;
       return FALSE;
    }
 
@@ -971,12 +958,11 @@ I810DRIScreenInit(ScreenPtr pScreen)
 
    if (!pI810DRI->irq) {
       pI810DRI->irq = drmGetInterruptFromBusID(pI810->drmSubFD,
-					       ((pciConfigPtr) pI810->
-						PciInfo->thisCard)->busnum,
-					       ((pciConfigPtr) pI810->
-						PciInfo->thisCard)->devnum,
-					       ((pciConfigPtr) pI810->
-						PciInfo->thisCard)->funcnum);
+					       ((pI810->PciInfo->domain << 8) |
+						pI810->PciInfo->bus),
+					       pI810->PciInfo->dev,
+					       pI810->PciInfo->func
+					       );
       if ((drmCtlInstHandler(pI810->drmSubFD, pI810DRI->irq)) != 0) {
 	 xf86DrvMsg(pScrn->scrnIndex, X_INFO,
 		    "[drm] failure adding irq handler, there is a device "
@@ -990,7 +976,7 @@ I810DRIScreenInit(ScreenPtr pScreen)
    xf86DrvMsg(pScrn->scrnIndex, X_INFO,
 	      "[drm] dma control initialized, using IRQ %d\n", pI810DRI->irq);
 
-   pI810DRI->deviceID = pI810->PciInfo->chipType;
+   pI810DRI->deviceID = DEVICE_ID(pI810->PciInfo);
    pI810DRI->width = pScrn->virtualX;
    pI810DRI->height = pScrn->virtualY;
    pI810DRI->mem = pScrn->videoRam * 1024;
@@ -1070,10 +1056,10 @@ I810DRICloseScreen(ScreenPtr pScreen)
    if (pI810->pDRIInfo) {
       if (pI810->pDRIInfo->devPrivate) {
 	 xfree(pI810->pDRIInfo->devPrivate);
-	 pI810->pDRIInfo->devPrivate = 0;
+	 pI810->pDRIInfo->devPrivate = NULL;
       }
       DRIDestroyInfoRec(pI810->pDRIInfo);
-      pI810->pDRIInfo = 0;
+      pI810->pDRIInfo = NULL;
    }
    if (pI810->pVisualConfigs)
       xfree(pI810->pVisualConfigs);
@@ -1173,7 +1159,9 @@ I810DRIInitBuffers(WindowPtr pWin, RegionPtr prgn, CARD32 index)
       pbox++;
    }
    I810SelectBuffer(pScrn, I810_SELECT_FRONT);
-   pI810->AccelInfoRec->NeedToSync = TRUE;
+
+   if (pI810->AccelInfoRec)
+   	pI810->AccelInfoRec->NeedToSync = TRUE;
 }
 
 /* This routine is a modified form of XAADoBitBlt with the calls to
@@ -1191,7 +1179,7 @@ I810DRIMoveBuffers(WindowPtr pParent, DDXPointRec ptOldOrg,
    ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
    I810Ptr pI810 = I810PTR(pScrn);
    BoxPtr pboxTmp, pboxNext, pboxBase;
-   DDXPointPtr pptTmp, pptNew2;
+   DDXPointPtr pptTmp, pptNew2 = NULL;
    int xdir, ydir;
 
    int screenwidth = pScrn->virtualX;
@@ -1200,9 +1188,9 @@ I810DRIMoveBuffers(WindowPtr pParent, DDXPointRec ptOldOrg,
    BoxPtr pbox = REGION_RECTS(prgnSrc);
    int nbox = REGION_NUM_RECTS(prgnSrc);
 
-   BoxPtr pboxNew1 = 0;
-   BoxPtr pboxNew2 = 0;
-   DDXPointPtr pptNew1 = 0;
+   BoxPtr pboxNew1 = NULL;
+   BoxPtr pboxNew2 = NULL;
+   DDXPointPtr pptNew1 = NULL;
    DDXPointPtr pptSrc = &ptOldOrg;
 
    int dx = pParent->drawable.x - ptOldOrg.x;
@@ -1214,12 +1202,12 @@ I810DRIMoveBuffers(WindowPtr pParent, DDXPointRec ptOldOrg,
 
       if (nbox > 1) {
 	 /* Keep ordering in each band, reverse order of bands */
-	 pboxNew1 = (BoxPtr) ALLOCATE_LOCAL(sizeof(BoxRec) * nbox);
+	 pboxNew1 = (BoxPtr) xalloc(sizeof(BoxRec) * nbox);
 	 if (!pboxNew1)
 	    return;
-	 pptNew1 = (DDXPointPtr) ALLOCATE_LOCAL(sizeof(DDXPointRec) * nbox);
+	 pptNew1 = (DDXPointPtr) xalloc(sizeof(DDXPointRec) * nbox);
 	 if (!pptNew1) {
-	    DEALLOCATE_LOCAL(pboxNew1);
+	    xfree(pboxNew1);
 	    return;
 	 }
 	 pboxBase = pboxNext = pbox + nbox - 1;
@@ -1250,16 +1238,16 @@ I810DRIMoveBuffers(WindowPtr pParent, DDXPointRec ptOldOrg,
 
       if (nbox > 1) {
 	 /*reverse orderof rects in each band */
-	 pboxNew2 = (BoxPtr) ALLOCATE_LOCAL(sizeof(BoxRec) * nbox);
-	 pptNew2 = (DDXPointPtr) ALLOCATE_LOCAL(sizeof(DDXPointRec) * nbox);
+	 pboxNew2 = (BoxPtr) xalloc(sizeof(BoxRec) * nbox);
+	 pptNew2 = (DDXPointPtr) xalloc(sizeof(DDXPointRec) * nbox);
 	 if (!pboxNew2 || !pptNew2) {
 	    if (pptNew2)
-	       DEALLOCATE_LOCAL(pptNew2);
+	       xfree(pptNew2);
 	    if (pboxNew2)
-	       DEALLOCATE_LOCAL(pboxNew2);
+	       xfree(pboxNew2);
 	    if (pboxNew1) {
-	       DEALLOCATE_LOCAL(pptNew1);
-	       DEALLOCATE_LOCAL(pboxNew1);
+	       xfree(pptNew1);
+	       xfree(pboxNew1);
 	    }
 	    return;
 	 }
@@ -1324,15 +1312,16 @@ I810DRIMoveBuffers(WindowPtr pParent, DDXPointRec ptOldOrg,
    I810EmitFlush(pScrn);
 
    if (pboxNew2) {
-      DEALLOCATE_LOCAL(pptNew2);
-      DEALLOCATE_LOCAL(pboxNew2);
+      xfree(pptNew2);
+      xfree(pboxNew2);
    }
    if (pboxNew1) {
-      DEALLOCATE_LOCAL(pptNew1);
-      DEALLOCATE_LOCAL(pboxNew1);
+      xfree(pptNew1);
+      xfree(pboxNew1);
    }
 
-   pI810->AccelInfoRec->NeedToSync = TRUE;
+   if (pI810->AccelInfoRec)
+	pI810->AccelInfoRec->NeedToSync = TRUE;
 }
 
 

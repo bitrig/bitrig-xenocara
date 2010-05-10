@@ -32,7 +32,6 @@ THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
  *
  ***************************************************************************/
-/* $XFree86: xc/lib/XvMC/hw/i810/I810XvMC.h,v 1.3 2002/10/30 12:52:02 alanh Exp $ */
 
 
 #ifndef I810XVMC_H
@@ -41,6 +40,7 @@ THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /* #define XVMC_DEBUG(x) do {x; }while(0); */
 #define XVMC_DEBUG(x)
 
+#include <stdint.h>
 #include "xf86drm.h"
 #include "i810_common.h"
 #include <X11/Xlibint.h>
@@ -364,106 +364,3 @@ void i810_free_privContext(i810XvMCContext *pI810XvMC);
 void dp(unsigned int *address, unsigned int i);
 
 #endif
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

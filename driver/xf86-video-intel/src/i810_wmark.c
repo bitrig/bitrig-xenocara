@@ -1,4 +1,3 @@
-
 /**************************************************************************
 
 Copyright 1998-1999 Precision Insight, Inc., Cedar Park, Texas.
@@ -25,20 +24,6 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **************************************************************************/
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/i810/i810_wmark.c,v 1.7 2002/09/11 00:29:32 dawes Exp $ */
-
-/*
- * Reformatted with GNU indent (2.2.8), using the following options:
- *
- *    -bad -bap -c41 -cd0 -ncdb -ci6 -cli0 -cp0 -ncs -d0 -di3 -i3 -ip3 -l78
- *    -lp -npcs -psl -sob -ss -br -ce -sc -hnl
- *
- * This provides a good match with the original i810 code and preferred
- * XFree86 formatting conventions.
- *
- * When editing this driver, please follow the existing formatting, and edit
- * with <TAB> characters expanded at 8-column intervals.
- */
 
 /*
  * Authors:
@@ -57,7 +42,7 @@ struct wm_info {
    unsigned int wm;
 };
 
-struct wm_info i810_wm_8_100[] = {
+static struct wm_info i810_wm_8_100[] = {
    {0, 0x22003000},
    {25.2, 0x22003000},
    {28.0, 0x22003000},
@@ -87,7 +72,7 @@ struct wm_info i810_wm_8_100[] = {
    {202.5, 0x2220e000}
 };
 
-struct wm_info i810_wm_16_100[] = {
+static struct wm_info i810_wm_16_100[] = {
    {0, 0x22004000},
    {25.2, 0x22006000},
    {28.0, 0x22006000},
@@ -118,7 +103,7 @@ struct wm_info i810_wm_16_100[] = {
    {202.5, 0x22416000}
 };
 
-struct wm_info i810_wm_24_100[] = {
+static struct wm_info i810_wm_24_100[] = {
    {0, 0x22006000},
    {25.2, 0x22009000},
    {28.0, 0x22009000},
@@ -149,13 +134,16 @@ struct wm_info i810_wm_24_100[] = {
    {202.5, 0x44419000}
 };
 
-struct wm_info i810_wm_32_100[] = {
+#if 0
+/* not used */
+static struct wm_info i810_wm_32_100[] = {
    {0, 0x2210b000},
    {60, 0x22415000},			/* 0x314000 works too */
    {80, 0x22419000}			/* 0x518000 works too */
 };
+#endif
 
-struct wm_info i810_wm_8_133[] = {
+static struct wm_info i810_wm_8_133[] = {
    {0, 0x22003000},
    {25.2, 0x22003000},
    {28.0, 0x22003000},
@@ -185,7 +173,7 @@ struct wm_info i810_wm_8_133[] = {
    {202.5, 0x2220e000}
 };
 
-struct wm_info i810_wm_16_133[] = {
+static struct wm_info i810_wm_16_133[] = {
    {0, 0x22004000},
    {25.2, 0x22006000},
    {28.0, 0x22006000},
@@ -216,7 +204,7 @@ struct wm_info i810_wm_16_133[] = {
    {202.5, 0x22416000}
 };
 
-struct wm_info i810_wm_24_133[] = {
+static struct wm_info i810_wm_24_133[] = {
    {0, 0x22006000},
    {25.2, 0x22009000},
    {28.0, 0x22009000},
