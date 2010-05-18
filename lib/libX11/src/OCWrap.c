@@ -1,4 +1,3 @@
-/* $Xorg: OCWrap.c,v 1.4 2000/08/17 19:44:47 cpqbld Exp $ */
 /*
  * Copyright 1992, 1993 by TOSHIBA Corp.
  *
@@ -23,7 +22,6 @@
  * Author: Katsuhisa Yano	TOSHIBA Corp.
  *			   	mopi@osa.ilab.toshiba.co.jp
  */
-/* $XFree86: xc/lib/X11/OCWrap.c,v 1.3 2001/01/17 19:41:40 dawes Exp $ */
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -63,8 +61,7 @@ XCreateOC(XOM om, ...)
 }
 
 void
-XDestroyOC(oc)
-    XOC oc;
+XDestroyOC(XOC oc)
 {
     XOC prev, oc_list;
 
@@ -85,8 +82,7 @@ XDestroyOC(oc)
 }
 
 XOM
-XOMOfOC(oc)
-    XOC oc;
+XOMOfOC(XOC oc)
 {
     return oc->core.om;
 }

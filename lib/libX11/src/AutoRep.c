@@ -1,4 +1,3 @@
-/* $Xorg: AutoRep.c,v 1.4 2001/02/09 02:03:31 xorgcvs Exp $ */
 /*
 
 Copyright 1985, 1998  The Open Group
@@ -24,7 +23,6 @@ used in advertising or otherwise to promote the sale, use or other dealings
 in this Software without prior written authorization from The Open Group.
 
 */
-/* $XFree86: xc/lib/X11/AutoRep.c,v 1.3 2001/01/17 19:41:32 dawes Exp $ */
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -32,8 +30,7 @@ in this Software without prior written authorization from The Open Group.
 #include "Xlibint.h"
 
 int
-XAutoRepeatOn (dpy)
-register Display *dpy;
+XAutoRepeatOn (register Display *dpy)
 {
 	XKeyboardControl values;
 	values.auto_repeat_mode = AutoRepeatModeOn;
@@ -42,8 +39,7 @@ register Display *dpy;
 }
 
 int
-XAutoRepeatOff (dpy)
-register Display *dpy;
+XAutoRepeatOff (register Display *dpy)
 {
 	XKeyboardControl values;
 	values.auto_repeat_mode = AutoRepeatModeOff;

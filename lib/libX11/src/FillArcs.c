@@ -1,4 +1,3 @@
-/* $Xorg: FillArcs.c,v 1.4 2001/02/09 02:03:32 xorgcvs Exp $ */
 /*
 
 Copyright 1986, 1998  The Open Group
@@ -24,7 +23,6 @@ used in advertising or otherwise to promote the sale, use or other dealings
 in this Software without prior written authorization from The Open Group.
 
 */
-/* $XFree86: xc/lib/X11/FillArcs.c,v 1.3 2001/01/17 19:41:35 dawes Exp $ */
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -34,12 +32,12 @@ in this Software without prior written authorization from The Open Group.
 #define arc_scale (SIZEOF(xArc) / 4)
 
 int
-XFillArcs(dpy, d, gc, arcs, n_arcs)
-register Display *dpy;
-Drawable d;
-GC gc;
-XArc *arcs;
-int n_arcs;
+XFillArcs(
+    register Display *dpy,
+    Drawable d,
+    GC gc,
+    XArc *arcs,
+    int n_arcs)
 {
     register xPolyFillArcReq *req;
     long len;

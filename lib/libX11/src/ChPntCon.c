@@ -1,4 +1,3 @@
-/* $Xorg: ChPntCon.c,v 1.4 2001/02/09 02:03:31 xorgcvs Exp $ */
 /*
 
 Copyright 1986, 1998  The Open Group
@@ -24,7 +23,6 @@ used in advertising or otherwise to promote the sale, use or other dealings
 in this Software without prior written authorization from The Open Group.
 
 */
-/* $XFree86: xc/lib/X11/ChPntCon.c,v 1.3 2001/01/17 19:41:32 dawes Exp $ */
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -32,11 +30,13 @@ in this Software without prior written authorization from The Open Group.
 #include "Xlibint.h"
 
 int
-XChangePointerControl(dpy, do_acc, do_thresh, acc_numerator,
-		      acc_denominator, threshold)
-     register Display *dpy;
-     Bool do_acc, do_thresh;
-     int acc_numerator, acc_denominator, threshold;
+XChangePointerControl(
+     register Display *dpy,
+     Bool do_acc,
+     Bool do_thresh,
+     int acc_numerator,
+     int acc_denominator,
+     int threshold)
 
 {
     register xChangePointerControlReq *req;

@@ -1,4 +1,3 @@
-/* $Xorg: GCMisc.c,v 1.4 2001/02/09 02:03:33 xorgcvs Exp $ */
 /*
 
 Copyright 1986, 1998  The Open Group
@@ -24,7 +23,6 @@ used in advertising or otherwise to promote the sale, use or other dealings
 in this Software without prior written authorization from The Open Group.
 
 */
-/* $XFree86: xc/lib/X11/GCMisc.c,v 1.3 2001/01/17 19:41:36 dawes Exp $ */
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -32,10 +30,10 @@ in this Software without prior written authorization from The Open Group.
 #include "Xlibint.h"
 
 int
-XSetArcMode (dpy, gc, arc_mode)
-register Display *dpy;
-register GC gc;
-int arc_mode;
+XSetArcMode (
+    register Display *dpy,
+    register GC gc,
+    int arc_mode)
 {
     LockDisplay(dpy);
     if (gc->values.arc_mode != arc_mode) {
@@ -48,10 +46,10 @@ int arc_mode;
 }
 
 int
-XSetFillRule (dpy, gc, fill_rule)
-register Display *dpy;
-register GC gc;
-int fill_rule;
+XSetFillRule (
+    register Display *dpy,
+    register GC gc,
+    int fill_rule)
 {
     LockDisplay(dpy);
     if (gc->values.fill_rule != fill_rule) {
@@ -64,10 +62,10 @@ int fill_rule;
 }
 
 int
-XSetFillStyle (dpy, gc, fill_style)
-register Display *dpy;
-register GC gc;
-int fill_style;
+XSetFillStyle (
+    register Display *dpy,
+    register GC gc,
+    int fill_style)
 {
     LockDisplay(dpy);
     if (gc->values.fill_style != fill_style) {
@@ -80,10 +78,10 @@ int fill_style;
 }
 
 int
-XSetGraphicsExposures (dpy, gc, graphics_exposures)
-register Display *dpy;
-register GC gc;
-Bool graphics_exposures;
+XSetGraphicsExposures (
+    register Display *dpy,
+    register GC gc,
+    Bool graphics_exposures)
 {
     LockDisplay(dpy);
     if (gc->values.graphics_exposures != graphics_exposures) {
@@ -96,10 +94,10 @@ Bool graphics_exposures;
 }
 
 int
-XSetSubwindowMode (dpy, gc, subwindow_mode)
-register Display *dpy;
-register GC gc;
-int subwindow_mode;
+XSetSubwindowMode (
+    register Display *dpy,
+    register GC gc,
+    int subwindow_mode)
 {
     LockDisplay(dpy);
     if (gc->values.subwindow_mode != subwindow_mode) {

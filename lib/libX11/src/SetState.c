@@ -1,4 +1,3 @@
-/* $Xorg: SetState.c,v 1.4 2001/02/09 02:03:36 xorgcvs Exp $ */
 /*
 
 Copyright 1986, 1998  The Open Group
@@ -24,7 +23,6 @@ used in advertising or otherwise to promote the sale, use or other dealings
 in this Software without prior written authorization from The Open Group.
 
 */
-/* $XFree86: xc/lib/X11/SetState.c,v 1.3 2001/01/17 19:41:44 dawes Exp $ */
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -32,12 +30,13 @@ in this Software without prior written authorization from The Open Group.
 #include "Xlibint.h"
 
 int
-XSetState(dpy, gc, foreground, background, function, planemask)
-register Display *dpy;
-GC gc;
-int function;
-unsigned long planemask;
-unsigned long foreground, background;
+XSetState(
+    register Display *dpy,
+    GC gc,
+    unsigned long foreground,
+    unsigned long background,
+    int function,
+    unsigned long planemask)
 {
     XGCValues *gv = &gc->values;
 

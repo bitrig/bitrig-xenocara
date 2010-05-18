@@ -1,4 +1,3 @@
-/* $Xorg: GetSOwner.c,v 1.4 2001/02/09 02:03:33 xorgcvs Exp $ */
 /*
 
 Copyright 1986, 1998  The Open Group
@@ -31,9 +30,9 @@ in this Software without prior written authorization from The Open Group.
 #endif
 #include "Xlibint.h"
 
-Window XGetSelectionOwner(dpy, selection)
-register Display *dpy;
-Atom selection;
+Window XGetSelectionOwner(
+    register Display *dpy,
+    Atom selection)
 {
     xGetSelectionOwnerReply rep;
     register xResourceReq *req;

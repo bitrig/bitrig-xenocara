@@ -1,4 +1,3 @@
-/* $Xorg: SetLStyle.c,v 1.4 2001/02/09 02:03:36 xorgcvs Exp $ */
 /*
 
 Copyright 1986, 1998  The Open Group
@@ -24,7 +23,6 @@ used in advertising or otherwise to promote the sale, use or other dealings
 in this Software without prior written authorization from The Open Group.
 
 */
-/* $XFree86: xc/lib/X11/SetLStyle.c,v 1.3 2001/01/17 19:41:43 dawes Exp $ */
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -32,13 +30,13 @@ in this Software without prior written authorization from The Open Group.
 #include "Xlibint.h"
 
 int
-XSetLineAttributes(dpy, gc, linewidth, linestyle, capstyle, joinstyle)
-register Display *dpy;
-GC gc;
-unsigned int linewidth; /* CARD16 */
-int linestyle;
-int capstyle;
-int joinstyle;
+XSetLineAttributes(
+    register Display *dpy,
+    GC gc,
+    unsigned int linewidth, /* CARD16 */
+    int linestyle,
+    int capstyle,
+    int joinstyle)
 {
     XGCValues *gv = &gc->values;
 

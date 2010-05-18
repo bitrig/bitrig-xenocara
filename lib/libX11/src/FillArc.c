@@ -1,4 +1,3 @@
-/* $Xorg: FillArc.c,v 1.4 2001/02/09 02:03:32 xorgcvs Exp $ */
 /*
 
 Copyright 1986, 1998  The Open Group
@@ -24,7 +23,6 @@ used in advertising or otherwise to promote the sale, use or other dealings
 in this Software without prior written authorization from The Open Group.
 
 */
-/* $XFree86: xc/lib/X11/FillArc.c,v 1.3 2001/01/17 19:41:35 dawes Exp $ */
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -36,13 +34,16 @@ in this Software without prior written authorization from The Open Group.
 #define size (SIZEOF(xPolyFillArcReq) + FARCSPERBATCH * SIZEOF(xArc))
 
 int
-XFillArc(dpy, d, gc, x, y, width, height, angle1, angle2)
-    register Display *dpy;
-    Drawable d;
-    GC gc;
-    int x, y; /* INT16 */
-    unsigned int width, height; /* CARD16 */
-    int angle1, angle2; /* INT16 */
+XFillArc(
+    register Display *dpy,
+    Drawable d,
+    GC gc,
+    int x,
+    int y, /* INT16 */
+    unsigned int width,
+    unsigned int height, /* CARD16 */
+    int angle1,
+    int angle2) /* INT16 */
 {
     xArc *arc;
 #ifdef MUSTCOPY

@@ -1,4 +1,3 @@
-/* $Xorg: GetGCVals.c,v 1.4 2001/02/09 02:03:33 xorgcvs Exp $ */
 
 /*
 
@@ -44,11 +43,11 @@ in this Software without prior written authorization from The Open Group.
 			   GCArcMode)
 
 /*ARGSUSED*/
-Status XGetGCValues (dpy, gc, valuemask, values)
-    Display *dpy;
-    GC gc;
-    unsigned long valuemask;
-    XGCValues *values;
+Status XGetGCValues (
+    Display *dpy,
+    GC gc,
+    unsigned long valuemask,
+    XGCValues *values)
 {
     if (valuemask == ValidGCValuesBits) {
 	char dashes = values->dashes;

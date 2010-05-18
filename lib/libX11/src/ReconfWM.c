@@ -1,4 +1,3 @@
-/* $Xorg: ReconfWM.c,v 1.4 2001/02/09 02:03:35 xorgcvs Exp $ */
 /*
 
 Copyright 1986, 1998  The Open Group
@@ -37,12 +36,12 @@ from The Open Group.
 #define AllMaskBits (CWX|CWY|CWWidth|CWHeight|\
                      CWBorderWidth|CWSibling|CWStackMode)
 
-Status XReconfigureWMWindow (dpy, w, screen, mask, changes)
-    register Display *dpy;
-    Window w;
-    int screen;
-    unsigned int mask;
-    XWindowChanges *changes;
+Status XReconfigureWMWindow (
+    register Display *dpy,
+    Window w,
+    int screen,
+    unsigned int mask,
+    XWindowChanges *changes)
 {
     XConfigureRequestEvent ev;
     Window root = RootWindow (dpy, screen);

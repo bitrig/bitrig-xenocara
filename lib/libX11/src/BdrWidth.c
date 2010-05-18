@@ -1,4 +1,3 @@
-/* $Xorg: BdrWidth.c,v 1.4 2001/02/09 02:03:31 xorgcvs Exp $ */
 
 /*
 
@@ -27,7 +26,6 @@ other dealings in this Software without prior written authorization
 from The Open Group.
 
 */
-/* $XFree86: xc/lib/X11/BdrWidth.c,v 1.3 2001/01/17 19:41:32 dawes Exp $ */
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -35,10 +33,10 @@ from The Open Group.
 #include "Xlibint.h"
 
 int
-XSetWindowBorderWidth(dpy, w, width)
-Display *dpy;
-Window w;
-unsigned int width;
+XSetWindowBorderWidth(
+    Display *dpy,
+    Window w,
+    unsigned int width)
 {
     unsigned long lwidth = width;	/* must be CARD32 */
 

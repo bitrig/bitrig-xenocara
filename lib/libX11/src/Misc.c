@@ -1,4 +1,3 @@
-/* $Xorg: Misc.c,v 1.4 2001/02/09 02:03:34 xorgcvs Exp $ */
 /*
 
 Copyright 1988, 1998  The Open Group
@@ -24,49 +23,44 @@ used in advertising or otherwise to promote the sale, use or other dealings
 in this Software without prior written authorization from The Open Group.
 
 */
-/* $XFree86: xc/lib/X11/Misc.c,v 1.3 2001/01/17 19:41:40 dawes Exp $ */
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
 #include "Xlibint.h"
 
-long XMaxRequestSize(dpy)
-    Display *dpy;
+long XMaxRequestSize(Display *dpy)
 {
     return dpy->max_request_size;
 }
 
-char *XResourceManagerString(dpy)
-    Display *dpy;
+char *XResourceManagerString(Display *dpy)
 {
     return dpy->xdefaults;
 }
 
-unsigned long XDisplayMotionBufferSize(dpy)
-    Display *dpy;
+unsigned long XDisplayMotionBufferSize(Display *dpy)
 {
     return dpy->motion_buffer;
 }
 
 int
-XDisplayKeycodes(dpy, min_keycode_return, max_keycode_return)
-    Display *dpy;
-    int *min_keycode_return, *max_keycode_return;
+XDisplayKeycodes(
+    Display *dpy,
+    int *min_keycode_return,
+    int *max_keycode_return)
 {
     *min_keycode_return = dpy->min_keycode;
     *max_keycode_return = dpy->max_keycode;
     return 1;
 }
 
-VisualID XVisualIDFromVisual(visual)
-    Visual *visual;
+VisualID XVisualIDFromVisual(Visual *visual)
 {
     return visual->visualid;
 }
 
-long XExtendedMaxRequestSize(dpy)
-    Display *dpy;
+long XExtendedMaxRequestSize(Display *dpy)
 {
     return dpy->bigreq_size;
 }

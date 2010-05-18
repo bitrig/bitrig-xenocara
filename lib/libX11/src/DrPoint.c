@@ -1,4 +1,3 @@
-/* $Xorg: DrPoint.c,v 1.4 2001/02/09 02:03:32 xorgcvs Exp $ */
 /*
 
 Copyright 1986, 1998  The Open Group
@@ -24,7 +23,6 @@ used in advertising or otherwise to promote the sale, use or other dealings
 in this Software without prior written authorization from The Open Group.
 
 */
-/* $XFree86: xc/lib/X11/DrPoint.c,v 1.3 2001/01/17 19:41:34 dawes Exp $ */
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -36,11 +34,12 @@ in this Software without prior written authorization from The Open Group.
 #define size (SIZEOF(xPolyPointReq) + PTSPERBATCH * SIZEOF(xPoint))
 
 int
-XDrawPoint(dpy, d, gc, x, y)
-    register Display *dpy;
-    Drawable d;
-    GC gc;
-    int x, y; /* INT16 */
+XDrawPoint(
+    register Display *dpy,
+    Drawable d,
+    GC gc,
+    int x,
+    int y) /* INT16 */
 {
     xPoint *point;
 #ifdef MUSTCOPY

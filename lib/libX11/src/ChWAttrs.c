@@ -1,4 +1,3 @@
-/* $Xorg: ChWAttrs.c,v 1.5 2001/02/09 02:03:31 xorgcvs Exp $ */
 /*
 
 Copyright 1986, 1998  The Open Group
@@ -24,7 +23,6 @@ used in advertising or otherwise to promote the sale, use or other dealings
 in this Software without prior written authorization from The Open Group.
 
 */
-/* $XFree86: xc/lib/X11/ChWAttrs.c,v 1.4 2001/12/14 19:53:57 dawes Exp $ */
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -38,11 +36,11 @@ in this Software without prior written authorization from The Open Group.
 		     CWDontPropagate|CWColormap|CWCursor)
 
 int
-XChangeWindowAttributes (dpy, w, valuemask, attributes)
-    register Display *dpy;
-    Window w;
-    unsigned long valuemask;
-    XSetWindowAttributes *attributes;
+XChangeWindowAttributes (
+    register Display *dpy,
+    Window w,
+    unsigned long valuemask,
+    XSetWindowAttributes *attributes)
 {
     register xChangeWindowAttributesReq *req;
 

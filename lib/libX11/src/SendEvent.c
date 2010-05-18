@@ -1,4 +1,3 @@
-/* $Xorg: SendEvent.c,v 1.4 2001/02/09 02:03:36 xorgcvs Exp $ */
 /*
 
 Copyright 1986, 1998  The Open Group
@@ -24,7 +23,6 @@ used in advertising or otherwise to promote the sale, use or other dealings
 in this Software without prior written authorization from The Open Group.
 
 */
-/* $XFree86: xc/lib/X11/SendEvent.c,v 1.4 2001/12/14 19:54:05 dawes Exp $ */
 
 #define NEED_EVENTS
 #ifdef HAVE_CONFIG_H
@@ -37,12 +35,12 @@ in this Software without prior written authorization from The Open Group.
  * event converter here if it has never been installed.
  */
 Status
-XSendEvent(dpy, w, propagate, event_mask, event)
-    register Display *dpy;
-    Window w;
-    Bool propagate;
-    long event_mask;
-    XEvent *event;
+XSendEvent(
+    register Display *dpy,
+    Window w,
+    Bool propagate,
+    long event_mask,
+    XEvent *event)
 {
     register xSendEventReq *req;
     xEvent ev;
@@ -51,6 +49,11 @@ XSendEvent(dpy, w, propagate, event_mask, event)
                 XEvent *        /* re */,
                 xEvent *        /* event */);
     Status status;
+
+    /* initialize all of the event's fields first, before setting
+     * the meaningful ones later.
+     */
+    memset (&ev, 0, sizeof (ev));
 
     LockDisplay (dpy);
 
