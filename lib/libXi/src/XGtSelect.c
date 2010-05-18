@@ -1,5 +1,3 @@
-/* $Xorg: XGtSelect.c,v 1.4 2001/02/09 02:03:51 xorgcvs Exp $ */
-
 /************************************************************
 
 Copyright 1989, 1998  The Open Group
@@ -45,7 +43,6 @@ ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
 SOFTWARE.
 
 ********************************************************/
-/* $XFree86: xc/lib/Xi/XGtSelect.c,v 3.3 2001/12/14 19:55:19 dawes Exp $ */
 
 /***********************************************************************
  *
@@ -61,14 +58,13 @@ SOFTWARE.
 #include "XIint.h"
 
 int
-XGetSelectedExtensionEvents(dpy, w, this_client_count, this_client_list,
-			    all_clients_count, all_clients_list)
-    register Display *dpy;
-    Window w;
-    int *this_client_count;
-    XEventClass **this_client_list;
-    int *all_clients_count;
-    XEventClass **all_clients_list;
+XGetSelectedExtensionEvents(
+    register Display	 *dpy,
+    Window		  w,
+    int			 *this_client_count,
+    XEventClass		**this_client_list,
+    int			 *all_clients_count,
+    XEventClass		**all_clients_list)
 {
     int tlen, alen;
     register xGetSelectedExtensionEventsReq *req;
@@ -106,6 +102,8 @@ XGetSelectedExtensionEvents(dpy, w, this_client_count, this_client_list,
 					sizeof(XEventClass));
 	    if (!*this_client_list) {
 		_XEatData(dpy, (unsigned long)tlen + alen);
+                UnlockDisplay(dpy);
+                SyncHandle();
 		return (Success);
 	    }
 	    for (i = 0; i < *this_client_count; i++) {
@@ -122,6 +120,8 @@ XGetSelectedExtensionEvents(dpy, w, this_client_count, this_client_list,
 		Xfree((char *)*this_client_list);
 		*this_client_list = NULL;
 		_XEatData(dpy, (unsigned long)alen);
+                UnlockDisplay(dpy);
+                SyncHandle();
 		return (Success);
 	    }
 	    for (i = 0; i < *all_clients_count; i++) {
