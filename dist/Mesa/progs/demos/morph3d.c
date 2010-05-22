@@ -137,7 +137,6 @@ So the angle is:
 #endif
 #include <GL/glut.h>
 #include <math.h>
-#include <string.h>
 
 #define Scale                      0.3
 
@@ -826,7 +825,7 @@ static void pinit(void)
 
 }
 
-static void INIT(void)
+int main(int argc, char **argv)
 {
   printf("Morph 3D - Shows morphing platonic polyhedra\n");
   printf("Author: Marcelo Fernandes Vianna (vianna@cat.cbpf.br)\n\n");
@@ -841,8 +840,8 @@ static void INIT(void)
 
   object=1;
 
-  glutInitWindowPosition(0,0);
   glutInitWindowSize(640,480);
+  glutInit(&argc, argv);
 
   glutInitDisplayMode( GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGB );
 
@@ -886,11 +885,6 @@ static void INIT(void)
   glutIdleFunc( idle_ );
   glutDisplayFunc( draw );
   glutMainLoop();
-  
-}
 
-int main(int argc, char **argv)
-{
-  INIT();
-  return(0);
+  return 0;
 }

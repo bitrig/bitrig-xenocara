@@ -1,13 +1,9 @@
-/**
- * \file light.h
- * Lighting.
- */
-
 /*
  * Mesa 3-D graphics library
- * Version:  3.5
+ * Version:  7.5
  *
- * Copyright (C) 1999-2001  Brian Paul   All Rights Reserved.
+ * Copyright (C) 1999-2008  Brian Paul   All Rights Reserved.
+ * Copyright (C) 2009  VMware, Inc.  All Rights Reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -36,6 +32,10 @@
 
 extern void GLAPIENTRY
 _mesa_ShadeModel( GLenum mode );
+
+extern void GLAPIENTRY
+_mesa_ProvokingVertexEXT(GLenum mode);
+
 
 #if _HAVE_FULL_GL
 extern void GLAPIENTRY
@@ -92,7 +92,8 @@ do {									\
    struct gl_shine_tab *_tab = table;					\
    float f = (dp * (SHINE_TABLE_SIZE-1));				\
    int k = (int) f;							\
-   if (k > SHINE_TABLE_SIZE-2) 						\
+   if (k < 0 /* gcc may cast an overflow float value to negative int value*/ \
+	|| k > SHINE_TABLE_SIZE-2)					\
       result = (GLfloat) _mesa_pow( dp, _tab->shininess );		\
    else									\
       result = _tab->tab[k] + (f-k)*(_tab->tab[k+1]-_tab->tab[k]);	\

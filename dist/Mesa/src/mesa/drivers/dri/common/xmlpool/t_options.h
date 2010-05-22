@@ -68,6 +68,11 @@ DRI_CONF_OPT_END
 DRI_CONF_SECTION_BEGIN \
 	DRI_CONF_DESC(en,gettext("Image Quality"))
 
+#define DRI_CONF_EXCESS_MIPMAP(def) \
+DRI_CONF_OPT_BEGIN(excess_mipmap,bool,def) \
+	DRI_CONF_DESC(en,"Enable extra mipmap level") \
+DRI_CONF_OPT_END
+
 #define DRI_CONF_TEXTURE_DEPTH_FB       0
 #define DRI_CONF_TEXTURE_DEPTH_32       1
 #define DRI_CONF_TEXTURE_DEPTH_16       2
@@ -231,4 +236,14 @@ DRI_CONF_OPT_END
 #define DRI_CONF_NV_VERTEX_PROGRAM(def) \
 DRI_CONF_OPT_BEGIN(nv_vertex_program,bool,def) \
         DRI_CONF_DESC(en,gettext("Enable extension GL_NV_vertex_program")) \
+DRI_CONF_OPT_END
+
+#define DRI_CONF_ALWAYS_FLUSH_BATCH(def) \
+DRI_CONF_OPT_BEGIN(always_flush_batch,bool,def) \
+        DRI_CONF_DESC(en,gettext("Enable flushing batchbuffer after each draw call")) \
+DRI_CONF_OPT_END
+
+#define DRI_CONF_ALWAYS_FLUSH_CACHE(def) \
+DRI_CONF_OPT_BEGIN(always_flush_cache,bool,def) \
+        DRI_CONF_DESC(en,gettext("Enable flushing GPU caches with each draw call")) \
 DRI_CONF_OPT_END

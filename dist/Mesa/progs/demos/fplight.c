@@ -10,7 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#define GL_GLEXT_PROTOTYPES
+#include <GL/glew.h>
 #include <GL/glut.h>
 
 
@@ -24,7 +24,7 @@ static GLuint VertProg;
 static GLboolean Anim = GL_TRUE;
 static GLboolean Wire = GL_FALSE;
 static GLboolean PixelLight = GL_TRUE;
-
+static GLint Win;
 static GLfloat Xrot = 0, Yrot = 0;
 
 
@@ -136,8 +136,8 @@ static void Key( unsigned char key, int x, int y )
          }
          break;
       case 27:
+         glutDestroyWindow(Win);
          exit(0);
-         break;
    }
    glutPostRedisplay();
 }
@@ -268,11 +268,11 @@ static void Init( void )
 
 int main( int argc, char *argv[] )
 {
-   glutInit( &argc, argv );
-   glutInitWindowPosition( 0, 0 );
    glutInitWindowSize( 200, 200 );
+   glutInit( &argc, argv );
    glutInitDisplayMode( GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH );
-   glutCreateWindow(argv[0]);
+   Win = glutCreateWindow(argv[0]);
+   glewInit();
    glutReshapeFunc( Reshape );
    glutKeyboardFunc( Key );
    glutSpecialFunc( SpecialKey );

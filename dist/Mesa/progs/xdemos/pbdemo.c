@@ -93,7 +93,7 @@ MakePbuffer( Display *dpy, int screen, int width, int height )
          None
       },
       {
-         /* Single bufferd, without depth buffer */
+         /* Single buffered, without depth buffer */
          GLX_RENDER_TYPE, GLX_RGBA_BIT,
          GLX_DRAWABLE_TYPE, GLX_PBUFFER_BIT,
          GLX_RED_SIZE, 1,
@@ -105,7 +105,7 @@ MakePbuffer( Display *dpy, int screen, int width, int height )
          None
       },
       {
-         /* Double bufferd, without depth buffer */
+         /* Double buffered, without depth buffer */
          GLX_RENDER_TYPE, GLX_RGBA_BIT,
          GLX_DRAWABLE_TYPE, GLX_PBUFFER_BIT,
          GLX_RED_SIZE, 1,
@@ -130,9 +130,9 @@ MakePbuffer( Display *dpy, int screen, int width, int height )
       /* Get list of possible frame buffer configurations */
       fbConfigs = ChooseFBConfig(dpy, screen, fbAttribs[attempt], &nConfigs);
       if (nConfigs==0 || !fbConfigs) {
-         printf("Error: glXChooseFBConfig failed\n");
-         XCloseDisplay(dpy);
-         return 0;
+         printf("Note: glXChooseFBConfig(%s) failed\n", fbString[attempt]);
+         XFree(fbConfigs);
+         continue;
       }
 
 #if 0 /*DEBUG*/
@@ -144,7 +144,7 @@ MakePbuffer( Display *dpy, int screen, int width, int height )
 
       /* Create the pbuffer using first fbConfig in the list that works. */
       for (i=0;i<nConfigs;i++) {
-         pBuffer = CreatePbuffer(dpy, screen, fbConfigs[i], width, height, preserve, largest);
+         pBuffer = CreatePbuffer(dpy, screen, fbConfigs[i], width, height, largest, preserve);
          if (pBuffer) {
             gFBconfig = fbConfigs[i];
             gWidth = width;
@@ -209,6 +209,21 @@ Setup(int width, int height)
       printf("Error: couldn't create pbuffer\n");
       XCloseDisplay(gDpy);
       return 0;
+   }
+
+   /* Test drawable queries */
+   {
+      unsigned int v;
+      glXQueryDrawable( gDpy, gPBuffer, GLX_WIDTH, &v);
+      printf("GLX_WIDTH = %u\n", v);
+      glXQueryDrawable( gDpy, gPBuffer, GLX_HEIGHT, &v);
+      printf("GLX_HEIGHT = %u\n", v);
+      glXQueryDrawable( gDpy, gPBuffer, GLX_PRESERVED_CONTENTS, &v);
+      printf("GLX_PRESERVED_CONTENTS = %u\n", v);
+      glXQueryDrawable( gDpy, gPBuffer, GLX_LARGEST_PBUFFER, &v);
+      printf("GLX_LARGEST_PBUFFER = %u\n", v);
+      glXQueryDrawable( gDpy, gPBuffer, GLX_FBCONFIG_ID, &v);
+      printf("GLX_FBCONFIG_ID = %u\n", v);
    }
 
    /* Get corresponding XVisualInfo */

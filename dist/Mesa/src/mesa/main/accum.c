@@ -29,6 +29,10 @@
 #include "macros.h"
 #include "state.h"
 #include "mtypes.h"
+#include "main/dispatch.h"
+
+
+#if FEATURE_accum
 
 
 void GLAPIENTRY
@@ -51,7 +55,7 @@ _mesa_ClearAccum( GLfloat red, GLfloat green, GLfloat blue, GLfloat alpha )
 }
 
 
-void GLAPIENTRY
+static void GLAPIENTRY
 _mesa_Accum( GLenum op, GLfloat value )
 {
    GET_CURRENT_CONTEXT(ctx);
@@ -94,14 +98,20 @@ _mesa_Accum( GLenum op, GLfloat value )
    }
 
    if (ctx->RenderMode == GL_RENDER) {
-      GLint x = ctx->DrawBuffer->_Xmin;
-      GLint y = ctx->DrawBuffer->_Ymin;
-      GLint width =  ctx->DrawBuffer->_Xmax - ctx->DrawBuffer->_Xmin;
-      GLint height = ctx->DrawBuffer->_Ymax - ctx->DrawBuffer->_Ymin;
-      ctx->Driver.Accum(ctx, op, value, x, y, width, height);
+      ctx->Driver.Accum(ctx, op, value);
    }
 }
 
+
+void
+_mesa_init_accum_dispatch(struct _glapi_table *disp)
+{
+   SET_Accum(disp, _mesa_Accum);
+   SET_ClearAccum(disp, _mesa_ClearAccum);
+}
+
+
+#endif /* FEATURE_accum */
 
 
 void 

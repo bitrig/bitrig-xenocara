@@ -4,10 +4,10 @@
  * Updated for GLU 1.3 tessellation by Gareth Hughes <gareth@valinux.com>
  */
 
-#include <GL/glut.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <GL/glut.h>
 
 #define MAX_POINTS	256
 #define MAX_CONTOURS	32
@@ -503,10 +503,9 @@ int main( int argc, char **argv )
 
    usage();
 
+   glutInitWindowSize( 400, 400 );
    glutInit( &argc, argv );
    glutInitDisplayMode( GLUT_SINGLE | GLUT_RGB );
-   glutInitWindowPosition(0, 0);
-   glutInitWindowSize( 400, 400 );
    glutCreateWindow( argv[0] );
 
    /* GH: Bit of a hack...

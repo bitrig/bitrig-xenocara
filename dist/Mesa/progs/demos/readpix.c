@@ -17,6 +17,7 @@
 #define IMAGE_FILE "../images/girl.rgb"
 
 static int ImgWidth, ImgHeight;
+static int WinWidth, WinHeight;
 static GLenum ImgFormat;
 static GLubyte *Image = NULL;
 
@@ -27,35 +28,35 @@ static int CPosX, CPosY;  /* copypixels */
 static GLboolean DrawFront = GL_FALSE;
 static GLboolean ScaleAndBias = GL_FALSE;
 static GLboolean Benchmark = GL_FALSE;
+static GLboolean Triangle = GL_FALSE;
 static GLubyte *TempImage = NULL;
 
-#if 0
+#define COMBO 1
+#if COMBO == 0
 #define ReadFormat ImgFormat
 #define ReadType GL_UNSIGNED_BYTE
-#endif
-#if 1
+#elif COMBO == 1
 static GLenum ReadFormat = GL_RGBA;
 static GLenum ReadType = GL_UNSIGNED_BYTE;
-#endif
-#if 0
+#elif COMBO == 2
 static GLenum ReadFormat = GL_RGB;
 static GLenum ReadType = GL_UNSIGNED_BYTE;
-#endif
-#if 0
+#elif COMBO == 3
 static GLenum ReadFormat = GL_RGB;
 static GLenum ReadType = GL_UNSIGNED_SHORT_5_6_5;
-#endif
-#if 0
+#elif COMBO == 4
 static GLenum ReadFormat = GL_RGBA;
 static GLenum ReadType = GL_UNSIGNED_SHORT_1_5_5_5_REV;
-#endif
-#if 0
+#elif COMBO == 5
 static GLenum ReadFormat = GL_BGRA;
 static GLenum ReadType = GL_UNSIGNED_SHORT_5_5_5_1;
-#endif
-#if 0
+#elif COMBO == 6
 static GLenum ReadFormat = GL_BGRA;
 static GLenum ReadType = GL_UNSIGNED_SHORT_4_4_4_4_REV;
+#elif COMBO == 7
+static GLenum ReadFormat = GL_RGBA;
+static GLenum ReadType = GL_HALF_FLOAT_ARB;
+#undef GL_OES_read_format
 #endif
 
 
@@ -151,11 +152,60 @@ Display( void )
    /* draw original image */
    glRasterPos2i(APosX, 5);
    PrintString("Original");
-   glRasterPos2i(APosX, APosY);
-   glEnable(GL_DITHER);
-   SetupPixelTransfer(GL_FALSE);
-   glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-   glDrawPixels(ImgWidth, ImgHeight, ImgFormat, GL_UNSIGNED_BYTE, Image);
+   if (!Triangle) {
+      glRasterPos2i(APosX, APosY);
+      glEnable(GL_DITHER);
+      SetupPixelTransfer(GL_FALSE);
+      glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+      glDrawPixels(ImgWidth, ImgHeight, ImgFormat, GL_UNSIGNED_BYTE, Image);
+   }
+   else {
+      float z = 0;
+
+      glViewport(APosX, APosY, ImgWidth, ImgHeight);
+      glMatrixMode( GL_PROJECTION );
+      glLoadIdentity();
+      glOrtho(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0);
+      glDisable(GL_CULL_FACE);
+
+      /* Red should never be seen
+       */
+      glBegin(GL_POLYGON);
+      glColor3f(1,0,0); 
+      glVertex3f(-2, -2, z);
+      glVertex3f(-2, 2, z);
+      glVertex3f(2, 2, z);
+      glVertex3f(2, -2, z);
+      glEnd();
+
+      /* Blue background
+       */
+      glBegin(GL_POLYGON);
+      glColor3f(.5,.5,1); 
+      glVertex3f(-1, -1, z);
+      glVertex3f(-1, 1, z);
+      glVertex3f(1, 1, z);
+      glVertex3f(1, -1, z);
+      glEnd();
+
+      /* Triangle
+       */
+      glBegin(GL_TRIANGLES);
+      glColor3f(.8,0,0); 
+      glVertex3f(-0.9, -0.9, z);
+      glColor3f(0,.9,0); 
+      glVertex3f( 0.9, -0.9, z);
+      glColor3f(0,0,.7); 
+      glVertex3f( 0.0,  0.9, z);
+      glEnd();
+      
+      glColor3f(1,1,1);
+
+      glViewport( 0, 0, WinWidth, WinHeight );
+      glMatrixMode( GL_PROJECTION );
+      glLoadIdentity();
+      glOrtho( 0.0, WinWidth, 0.0, WinHeight, -1.0, 1.0 );
+   }
 
    /* might try alignment=4 here for testing */
    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -169,7 +219,7 @@ Display( void )
       GLint reads = 0;
       GLint endTime;
       GLint startTime = glutGet(GLUT_ELAPSED_TIME);
-      GLdouble seconds, pixelsPerSecond;
+      GLdouble seconds, mpixels, mpixelsPerSecond;
       printf("Benchmarking...\n");
       do {
          glReadPixels(APosX, APosY, ImgWidth, ImgHeight,
@@ -178,9 +228,10 @@ Display( void )
          endTime = glutGet(GLUT_ELAPSED_TIME);
       } while (endTime - startTime < 4000);   /* 4 seconds */
       seconds = (double) (endTime - startTime) / 1000.0;
-      pixelsPerSecond = reads * ImgWidth * ImgHeight / seconds;
-      printf("Result:  %d reads in %f seconds = %f pixels/sec\n",
-             reads, seconds, pixelsPerSecond);
+      mpixels = reads * (ImgWidth * ImgHeight / (1000.0 * 1000.0));
+      mpixelsPerSecond = mpixels / seconds;
+      printf("Result:  %d reads in %f seconds = %f Mpixels/sec\n",
+             reads, seconds, mpixelsPerSecond);
       Benchmark = GL_FALSE;
    }
    else {
@@ -219,6 +270,9 @@ Display( void )
 static void
 Reshape( int width, int height )
 {
+   WinWidth = width;
+   WinHeight = height;
+
    glViewport( 0, 0, width, height );
    glMatrixMode( GL_PROJECTION );
    glLoadIdentity();
@@ -236,6 +290,9 @@ Key( unsigned char key, int x, int y )
    switch (key) {
       case 'b':
          Benchmark = GL_TRUE;
+         break;
+      case 't':
+         Triangle = !Triangle;
          break;
       case 's':
          ScaleAndBias = !ScaleAndBias;
@@ -313,8 +370,10 @@ Init( GLboolean ciMode )
 
    Reset();
 
-   /* allocate an extra 1KB in case we're tinkering with pack alignment */
-   TempImage = (GLubyte *) malloc(ImgWidth * ImgHeight * 4 * sizeof(GLubyte)
+   /* allocate large TempImage to store and image data type, plus an
+    * extra 1KB in case we're tinkering with pack alignment.
+    */
+   TempImage = (GLubyte *) malloc(ImgWidth * ImgHeight * 4 * 4
                                   + 1000);
    assert(TempImage);
 }
@@ -324,12 +383,11 @@ int
 main( int argc, char *argv[] )
 {
    GLboolean ciMode = GL_FALSE;
+   glutInitWindowSize( 750, 250 );
+   glutInit( &argc, argv );
    if (argc > 1 && strcmp(argv[1], "-ci")==0) {
       ciMode = GL_TRUE;
    }
-   glutInit( &argc, argv );
-   glutInitWindowPosition( 0, 0 );
-   glutInitWindowSize( 750, 250 );
    if (ciMode)
       glutInitDisplayMode( GLUT_INDEX | GLUT_DOUBLE );
    else

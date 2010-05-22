@@ -1,8 +1,12 @@
-/* $XFree86: xc/lib/GL/mesa/src/drv/radeon/radeon_lock.h,v 1.3 2002/10/30 12:51:55 alanh Exp $ */
 /**************************************************************************
 
 Copyright 2000, 2001 ATI Technologies Inc., Ontario, Canada, and
                      VA Linux Systems Inc., Fremont, California.
+Copyright (C) The Weather Channel, Inc.  2002.  All Rights Reserved.
+
+The Weather Channel (TM) funded Tungsten Graphics to develop the
+initial release of the Radeon 8500 driver under the XFree86 license.
+This notice must be preserved.
 
 All Rights Reserved.
 
@@ -30,79 +34,36 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /*
  * Authors:
- *   Kevin E. Martin <martin@valinux.com>
  *   Gareth Hughes <gareth@valinux.com>
+ *   Keith Whitwell <keith@tungstengraphics.com>
+ *   Kevin E. Martin <martin@valinux.com>
  */
 
-#ifndef __RADEON_LOCK_H__
-#define __RADEON_LOCK_H__
+#ifndef COMMON_LOCK_H
+#define COMMON_LOCK_H
 
-extern void radeonGetLock( radeonContextPtr rmesa, GLuint flags );
+#include "main/colormac.h"
+#include "radeon_screen.h"
+#include "radeon_common.h"
 
-/* Turn DEBUG_LOCKING on to find locking conflicts.
- */
-#define DEBUG_LOCKING	0
+extern void radeonGetLock(radeonContextPtr rmesa, GLuint flags);
 
-#if DEBUG_LOCKING
-extern char *prevLockFile;
-extern int prevLockLine;
-
-#define DEBUG_LOCK()							\
-   do {									\
-      prevLockFile = (__FILE__);					\
-      prevLockLine = (__LINE__);					\
-   } while (0)
-
-#define DEBUG_RESET()							\
-   do {									\
-      prevLockFile = 0;							\
-      prevLockLine = 0;							\
-   } while (0)
-
-#define DEBUG_CHECK_LOCK()						\
-   do {									\
-      if ( prevLockFile ) {						\
-	 fprintf( stderr,						\
-		  "LOCK SET!\n\tPrevious %s:%d\n\tCurrent: %s:%d\n",	\
-		  prevLockFile, prevLockLine, __FILE__, __LINE__ );	\
-	 exit( 1 );							\
-      }									\
-   } while (0)
-
-#else
-
-#define DEBUG_LOCK()
-#define DEBUG_RESET()
-#define DEBUG_CHECK_LOCK()
-
+void radeon_lock_hardware(radeonContextPtr rmesa
+#ifndef NDEBUG
+		,const char* function
+		,const char* file
+		,const int line
 #endif
-
-/*
- * !!! We may want to separate locks from locks with validation.  This
- * could be used to improve performance for those things commands that
- * do not do any drawing !!!
- */
-
+		);
+void radeon_unlock_hardware(radeonContextPtr rmesa);
 
 /* Lock the hardware and validate our state.
  */
-#define LOCK_HARDWARE( rmesa )					\
-   do {								\
-      char __ret = 0;						\
-      DEBUG_CHECK_LOCK();					\
-      DRM_CAS( rmesa->dri.hwLock, rmesa->dri.hwContext,		\
-	       (DRM_LOCK_HELD | rmesa->dri.hwContext), __ret );	\
-      if ( __ret )						\
-	 radeonGetLock( rmesa, 0 );				\
-      DEBUG_LOCK();						\
-   } while (0)
+#ifdef NDEBUG
+#define LOCK_HARDWARE( rmesa )	radeon_lock_hardware(rmesa)
+#else
+#define LOCK_HARDWARE( rmesa )	radeon_lock_hardware(rmesa, __FUNCTION__, __FILE__, __LINE__)
+#endif
+#define UNLOCK_HARDWARE( rmesa )  radeon_unlock_hardware(rmesa)
 
-#define UNLOCK_HARDWARE( rmesa )					\
-   do {									\
-      DRM_UNLOCK( rmesa->dri.fd,					\
-		  rmesa->dri.hwLock,					\
-		  rmesa->dri.hwContext );				\
-      DEBUG_RESET();							\
-   } while (0)
-
-#endif /* __RADEON_LOCK_H__ */
+#endif

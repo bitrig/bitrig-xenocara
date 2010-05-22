@@ -1,6 +1,8 @@
 #ifndef WMESADEF_H
 #define WMESADEF_H
-
+#ifdef __MINGW32__
+#include <windows.h>
+#endif
 #include "context.h"
 
 
@@ -25,7 +27,7 @@ struct wmesa_framebuffer
     HDC                 hDC;
     int			pixelformat;
     GLuint		ScanWidth;
-    BYTE		cColorBits;
+    int			cColorBits;
     /* back buffer DIB fields */
     HDC                 dib_hDC;
     BITMAPINFO          bmi;
