@@ -21,7 +21,7 @@
 
 bin_PROGRAMS = xlsfonts
 
-xlsfonts_CFLAGS = $(XLSFONTS_CFLAGS)
+AM_CFLAGS = $(XLSFONTS_CFLAGS) $(CWARNFLAGS)
 xlsfonts_LDADD = $(XLSFONTS_LIBS)
 
 xlsfonts_SOURCES =	\
@@ -32,13 +32,24 @@ xlsfonts_SOURCES =	\
 appman_PRE = \
         xlsfonts.man
 
-EXTRA_DIST = xlsfonts.sgml
+EXTRA_DIST = xlsfonts.sgml autogen.sh
+
+.PHONY: ChangeLog INSTALL
+
+INSTALL:
+	$(INSTALL_CMD)
+
+ChangeLog:
+	$(CHANGELOG_CMD)
+
+dist-hook: ChangeLog INSTALL
 
 appmandir = $(APP_MAN_DIR)
 
 appman_DATA = $(appman_PRE:man=@APP_MAN_SUFFIX@)
 
 EXTRA_DIST += $(appman_PRE)
+MAINTAINERCLEANFILES = ChangeLog INSTALL
 CLEANFILES = $(appman_DATA)
 
 SED = sed
