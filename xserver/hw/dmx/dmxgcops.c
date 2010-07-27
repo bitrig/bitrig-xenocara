@@ -1,4 +1,3 @@
-/* $XFree86$ */
 /*
  * Copyright 2001-2004 Red Hat Inc., Durham, North Carolina.
  *
@@ -51,7 +50,9 @@
 #include "pixmapstr.h"
 #include "dixfontstr.h"
 
+#ifdef PANORAMIX
 #include "panoramiXsrv.h"
+#endif
 
 #define DMX_GCOPS_SET_DRAWABLE(_pDraw, _draw)				\
 do {									\

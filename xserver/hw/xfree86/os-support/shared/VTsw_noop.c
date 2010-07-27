@@ -20,7 +20,6 @@
  * PERFORMANCE OF THIS SOFTWARE.
  *
  */
-/* $XConsortium: VTsw_noop.c /main/3 1996/02/21 17:53:25 kaleb $ */
 
 #ifdef HAVE_XORG_CONFIG_H
 #include <xorg-config.h>
@@ -37,19 +36,25 @@
  */
 
 Bool
-xf86VTSwitchPending()
+xf86VTSwitchPending(void)
 {
 	return(FALSE);
 }
 
 Bool
-xf86VTSwitchAway()
+xf86VTSwitchAway(void)
 {
 	return(FALSE);
 }
 
 Bool
-xf86VTSwitchTo()
+xf86VTSwitchTo(void)
+{
+	return(TRUE);
+}
+
+Bool
+xf86VTActivate(int vtno)
 {
 	return(TRUE);
 }

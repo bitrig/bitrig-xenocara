@@ -29,33 +29,30 @@
 #include <xorg-config.h>
 #endif
 
-#ifdef __UNIXOS2__
-# define I_NEED_OS2_H
-#endif
 # include <X11/X.h>
 # include "xf86.h"
 # include "xf86Priv.h"
 # include "xf86_OSlib.h"
 
-_X_EXPORT int
+int
 xf86InstallSIGIOHandler(int fd, void (*f)(int, void *), void *closure)
 {
     return 0;
 }
 
-_X_EXPORT int
+int
 xf86RemoveSIGIOHandler(int fd)
 {
     return 0;
 }
 
-_X_EXPORT int
+int
 xf86BlockSIGIO (void)
 {
     return 0;
 }
 
-_X_EXPORT void
+void
 xf86UnblockSIGIO (int wasset)
 {
 }

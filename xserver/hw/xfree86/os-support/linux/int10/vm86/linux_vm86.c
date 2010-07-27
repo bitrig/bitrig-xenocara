@@ -1,5 +1,3 @@
-/* $XFree86$ */
-
 #ifdef HAVE_XORG_CONFIG_H
 #include <xorg-config.h>
 #endif
@@ -174,9 +172,7 @@ vm86_GP_fault(xf86Int10InfoPtr pInt)
 	break;
 
     case 0xf4:
-#ifdef DEBUG
-	ErrorF("hlt at %p\n", lina);
-#endif
+	DebugF("hlt at %p\n", lina);
 	return FALSE;
 
     case 0x0f:

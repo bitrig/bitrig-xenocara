@@ -30,9 +30,6 @@
 #include <xorg-config.h>
 #endif
 
-#ifdef __UNIXOS2__
-# define I_NEED_OS2_H
-#endif
 #include <X11/X.h>
 #include "input.h"
 #include "scrnintstr.h"
@@ -187,7 +184,7 @@ xf86InitVidMem(void)
 	}
 }
 
-_X_EXPORT pointer
+pointer
 xf86MapVidMem(int ScreenNum, int Flags, unsigned long Base, unsigned long Size)
 {
 	pointer vbase = NULL;
@@ -233,7 +230,7 @@ xf86MapVidMem(int ScreenNum, int Flags, unsigned long Base, unsigned long Size)
 	return vbase;
 }
 
-_X_EXPORT void
+void
 xf86UnMapVidMem(int ScreenNum, pointer Base, unsigned long Size)
 {
 	VidMapPtr vp;
@@ -260,7 +257,7 @@ xf86UnMapVidMem(int ScreenNum, pointer Base, unsigned long Size)
 	removeMapping(vp, mp);
 }
 
-_X_EXPORT Bool
+Bool
 xf86CheckMTRR(int ScreenNum)
 {
 	VidMapPtr vp = getVidMapRec(ScreenNum);
@@ -277,14 +274,14 @@ xf86CheckMTRR(int ScreenNum)
 	return FALSE;
 }
 
-_X_EXPORT Bool
-xf86LinearVidMem()
+Bool
+xf86LinearVidMem(void)
 {
 	xf86InitVidMem();
 	return vidMemInfo.linearSupported;
 }
 
-_X_EXPORT void
+void
 xf86MapReadSideEffects(int ScreenNum, int Flags, pointer base,
 			unsigned long Size)
 {

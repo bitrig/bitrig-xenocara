@@ -20,12 +20,10 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
-/* $RCSId: xc/programs/Xserver/hw/kdrive/linux/ms.c,v 1.1 2001/08/09 20:45:15 dawes Exp $ */
 
 #ifdef HAVE_CONFIG_H
 #include <kdrive-config.h>
 #endif
-#define NEED_EVENTS
 #include <errno.h>
 #include <termios.h>
 #include <X11/X.h>
@@ -85,46 +83,55 @@ MsRead (int port, void *closure)
 		flags |= KD_BUTTON_1;
 	    if (b[0] & 0x10)
 		flags |= KD_BUTTON_3;
-	    
+
 	    dx = (char)(((b[0] & 0x03) << 6) | (b[1] & 0x3F));
 	    dy = (char)(((b[0] & 0x0C) << 4) | (b[2] & 0x3F));
             n -= 3;
             b += 3;
-	    KdEnqueueMouseEvent (kdMouseInfo, flags, dx, dy);
+	    KdEnqueuePointerEvent (closure, flags, dx, dy, 0);
 	}
     }
 }
 
-int MsInputType;
+static Status
+MsInit (KdPointerInfo *pi)
+{
+    if (!pi)
+        return BadImplementation;
 
-static int
-MsInit (void)
+    if (!pi->path || strcmp(pi->path, "auto"))
+        pi->path = strdup("/dev/mouse");
+    if (!pi->name)
+        pi->name = strdup("Microsoft protocol mouse");
+
+    return Success;
+}
+
+static Status
+MsEnable (KdPointerInfo *pi)
 {
     int port;
-    char *device = "/dev/mouse";
     struct termios t;
     int ret;
 
-    if (!MsInputType)
-	MsInputType = KdAllocInputType ();
-    port = open (device, O_RDWR | O_NONBLOCK);
+    port = open (pi->path, O_RDWR | O_NONBLOCK);
     if(port < 0) {
-        ErrorF("Couldn't open %s (%d)\n", device, (int)errno);
+        ErrorF("Couldn't open %s (%d)\n", pi->path, (int)errno);
         return 0;
     } else if (port == 0) {
         ErrorF("Opening %s returned 0!  Please complain to Keith.\n",
-               device);
+               pi->path);
 	goto bail;
     }
 
     if(!isatty(port)) {
-        ErrorF("%s is not a tty\n", device);
+        ErrorF("%s is not a tty\n", pi->path);
         goto bail;
     }
 
     ret = tcgetattr(port, &t);
     if(ret < 0) {
-        ErrorF("Couldn't tcgetattr(%s): %d\n", device, errno);
+        ErrorF("Couldn't tcgetattr(%s): %d\n", pi->path, errno);
         goto bail;
     }
     t.c_iflag &= ~ (IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR |
@@ -140,24 +147,36 @@ MsInit (void)
     t.c_cc[VTIME] = 0;
     ret = tcsetattr(port, TCSANOW, &t);
     if(ret < 0) {
-        ErrorF("Couldn't tcsetattr(%s): %d\n", device, errno);
+        ErrorF("Couldn't tcsetattr(%s): %d\n", pi->path, errno);
         goto bail;
     }
-    if (KdRegisterFd (MsInputType, port, MsRead, (void *) 0))
-	return 1;
+    if (KdRegisterFd (port, MsRead, pi))
+	return TRUE;
+    pi->driverPrivate = (void *)port;
+
+    return Success;
 
  bail:
     close(port);
-    return 0;
+    return BadMatch;
 }
 
 static void
-MsFini (void)
+MsDisable (KdPointerInfo *pi)
 {
-    KdUnregisterFds (MsInputType, TRUE);
+    KdUnregisterFd (pi, (int)pi->driverPrivate, TRUE);
 }
 
-KdMouseFuncs MsMouseFuncs = {
+static void
+MsFini (KdPointerInfo *pi)
+{
+}
+
+KdPointerDriver MsMouseDriver = {
+    "ms",
     MsInit,
-    MsFini
+    MsEnable,
+    MsDisable,
+    MsFini,
+    NULL,
 };

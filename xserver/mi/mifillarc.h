@@ -176,36 +176,12 @@ typedef struct _miArcSlice {
 #define miFillInArcLower(slw) (((iny + dy) != 0) && \
 			       ((slw > 1) || (ine != inxk)))
 
-extern int miFreeArcCache(
-    pointer /*data*/,
-    XID /*id*/
-);
-
-extern struct finalSpan *realAllocSpan(
-    void
-);
-
-extern void miFillArcSetup(
+extern _X_EXPORT void miFillArcSetup(
     xArc * /*arc*/,
     miFillArcRec * /*info*/
 );
 
-extern void miFillArcDSetup(
-    xArc * /*arc*/,
-    miFillArcDRec * /*info*/
-);
-
-extern void miEllipseAngleToSlope(
-    int /*angle*/,
-    int /*width*/,
-    int /*height*/,
-    int * /*dxp*/,
-    int * /*dyp*/,
-    double * /*d_dxp*/,
-    double * /*d_dyp*/
-);
-
-extern void miFillArcSliceSetup(
+extern _X_EXPORT void miFillArcSliceSetup(
     xArc * /*arc*/,
     miArcSliceRec * /*slice*/,
     GCPtr /*pGC*/

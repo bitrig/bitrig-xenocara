@@ -76,6 +76,7 @@ static xf86ConfigSymTabRec ModuleTab[] =
 {
 	{ENDSECTION, "endsection"},
 	{LOAD, "load"},
+    {DISABLE, "disable"}, 
 	{LOAD_DRIVER, "loaddriver"},
 	{SUBSECTION, "subsection"},
 	{-1, ""},
@@ -83,7 +84,7 @@ static xf86ConfigSymTabRec ModuleTab[] =
 
 #define CLEANUP xf86freeModules
 
-XF86LoadPtr
+static XF86LoadPtr
 xf86parseModuleSubSection (XF86LoadPtr head, char *name)
 {
 	int token;
@@ -107,11 +108,11 @@ xf86parseModuleSubSection (XF86LoadPtr head, char *name)
 			break;
 		case EOF_TOKEN:
 			xf86parseError (UNEXPECTED_EOF_MSG, NULL);
-			xf86conffree(ptr);
+			free(ptr);
 			return NULL;
 		default:
 			xf86parseError (INVALID_KEYWORD_MSG, xf86tokenString ());
-			xf86conffree(ptr);
+			free(ptr);
 			return NULL;
 			break;
 		}
@@ -140,6 +141,13 @@ xf86parseModuleSection (void)
 			ptr->mod_load_lst =
 				xf86addNewLoadDirective (ptr->mod_load_lst, val.str,
 									 XF86_LOAD_MODULE, NULL);
+			break;
+		case DISABLE:
+			if (xf86getSubToken (&(ptr->mod_comment)) != STRING)
+				Error (QUOTE_MSG, "Disable");
+			ptr->mod_disable_lst =
+				xf86addNewLoadDirective (ptr->mod_disable_lst, val.str,
+									 XF86_DISABLE_MODULE, NULL);
 			break;
 		case LOAD_DRIVER:
 			if (xf86getSubToken (&(ptr->mod_comment)) != STRING)
@@ -225,7 +233,7 @@ xf86addNewLoadDirective (XF86LoadPtr head, char *name, int type, XF86OptionPtr o
 	XF86LoadPtr new;
 	int token;
 
-	new = xf86confcalloc (1, sizeof (XF86LoadRec));
+	new = calloc (1, sizeof (XF86LoadRec));
 	new->load_name = name;
 	new->load_type = type;
 	new->load_opt  = opts;
@@ -255,8 +263,17 @@ xf86freeModules (XF86ConfModulePtr ptr)
 		TestFree (lptr->load_comment);
 		prev = lptr;
 		lptr = lptr->list.next;
-		xf86conffree (prev);
+		free (prev);
+	}
+	lptr = ptr->mod_disable_lst;
+	while (lptr)
+	{
+		TestFree (lptr->load_name);
+		TestFree (lptr->load_comment);
+		prev = lptr;
+		lptr = lptr->list.next;
+		free (prev);
 	}
 	TestFree (ptr->mod_comment);
-	xf86conffree (ptr);
+	free (ptr);
 }

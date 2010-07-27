@@ -1,4 +1,3 @@
-/* $XFree86$ */
 /*
  * Copyright 2002 Red Hat Inc., Durham, North Carolina.
  *
@@ -61,9 +60,7 @@ void dmxDummyKbdGetInfo(DevicePtr pDev, DMXLocalInitInfoPtr info)
     info->freemap            = 0;
     info->focusClass         = 1;
     info->kbdFeedbackClass   = 1;
-#ifdef XKB
     info->force              = 1;
-#endif
 }
 
 /** Return information about the dummy mouse device specified in \a pDev
@@ -79,7 +76,9 @@ void dmxDummyMouGetInfo(DevicePtr pDev, DMXLocalInitInfoPtr info)
     info->valuatorClass    = 1;
     info->numRelAxes       = 2;
     info->minval[0]        = 0;
+    info->minval[1]        = 0;
     info->maxval[0]        = 0;
+    info->maxval[1]        = 0;
     info->res[0]           = 1;
     info->minres[0]        = 0;
     info->maxres[0]        = 1;

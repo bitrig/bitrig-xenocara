@@ -1,5 +1,3 @@
-/* $XFree86$ */
-
 #ifdef HAVE_XORG_CONFIG_H
 #include <xorg-config.h>
 #endif
@@ -21,7 +19,7 @@
  * Return:
  *    0 for failure, 1 for success
  */
-_X_EXPORT int xf86LoadKernelModule(const char *modName)
+int xf86LoadKernelModule(const char *modName)
 {
     if (kldload(modName) != -1)
 	return 1;

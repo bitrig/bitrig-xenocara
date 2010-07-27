@@ -1,6 +1,4 @@
 /*
- * $Id: renderedge.h,v 1.1 2006/11/26 18:16:23 matthieu Exp $
- *
  * Copyright © 2004 Keith Packard
  *
  * Permission to use, copy, modify, distribute, and sell this software and its
@@ -50,20 +48,7 @@
  * and can be quickly stepped across small or large gaps in the
  * sample grid
  */
-
-typedef struct {
-    xFixed   x;
-    xFixed   e;
-    xFixed   stepx;
-    xFixed   signdx;
-    xFixed   dy;
-    xFixed   dx;
-
-    xFixed   stepx_small;
-    xFixed   stepx_big;
-    xFixed   dx_small;
-    xFixed   dx_big;
-} RenderEdge;
+typedef pixman_edge_t RenderEdge;
 
 /*
  * Step across a small sample grid gap
@@ -91,16 +76,16 @@ typedef struct {
     }				    \
 }
 
-xFixed
+extern _X_EXPORT xFixed
 RenderSampleCeilY (xFixed y, int bpp);
 
-xFixed
+extern _X_EXPORT xFixed
 RenderSampleFloorY (xFixed y, int bpp);
 
-void
+extern _X_EXPORT void
 RenderEdgeStep (RenderEdge *e, int n);
 
-void
+extern _X_EXPORT void
 RenderEdgeInit (RenderEdge	*e,
 		int		bpp,
 		xFixed		y_start,
@@ -109,7 +94,7 @@ RenderEdgeInit (RenderEdge	*e,
 		xFixed		x_bot,
 		xFixed		y_bot);
 
-void
+extern _X_EXPORT void
 RenderLineFixedEdgeInit (RenderEdge *e,
 			 int	    bpp,
 			 xFixed	    y,

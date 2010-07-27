@@ -29,18 +29,19 @@ THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #endif
 
 #include <stdio.h>
-#define NEED_EVENTS
 #include <X11/X.h>
 #include <X11/Xproto.h>
 #include <X11/keysym.h>
 #include "inputstr.h"
 #include "scrnintstr.h"
 #include "windowstr.h"
-#include <X11/extensions/XKBsrv.h>
+#include <xkbsrv.h>
 
 int
 XkbDDXTerminateServer(DeviceIntPtr dev,KeyCode key,XkbAction *act)
 {
-    GiveUp(1);
+    if (dev != inputInfo.keyboard)
+        GiveUp(1);
+
     return 0;
 }

@@ -25,10 +25,10 @@ typedef struct _xf86CursorInfoRec {
 
 } xf86CursorInfoRec, *xf86CursorInfoPtr;
 
-Bool xf86InitCursor(ScreenPtr pScreen, xf86CursorInfoPtr infoPtr);
-xf86CursorInfoPtr xf86CreateCursorInfoRec(void);
-void xf86DestroyCursorInfoRec(xf86CursorInfoPtr);
-void xf86ForceHWCursor (ScreenPtr pScreen, Bool on);
+extern _X_EXPORT Bool xf86InitCursor(ScreenPtr pScreen, xf86CursorInfoPtr infoPtr);
+extern _X_EXPORT xf86CursorInfoPtr xf86CreateCursorInfoRec(void);
+extern _X_EXPORT void xf86DestroyCursorInfoRec(xf86CursorInfoPtr);
+extern _X_EXPORT void xf86ForceHWCursor (ScreenPtr pScreen, Bool on);
 
 #define HARDWARE_CURSOR_INVERT_MASK 			0x00000001
 #define HARDWARE_CURSOR_AND_SOURCE_WITH_MASK		0x00000002
@@ -44,5 +44,8 @@ void xf86ForceHWCursor (ScreenPtr pScreen, Bool on);
 #define HARDWARE_CURSOR_NIBBLE_SWAPPED			0x00000800
 #define HARDWARE_CURSOR_SHOW_TRANSPARENT		0x00001000
 #define HARDWARE_CURSOR_UPDATE_UNHIDDEN			0x00002000
+#ifdef ARGB_CURSOR
+#define HARDWARE_CURSOR_ARGB				0x00004000
+#endif
 
 #endif /* _XF86CURSOR_H */

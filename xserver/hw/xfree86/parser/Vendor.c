@@ -75,7 +75,7 @@ static xf86ConfigSymTabRec VendorSubTab[] =
 
 #define CLEANUP xf86freeVendorSubList
 
-XF86ConfVendSubPtr
+static XF86ConfVendSubPtr
 xf86parseVendorSubSection (void)
 {
 	int has_ident = FALSE;
@@ -223,7 +223,7 @@ xf86freeVendorList (XF86ConfVendorPtr p)
 	TestFree (p->vnd_identifier);
 	TestFree (p->vnd_comment);
 	xf86optionListFree (p->vnd_option_lst);
-	xf86conffree (p);
+	free (p);
 }
 
 void
@@ -239,19 +239,6 @@ xf86freeVendorSubList (XF86ConfVendSubPtr ptr)
 		xf86optionListFree (ptr->vs_option_lst);
 		prev = ptr;
 		ptr = ptr->list.next;
-		xf86conffree (prev);
+		free (prev);
 	}
 }
-
-XF86ConfVendorPtr
-xf86findVendor (const char *name, XF86ConfVendorPtr list)
-{
-	while (list)
-	{
-		if (xf86nameCompare (list->vnd_identifier, name) == 0)
-			return (list);
-		list = list->list.next;
-	}
-	return (NULL);
-}
-

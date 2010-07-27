@@ -20,7 +20,6 @@
  * PERFORMANCE OF THIS SOFTWARE.
  *
  */
-/* $XConsortium: ioperm_noop.c /main/3 1996/02/21 17:53:39 kaleb $ */
 
 /*
  * Some platforms don't bother with I/O permissions, 
@@ -36,13 +35,13 @@
 #include "xf86Priv.h"
 #include "xf86_OSlib.h"
 
-_X_EXPORT Bool
+Bool
 xf86EnableIO()
 {
 	return TRUE;
 }
 
-_X_EXPORT void
+void
 xf86DisableIO()
 {
 	return;

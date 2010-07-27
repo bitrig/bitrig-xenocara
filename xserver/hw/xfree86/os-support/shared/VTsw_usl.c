@@ -20,7 +20,6 @@
  * PERFORMANCE OF THIS SOFTWARE.
  *
  */
-/* $XConsortium: VTsw_usl.c /main/3 1996/02/21 17:53:28 kaleb $ */
 
 #ifdef HAVE_XORG_CONFIG_H
 #include <xorg-config.h>
@@ -54,13 +53,13 @@ xf86VTRequest(int sig)
 }
 
 Bool
-xf86VTSwitchPending()
+xf86VTSwitchPending(void)
 {
     return(xf86Info.vtRequestsPending ? TRUE : FALSE);
 }
 
 Bool
-xf86VTSwitchAway()
+xf86VTSwitchAway(void)
 {
 	xf86Info.vtRequestsPending = FALSE;
 	if (ioctl(xf86Info.consoleFd, VT_RELDISP, 1) < 0)
@@ -77,7 +76,7 @@ xf86VTSwitchAway()
 }
 
 Bool
-xf86VTSwitchTo()
+xf86VTSwitchTo(void)
 {
 	xf86Info.vtRequestsPending = FALSE;
 	if (ioctl(xf86Info.consoleFd, VT_RELDISP, VT_ACKACQ) < 0)
@@ -88,4 +87,15 @@ xf86VTSwitchTo()
 	{
 		return(TRUE);
 	}
+}
+
+Bool
+xf86VTActivate(int vtno)
+{
+#ifdef VT_ACTIVATE
+	if (ioctl(xf86Info.consoleFd, VT_ACTIVATE, vtno) < 0) {
+		return(FALSE);
+	}
+#endif
+	return(TRUE);
 }

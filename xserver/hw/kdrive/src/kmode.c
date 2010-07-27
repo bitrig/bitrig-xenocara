@@ -1,6 +1,4 @@
 /*
- * $RCSId: xc/programs/Xserver/hw/kdrive/kmode.c,v 1.7 2002/10/14 18:01:40 keithp Exp $
- *
  * Copyright 1999 SuSE, Inc.
  *
  * Permission to use, copy, modify, distribute, and sell this software and its
@@ -17,7 +15,7 @@
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO EVENT SHALL SuSE
  * BE LIABLE FOR ANY SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN 
+ * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * Author:  Keith Packard, SuSE, Inc.
@@ -40,7 +38,7 @@ const KdMonitorTiming  kdMonitorTimings[] = {
 	            17,	    12,	    32,     KdSyncNegative,
 	            1,      11,     14,     KdSyncNegative,
     },
-    
+
     /* Other VESA modes */
     {	640,	350,	85,	31500,			    /* VESA */
 		    32,	    96,	    192,    KdSyncPositive, /* 26.413 */
@@ -62,7 +60,7 @@ const KdMonitorTiming  kdMonitorTimings[] = {
         16,     80,  160, KdSyncPositive, /* 32.954 */
         1,      45,   49, KdSyncPositive, /* 52.727 */
     },
-    
+
     /* 640x480 modes */
     {	640,	480,	85,	36000,			    /* VESA */
 		    56,	    80,	    192,    KdSyncNegative, /* 43.269 */
@@ -80,7 +78,7 @@ const KdMonitorTiming  kdMonitorTimings[] = {
 		   16,	    48,	    160,    KdSyncNegative, /* 31.469 */
 		   10,	    33,	    45,	    KdSyncNegative, /* 59.940 */
     },
-    
+
     /* 800x600 modes */
     {	800,	600,	85,	56250,			    /* VESA */
 		    32,	    152,    248,    KdSyncPositive, /* 53.674 */
@@ -104,7 +102,7 @@ const KdMonitorTiming  kdMonitorTimings[] = {
 		    24,	    128,    224,    KdSyncPositive, /* 35.156 */
 		    1,	    22,	    25,	    KdSyncPositive, /* 56.250 */
     },
-    
+
     /* 1024x768 modes */
     {	1024,	768,	85,	94500,			    /* VESA */
 		    48,	    208,    352,    KdSyncPositive, /* 68.677 */
@@ -122,13 +120,13 @@ const KdMonitorTiming  kdMonitorTimings[] = {
 		    24,	    160,    320,    KdSyncNegative, /* 48.363 */
 		    3,	    29,	    38,	    KdSyncNegative, /* 60.004 */
     },
-    
+
     /* 1152x864 mode */
     {	1152,	864,	75,	108000,			    /* VESA */
 		    64,	    256,    448,    KdSyncPositive, /* 67.500 */
 		    1,	    32,	    36,	    KdSyncPositive, /* 75.000 */
     },
-    
+
     /* 1152x900 modes */
     {	1152,	900,	85,	122500,			    /* ADDED */
 		    48,	    208,    384,    KdSyncPositive, /* 79.753 */
@@ -317,19 +315,17 @@ KdTuneMode (KdScreenInfo    *screen,
 					  const KdMonitorTiming *))
 {
     const KdMonitorTiming   *t;
-    
+
     while (!(*usable) (screen))
     {
 	/*
 	 * Fix requested depth and geometry until it works
 	 */
-	if (screen->fb[1].depth)
-	    screen->fb[1].depth = 0;
-	else if (screen->fb[0].depth > 16)
-	    screen->fb[0].depth = 16;
-	else if (screen->fb[0].depth > 8)
-	    screen->fb[0].depth = 8;
-	else 
+	if (screen->fb.depth > 16)
+	    screen->fb.depth = 16;
+	else if (screen->fb.depth > 8)
+	    screen->fb.depth = 8;
+	else
 	{
 	    t = kdFindPrevSize (KdFindMode (screen, supported));
 	    if (!t)
@@ -346,14 +342,14 @@ KdTuneMode (KdScreenInfo    *screen,
 Bool
 KdRandRGetInfo (ScreenPtr pScreen,
 		int randr,
-		Bool (*supported) (ScreenPtr pScreen, 
+		Bool (*supported) (ScreenPtr pScreen,
 				   const KdMonitorTiming *))
 {
     KdScreenPriv(pScreen);
     KdScreenInfo	    *screen = pScreenPriv->screen;
     int			    i;
     const KdMonitorTiming   *t;
-    
+
     for (i = 0, t = kdMonitorTimings; i < NUM_MONITOR_TIMINGS; i++, t++)
     {
 	if ((*supported) (pScreen, t))
@@ -375,20 +371,20 @@ KdRandRGetInfo (ScreenPtr pScreen,
 		RRSetCurrentConfig (pScreen, randr, t->rate, pSize);
 	}
     }
-    
+
     return TRUE;
 }
 
 const KdMonitorTiming *
 KdRandRGetTiming (ScreenPtr	    pScreen,
-		  Bool		    (*supported) (ScreenPtr pScreen, 
+		  Bool		    (*supported) (ScreenPtr pScreen,
 						  const KdMonitorTiming *),
 		  int		    rate,
 		  RRScreenSizePtr   pSize)
 {
     int			    i;
     const KdMonitorTiming   *t;
-    
+
     for (i = 0, t = kdMonitorTimings; i < NUM_MONITOR_TIMINGS; i++, t++)
     {
 	if (t->horizontal == pSize->width &&

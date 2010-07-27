@@ -153,25 +153,7 @@ typedef struct _LineFace {
     } \
 }
 
-extern void miFillPolyHelper(
-    DrawablePtr /*pDrawable*/,
-    GCPtr /*pGC*/,
-    unsigned long /*pixel*/,
-    SpanDataPtr /*spanData*/,
-    int /*y*/,
-    int /*overall_height*/,
-    PolyEdgePtr /*left*/,
-    PolyEdgePtr /*right*/,
-    int /*left_count*/,
-    int /*right_count*/
-);
-extern int miRoundJoinFace(
-    LineFacePtr /*face*/,
-    PolyEdgePtr /*edge*/,
-    Bool * /*leftEdge*/
-);
-
-extern void miRoundJoinClip(
+extern _X_EXPORT void miRoundJoinClip(
     LineFacePtr /*pLeft*/,
     LineFacePtr /*pRight*/,
     PolyEdgePtr /*edge1*/,
@@ -182,40 +164,16 @@ extern void miRoundJoinClip(
     Bool * /*left2*/
 );
 
-extern int miRoundCapClip(
+extern _X_EXPORT int miRoundCapClip(
     LineFacePtr /*face*/,
     Bool /*isInt*/,
     PolyEdgePtr /*edge*/,
     Bool * /*leftEdge*/
 );
 
-extern void miLineProjectingCap(
-    DrawablePtr /*pDrawable*/,
-    GCPtr /*pGC*/,
-    unsigned long /*pixel*/,
-    SpanDataPtr /*spanData*/,
-    LineFacePtr /*face*/,
-    Bool /*isLeft*/,
-    double /*xorg*/,
-    double /*yorg*/,
-    Bool /*isInt*/
-);
-
-extern SpanDataPtr miSetupSpanData(
-    GCPtr /*pGC*/,
-    SpanDataPtr /*spanData*/,
-    int /*npt*/
-);
-
-extern void miCleanupSpanData(
-    DrawablePtr /*pDrawable*/,
-    GCPtr /*pGC*/,
-    SpanDataPtr /*spanData*/
-);
-
-extern int miPolyBuildEdge(double x0, double y0, double k, int dx, int dy,
+extern _X_EXPORT int miPolyBuildEdge(double x0, double y0, double k, int dx, int dy,
 				int xi, int yi, int left, PolyEdgePtr edge);
-extern int miPolyBuildPoly(PolyVertexPtr vertices, PolySlopePtr slopes,
+extern _X_EXPORT int miPolyBuildPoly(PolyVertexPtr vertices, PolySlopePtr slopes,
 				int count, int xi, int yi, PolyEdgePtr left,
 				PolyEdgePtr right, int *pnleft, int *pnright,
 				int *h);

@@ -22,7 +22,6 @@
  * PERFORMANCE OF THIS SOFTWARE.
  *
  */
-/* $XConsortium: bsd_VTsw.c /main/4 1996/02/21 17:50:57 kaleb $ */
 
 #ifdef HAVE_XORG_CONFIG_H
 #include <xorg-config.h>
@@ -91,5 +90,14 @@ xf86VTSwitchTo()
 			return(TRUE);
 	}
 #endif
+	return(TRUE);
+}
+
+Bool
+xf86VTActivate(int vtno)
+{
+	if (ioctl(xf86Info.consoleFd, VT_ACTIVATE, vtno) < 0) {
+		return(FALSE);
+	}
 	return(TRUE);
 }

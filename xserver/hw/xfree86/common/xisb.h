@@ -24,7 +24,6 @@
  * in this Software without prior written authorization from Metro Link.
  *
  */
-/* $XFree86$ */
 
 #ifndef	_xisb_H_
 #define _xisb_H_
@@ -53,12 +52,12 @@ typedef struct _XISBuffer
  *											of globals.
  *											put locals in the .c file.
  *****************************************************************************/
-XISBuffer * XisbNew (int fd, ssize_t size);
-void XisbFree (XISBuffer *b);
-int XisbRead (XISBuffer *b);
-ssize_t XisbWrite (XISBuffer *b, unsigned char *msg, ssize_t len);
-void XisbTrace (XISBuffer *b, int trace);
-void XisbBlockDuration (XISBuffer *b, int block_duration);
+extern _X_EXPORT XISBuffer * XisbNew (int fd, ssize_t size);
+extern _X_EXPORT void XisbFree (XISBuffer *b);
+extern _X_EXPORT int XisbRead (XISBuffer *b);
+extern _X_EXPORT ssize_t XisbWrite (XISBuffer *b, unsigned char *msg, ssize_t len);
+extern _X_EXPORT void XisbTrace (XISBuffer *b, int trace);
+extern _X_EXPORT void XisbBlockDuration (XISBuffer *b, int block_duration);
 
 /*
  *	DO NOT PUT ANYTHING AFTER THIS ENDIF

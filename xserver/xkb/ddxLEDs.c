@@ -23,24 +23,22 @@ OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION  WITH
 THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 ********************************************************/
-/* $XFree86$ */
 
 #ifdef HAVE_DIX_CONFIG_H
 #include <dix-config.h>
 #endif
 
 #include <stdio.h>
-#define	NEED_EVENTS 1
 #include <X11/X.h>
 #include <X11/Xproto.h>
 #include <X11/keysym.h>
 #include "inputstr.h"
 #include "scrnintstr.h"
 #include "windowstr.h"
-#include <X11/extensions/XKBsrv.h>
+#include <xkbsrv.h>
 #include <X11/extensions/XI.h>
 
-void
+static void
 XkbDDXUpdateIndicators(DeviceIntPtr dev,CARD32 new)
 {
     dev->kbdfeed->ctrl.leds= new;

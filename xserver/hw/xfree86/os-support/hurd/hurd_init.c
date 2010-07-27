@@ -20,7 +20,6 @@
  * PERFORMANCE OF THIS SOFTWARE.
  *
  */
-/* $XFree86: xc/programs/Xserver/hw/xfree86/os-support/hurd/hurd_init.c,v 1.1 1998/08/16 10:25:48 dawes Exp $ */
 
 #ifdef HAVE_XORG_CONFIG_H
 #include <xorg-config.h>
@@ -44,19 +43,19 @@
 #include <assert.h>
 #include <mach.h>
 
-int 
+int
 xf86ProcessArgument( int argc,char **argv, int i )
 {
     return 0;
 }
-void 
+void
 xf86UseMsg()
 {
     return;
 }
 
 
-void 
+void
 xf86OpenConsole()
 {
     if( serverGeneration == 1 )
@@ -82,7 +81,7 @@ xf86OpenConsole()
     return;
 }
 
-void 
+void
 xf86CloseConsole()
 {
     close( xf86Info.consoleFd );

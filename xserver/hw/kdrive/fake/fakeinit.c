@@ -1,6 +1,4 @@
 /*
- * $Id: fakeinit.c,v 1.1 2006/11/26 18:21:49 matthieu Exp $
- *
  * Copyright © 2004 Keith Packard
  *
  * Permission to use, copy, modify, distribute, and sell this software and its
@@ -30,9 +28,7 @@
 void
 InitCard (char *name)
 {
-    KdCardAttr	attr;
-
-    KdCardInfoAdd (&fakeFuncs, &attr, 0);
+    KdCardInfoAdd (&fakeFuncs, 0);
 }
 
 void
@@ -44,8 +40,35 @@ InitOutput (ScreenInfo *pScreenInfo, int argc, char **argv)
 void
 InitInput (int argc, char **argv)
 {
-    KdInitInput (&FakeMouseFuncs, &FakeKeyboardFuncs);
+    KdPointerInfo *pi;
+    KdKeyboardInfo *ki;
+
+    pi = KdNewPointer ();
+    if (!pi)
+        return;
+    pi->driver = &FakePointerDriver;
+    KdAddPointer(pi);
+
+    ki = KdNewKeyboard ();
+    if (!ki)
+        return;
+    ki->driver = &FakeKeyboardDriver;
+    KdAddKeyboard(ki);
+
+    KdInitInput ();
 }
+
+void
+CloseInput (void)
+{
+}
+
+#ifdef DDXBEFORERESET
+void
+ddxBeforeReset (void)
+{
+}
+#endif
 
 void
 ddxUseMsg (void)

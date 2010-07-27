@@ -1,6 +1,4 @@
 /*
- * $RCSId: xc/programs/Xserver/hw/kdrive/linux/ps2.c,v 1.6 2001/10/12 06:33:10 keithp Exp $
- *
  * Copyright © 1999 Keith Packard
  *
  * Permission to use, copy, modify, distribute, and sell this software and its
@@ -25,7 +23,6 @@
 #ifdef HAVE_CONFIG_H
 #include <kdrive-config.h>
 #endif
-#define NEED_EVENTS
 #include <X11/X.h>
 #include <X11/Xproto.h>
 #include <X11/Xpoll.h>
@@ -102,7 +99,7 @@ Ps2Read (int ps2Port, void *closure)
 		flags |= right_button;
 	    if (b[0] & 1)
 		flags |= left_button;
-		
+
 	    dx = b[1];
 	    if (b[0] & 0x10)
 		dx -= 256;
@@ -112,42 +109,78 @@ Ps2Read (int ps2Port, void *closure)
 	    dy = -dy;
 	    n -= 3;
 	    b += 3;
-	    KdEnqueueMouseEvent (kdMouseInfo, flags, dx, dy);
+	    KdEnqueuePointerEvent (closure, flags, dx, dy, 0);
 	}
     }
 }
 
-int Ps2InputType;
-
-static int
-Ps2Init (void)
+static Status
+Ps2Init (KdPointerInfo *pi)
 {
-    int	    i;
-    int	    ps2Port;
-    int	    n;
+    int	ps2Port, i;
 
-    if (!Ps2InputType)
-	Ps2InputType = KdAllocInputType ();
-    n = 0;
-    for (i = 0; i < NUM_PS2_NAMES; i++)
-    {
-	ps2Port = open (Ps2Names[i], 0);
-	if (ps2Port >= 0)
-	{
-	    if (KdRegisterFd (Ps2InputType, ps2Port, Ps2Read, (void *) i))
-		n++;
+    if (!pi->path) {
+        for (i = 0; i < NUM_PS2_NAMES; i++) {
+            ps2Port = open (Ps2Names[i], 0);
+            if (ps2Port >= 0) {
+                pi->path = strdup (Ps2Names[i]);
+                break;
+            }
 	}
     }
-    return n;
+    else {
+        ps2Port = open (pi->path, 0);
+    }
+
+    if (ps2Port < 0)
+        return BadMatch;
+
+    close(ps2Port);
+    if (!pi->name)
+        pi->name = strdup ("PS/2 Mouse");
+
+    return Success;
+}
+
+static Status
+Ps2Enable (KdPointerInfo *pi)
+{
+    int fd;
+
+    if (!pi)
+        return BadImplementation;
+
+    fd = open (pi->path, 0);
+    if (fd < 0)
+        return BadMatch;
+
+    if (!KdRegisterFd (fd, Ps2Read, pi)) {
+        close(fd);
+        return BadAlloc;
+    }
+
+    pi->driverPrivate = (void *)fd;
+
+    return Success;
+}
+
+
+static void
+Ps2Disable (KdPointerInfo *pi)
+{
+    KdUnregisterFd (pi, (int)pi->driverPrivate, TRUE);
 }
 
 static void
-Ps2Fini (void)
+Ps2Fini (KdPointerInfo *pi)
 {
-    KdUnregisterFds (Ps2InputType, TRUE);
 }
 
-KdMouseFuncs Ps2MouseFuncs = {
+KdPointerDriver Ps2MouseDriver = {
+    "ps2",
     Ps2Init,
-    Ps2Fini
+    Ps2Enable,
+    Ps2Disable,
+    Ps2Fini,
+    NULL,
 };

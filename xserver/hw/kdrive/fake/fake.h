@@ -1,6 +1,4 @@
 /*
- * $Id: fake.h,v 1.1 2006/11/26 18:21:49 matthieu Exp $
- *
  * Copyright © 2004 Keith Packard
  *
  * Permission to use, copy, modify, distribute, and sell this software and its
@@ -40,7 +38,6 @@ typedef struct _fakePriv {
 typedef struct _fakeScrPriv {
     Rotation	randr;
     Bool	shadow;
-    PixmapPtr	pShadow;
 } FakeScrPriv;
 
 extern KdCardFuncs  fakeFuncs;
@@ -88,10 +85,10 @@ void
 fakeCardFini (KdCardInfo *card);
 
 void
-fakeGetColors (ScreenPtr pScreen, int fb, int n, xColorItem *pdefs);
+fakeGetColors (ScreenPtr pScreen, int n, xColorItem *pdefs);
 
 void
-fakePutColors (ScreenPtr pScreen, int fb, int n, xColorItem *pdefs);
+fakePutColors (ScreenPtr pScreen, int n, xColorItem *pdefs);
 
 Bool
 fakeMapFramebuffer (KdScreenInfo *screen);
@@ -130,9 +127,9 @@ fakeRandRInit (ScreenPtr pScreen);
 
 #endif
 
-extern KdMouseFuncs FakeMouseFuncs;
+extern KdPointerDriver FakePointerDriver;
 
-extern KdKeyboardFuncs	FakeKeyboardFuncs;
+extern KdKeyboardDriver	FakeKeyboardDriver;
 
 extern KdOsFuncs   FakeOsFuncs;
 

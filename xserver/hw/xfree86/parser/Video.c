@@ -74,7 +74,23 @@ static xf86ConfigSymTabRec VideoPortTab[] =
 
 #define CLEANUP xf86freeVideoPortList
 
-XF86ConfVideoPortPtr
+static void
+xf86freeVideoPortList (XF86ConfVideoPortPtr ptr)
+{
+	XF86ConfVideoPortPtr prev;
+
+	while (ptr)
+	{
+		TestFree (ptr->vp_identifier);
+		TestFree (ptr->vp_comment);
+		xf86optionListFree (ptr->vp_option_lst);
+		prev = ptr;
+		ptr = ptr->list.next;
+		free (prev);
+	}
+}
+
+static XF86ConfVideoPortPtr
 xf86parseVideoPortSubSection (void)
 {
 	int has_ident = FALSE;
@@ -262,23 +278,7 @@ xf86freeVideoAdaptorList (XF86ConfVideoAdaptorPtr ptr)
 		xf86optionListFree (ptr->va_option_lst);
 		prev = ptr;
 		ptr = ptr->list.next;
-		xf86conffree (prev);
-	}
-}
-
-void
-xf86freeVideoPortList (XF86ConfVideoPortPtr ptr)
-{
-	XF86ConfVideoPortPtr prev;
-
-	while (ptr)
-	{
-		TestFree (ptr->vp_identifier);
-		TestFree (ptr->vp_comment);
-		xf86optionListFree (ptr->vp_option_lst);
-		prev = ptr;
-		ptr = ptr->list.next;
-		xf86conffree (prev);
+		free (prev);
 	}
 }
 

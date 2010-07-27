@@ -1,16 +1,14 @@
-noinst_LTLIBRARIES = libminimi.la libmi.la
+noinst_LTLIBRARIES = libmi.la
 
 if XORG
 sdk_HEADERS = mibank.h micmap.h miline.h mipointer.h mi.h mibstore.h \
               migc.h mipointrst.h mizerarc.h micoord.h mifillarc.h \
-              mispans.h miwideline.h mistruct.h mifpoly.h
+              mispans.h miwideline.h mistruct.h mifpoly.h mioverlay.h
 endif
 
 AM_CFLAGS = $(DIX_CFLAGS)
 
-# libminimi is for dmx - it has different defines for miinitext.c
-libminimi_la_SOURCES = 	\
-	cbrt.c		\
+libmi_la_SOURCES = 	\
 	mi.h		\
 	miarc.c		\
 	mibank.c	\
@@ -22,6 +20,7 @@ libminimi_la_SOURCES = 	\
 	micmap.c	\
 	micmap.h	\
 	micoord.h	\
+	micopy.c	\
 	micursor.c	\
 	midash.c	\
 	midispcur.c	\
@@ -58,7 +57,6 @@ libminimi_la_SOURCES = 	\
 	mispans.h	\
 	misprite.c	\
 	misprite.h	\
-	mispritest.h	\
 	mistruct.h	\
 	mivaltree.c	\
 	mivalidate.h	\
@@ -69,7 +67,3 @@ libminimi_la_SOURCES = 	\
 	mizerarc.h	\
 	mizerclip.c	\
 	mizerline.c
-
-libmi_la_SOURCES = $(libminimi_la_SOURCES)
-
-INCLUDES = -I$(top_srcdir)/mfb
