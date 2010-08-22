@@ -1,5 +1,3 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/riva/riva_dga.c $ */
-
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -71,7 +69,7 @@ SECOND_PASS:
 	    if(secondPitch)
 		pitch = secondPitch; 
 
-	    if(!(newmodes = xrealloc(modes, (*num + 1) * sizeof(DGAModeRec))))
+	    if(!(newmodes = realloc(modes, (*num + 1) * sizeof(DGAModeRec))))
 		break;
 
 	    modes = newmodes;

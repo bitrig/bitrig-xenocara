@@ -1,5 +1,3 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/nv/nv_dga.c,v 1.11 2002/01/25 21:56:06 tsi Exp $ */
-
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -71,7 +69,7 @@ SECOND_PASS:
 	    if(secondPitch)
 		pitch = secondPitch; 
 
-	    if(!(newmodes = xrealloc(modes, (*num + 1) * sizeof(DGAModeRec))))
+	    if(!(newmodes = realloc(modes, (*num + 1) * sizeof(DGAModeRec))))
 		break;
 
 	    modes = newmodes;
