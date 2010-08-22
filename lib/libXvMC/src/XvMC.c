@@ -1,7 +1,6 @@
-/* $XFree86: xc/lib/XvMC/XvMC.c,v 1.4 2001/11/14 21:54:38 mvojkovi Exp $ */
-
-#define NEED_REPLIES
-
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 #include <stdio.h>
 #include "XvMClibint.h"
 #ifdef HAS_SHM
@@ -517,8 +516,8 @@ Status XvMCGetDRInfo(Display *dpy, XvPortID port,
      */
    
     if (req->shmKey >= 0) {
-	shMem = (CARD32 *) shmat(req->shmKey, 0, 0);
-	shmctl( req->shmKey, IPC_RMID, 0);
+	shMem = (CARD32 *) shmat(req->shmKey, NULL, 0);
+	shmctl( req->shmKey, IPC_RMID, NULL);
 	if ( shMem ) { 
 
 	    register volatile CARD32 *shMemC = shMem;
