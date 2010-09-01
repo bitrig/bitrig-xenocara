@@ -4,7 +4,7 @@
 /*                                                                         */
 /*    TrueType bytecode interpreter (specification).                       */
 /*                                                                         */
-/*  Copyright 1996-2001, 2002, 2003, 2004, 2005, 2006 by                   */
+/*  Copyright 1996-2001, 2002, 2003, 2004, 2005, 2006, 2007, 2010 by       */
 /*  David Turner, Robert Wilhelm, and Werner Lemberg.                      */
 /*                                                                         */
 /*  This file is part of the FreeType project, and may only be used,       */
@@ -18,7 +18,6 @@
 
 #ifndef __TTINTERP_H__
 #define __TTINTERP_H__
-
 
 #include <ft2build.h>
 #include "ttobjs.h"
@@ -79,8 +78,8 @@ FT_BEGIN_HEADER
 
   /* Distance projection along one of the projection vectors */
   typedef FT_F26Dot6
-  (*TT_Project_Func)( EXEC_OP_ FT_Vector*  v1,
-                               FT_Vector*  v2 );
+  (*TT_Project_Func)( EXEC_OP_ FT_Pos   dx,
+                               FT_Pos   dy );
 
   /* reading a cvt value.  Take care of non-square pixels if necessary */
   typedef FT_F26Dot6
@@ -151,7 +150,7 @@ FT_BEGIN_HEADER
 
     FT_Bool            step_ins;  /* true if the interpreter must */
                                   /* increment IP after ins. exec */
-    FT_Long            cvtSize;
+    FT_ULong           cvtSize;
     FT_Long*           cvt;
 
     FT_UInt            glyphSize; /* glyph instructions buffer size */
@@ -238,6 +237,14 @@ FT_BEGIN_HEADER
   FT_LOCAL( FT_Error )
   TT_Clear_CodeRange( TT_ExecContext  exec,
                       FT_Int          range );
+
+
+  FT_LOCAL( FT_Error )
+  Update_Max( FT_Memory  memory,
+              FT_ULong*  size,
+              FT_Long    multiplier,
+              void*      _pbuff,
+              FT_ULong   new_max );
 
 
   /*************************************************************************/
