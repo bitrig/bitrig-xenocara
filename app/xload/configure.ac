@@ -22,7 +22,7 @@ dnl
 dnl Process this file with autoconf to create configure.
 
 AC_PREREQ([2.57])
-AC_INIT(xload,[1.0.1], [https://bugs.freedesktop.org/enter_bug.cgi?product=xorg],xload)
+AC_INIT(xload,[1.0.2], [https://bugs.freedesktop.org/enter_bug.cgi?product=xorg],xload)
 AM_INIT_AUTOMAKE([dist-bzip2])
 AM_MAINTAINER_MODE
 
@@ -37,10 +37,7 @@ AC_PROG_INSTALL
 AC_CHECK_LIB([kstat], [kstat_open])
 
 # Checks for pkg-config packages
-XAW_CHECK_XPRINT_SUPPORT(XLOAD)
-
-AC_SUBST(XLOAD_CFLAGS)
-AC_SUBST(XLOAD_LIBS)
+PKG_CHECK_MODULES(XLOAD, xaw7 xmu xt x11)
 
 PKG_CHECK_MODULES(APPDEFS, xt)
 appdefaultdir=$(pkg-config --variable=appdefaultdir xt)
