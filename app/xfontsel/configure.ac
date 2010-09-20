@@ -22,7 +22,7 @@ dnl
 dnl Process this file with autoconf to create configure.
 
 AC_PREREQ([2.57])
-AC_INIT(xfontsel,[1.0.1], [https://bugs.freedesktop.org/enter_bug.cgi?product=xorg],xfontsel)
+AC_INIT(xfontsel,[1.0.2], [https://bugs.freedesktop.org/enter_bug.cgi?product=xorg],xfontsel)
 AM_INIT_AUTOMAKE([dist-bzip2])
 AM_MAINTAINER_MODE
 
@@ -31,10 +31,7 @@ AM_CONFIG_HEADER(config.h)
 AC_PROG_CC
 AC_PROG_INSTALL
 
-XAW_CHECK_XPRINT_SUPPORT(XFONTSEL)
-
-AC_SUBST(XFONTSEL_CFLAGS)
-AC_SUBST(XFONTSEL_LIBS)
+PKG_CHECK_MODULES(XFONTSEL, xaw7 xmu xt x11)
 
 PKG_CHECK_MODULES(APPDEFS, xt)
 appdefaultdir=$(pkg-config --variable=appdefaultdir xt)
