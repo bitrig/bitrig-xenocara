@@ -22,7 +22,6 @@
  * used in advertising or otherwise to promote the sale, use or other dealings
  * in this Software without prior written authorization from GROUPE BULL.
  */
-/* $XFree86: xc/extras/Xpm/lib/XpmI.h,v 1.7 2001/11/01 23:35:25 dawes Exp $ */
 
 /*****************************************************************************\
 * XpmI.h:                                                                     *
@@ -58,9 +57,13 @@
 extern FILE *popen();
 #endif
 
+#ifdef FOR_MSW
+#include "simx.h"
+#else
 #include <X11/Xos.h>
 #include <X11/Xfuncs.h>
 #include <X11/Xmd.h>
+#endif
 
 #ifdef VMS
 #include <unixio.h>
