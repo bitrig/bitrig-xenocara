@@ -1,4 +1,3 @@
-/* $Xorg: bdftopcf.c,v 1.4 2001/02/09 02:05:28 xorgcvs Exp $ */
 /*
 
 Copyright 1991, 1993, 1998  The Open Group
@@ -27,8 +26,6 @@ from The Open Group.
 
 */
 
-/* $XFree86: xc/programs/bdftopcf/bdftopcf.c,v 1.4 2001/08/01 00:45:00 tsi Exp $ */
-
 #include <X11/X.h>
 #include <X11/Xproto.h>
 #include <X11/fonts/fontmisc.h>
@@ -45,7 +42,7 @@ main (int argc, char *argv[])
 {
     FontRec font;
     FontFilePtr	input, output;
-    char    *input_name = 0, *output_name = 0;
+    char    *input_name = NULL, *output_name = NULL;
     char    *program_name;
     int	    bit, byte, glyph, scan;
 
@@ -166,7 +163,7 @@ main (int argc, char *argv[])
     if (bdfReadFont (&font, input, bit, byte, glyph, scan) != Successful)
     {
 	fprintf (stderr, "%s: bdf input, %s, corrupt\n",
-		 program_name, input_name);
+		 program_name, input_name ? input_name : "<stdin>");
 	exit (1);
     }
     if (output_name)
