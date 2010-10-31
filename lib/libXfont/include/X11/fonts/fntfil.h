@@ -1,5 +1,3 @@
-/* $Xorg: fntfil.h,v 1.4 2001/02/09 02:04:04 xorgcvs Exp $ */
-
 /*
 
 Copyright 1991, 1998  The Open Group
@@ -25,7 +23,6 @@ used in advertising or otherwise to promote the sale, use or other dealings
 in this Software without prior written authorization from The Open Group.
 
 */
-/* $XFree86: xc/lib/font/include/fntfil.h,v 1.9 2001/12/14 19:56:54 dawes Exp $ */
 
 /*
  * Author:  Keith Packard, MIT X Consortium
@@ -92,6 +89,9 @@ extern int FontFileOpenBitmap ( FontPathElementPtr fpe, FontPtr *pFont,
 extern int FontFileListFonts ( pointer client, FontPathElementPtr fpe, 
 			       char *pat, int len, int max, 
 			       FontNamesPtr names );
+extern int FontFileStartListFonts ( pointer client, FontPathElementPtr fpe, 
+				    char *pat, int len, int max, 
+				    pointer *privatep, int mark_aliases );
 extern int FontFileStartListFontsWithInfo ( pointer client, 
 					    FontPathElementPtr fpe, 
 					    char *pat, int len, int max, 
@@ -111,6 +111,7 @@ extern int FontFileListNextFontOrAlias ( pointer client,
 					 char **resolvedp, int *resolvedlenp, 
 					 pointer private );
 extern void FontFileRegisterLocalFpeFunctions ( void );
+extern void CatalogueRegisterLocalFpeFunctions ( void );
 
 
 extern FontEntryPtr FontFileAddEntry ( FontTablePtr table, 

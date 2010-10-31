@@ -1,6 +1,4 @@
 /*
- * Id: fonts.c,v 1.2 1999/11/02 06:16:47 keithp Exp $
- *
  * Copyright 1999 SuSE, Inc.
  *
  * Permission to use, copy, modify, distribute, and sell this software and its
@@ -22,7 +20,6 @@
  *
  * Author:  Keith Packard, SuSE, Inc.
  */
-/* $XFree86: xc/lib/font/builtins/fonts.c,v 1.3 1999/12/30 02:29:49 robin Exp $ */
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -1229,15 +1226,15 @@ static char name_6x13[] = "-misc-fixed-medium-r-semicondensed--13-120-75-75-c-60
 static char name_cursor[] = "cursor";
 
 const BuiltinFileRec builtin_files[] = {
-"6x13.builtin", sizeof file_6x13, file_6x13,
-"cursor.builtin", sizeof file_cursor, file_cursor,
+ { "6x13.builtin", sizeof file_6x13, file_6x13, },
+ { "cursor.builtin", sizeof file_cursor, file_cursor, }
 };
 
 const int builtin_files_count = sizeof (builtin_files) / sizeof (builtin_files[0]);
 
 const BuiltinDirRec builtin_dir[] = {
-"6x13.builtin", name_6x13,
-"cursor.builtin", name_cursor,
+ { "6x13.builtin", name_6x13, },
+ { "cursor.builtin", name_cursor, }
 };
 
 const int builtin_dir_count = sizeof (builtin_dir) / sizeof (builtin_dir[0]);
@@ -1247,9 +1244,9 @@ static char alias_6x13[] = "6x13";
 static char alias_6x13_100[] = "-misc-fixed-medium-r-semicondensed--13-100-100-100-c-60-iso8859-1";
 
 const BuiltinAliasRec builtin_alias[] = {
-alias_fixed, name_6x13,
-alias_6x13, name_6x13,
-alias_6x13_100, name_6x13,
+ { alias_fixed, name_6x13, },
+ { alias_6x13, name_6x13, },
+ { alias_6x13_100, name_6x13, }
 };
 
 const int builtin_alias_count = sizeof (builtin_alias) / sizeof (builtin_alias[0]);

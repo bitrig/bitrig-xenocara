@@ -1,4 +1,3 @@
-/* $Xorg: fserve.h,v 1.3 2000/08/17 19:46:36 cpqbld Exp $ */
 /*
  * Copyright 1990 Network Computing Devices
  *
@@ -24,7 +23,6 @@
  * Author:  	Dave Lemke, Network Computing Devices, Inc
  *
  */
-/* $XFree86: xc/lib/font/fc/fserve.h,v 1.4 2001/01/17 19:43:29 dawes Exp $ */
 
 #ifndef _FSERVE_H_
 #define _FSERVE_H_
@@ -80,9 +78,6 @@ extern FontPtr fs_create_font (FontPathElementPtr   fpe,
 			       fsBitmapFormatMask   fmask);
 
 extern int fs_load_all_glyphs ( FontPtr pfont );
-extern int _fs_load_glyphs ( pointer client, FontPtr pfont, Bool range_flag, 
-			     unsigned int nchars, int item_size, 
-			     unsigned char *data );
 
 /*
  * These should be declared elsewhere, but I'm concerned that moving them

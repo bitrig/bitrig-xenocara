@@ -1,7 +1,4 @@
-/* $XdotOrg: $ */
 /*
- * Id: fpe.c,v 1.2 1999/11/02 06:16:48 keithp Exp $
- *
  * Copyright 1999 SuSE, Inc.
  *
  * Permission to use, copy, modify, distribute, and sell this software and its
@@ -23,27 +20,25 @@
  *
  * Author:  Keith Packard, SuSE, Inc.
  */
-/* $XFree86: xc/lib/font/builtins/fpe.c,v 1.3 1999/12/30 02:29:51 robin Exp $ */
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
 #include    <X11/fonts/fntfilst.h>
+#include "builtin.h"
 
 static int  font_file_type;
 
-const char	builtin_fonts[] = "built-ins";
+static const char builtin_fonts[] = "built-ins";
 
-int
-BuiltinNameCheck (name)
-    char    *name;
+static int
+BuiltinNameCheck (char *name)
 {
     return (strcmp (name, builtin_fonts) == 0);
 }
 
-int
-BuiltinInitFPE (fpe)
-    FontPathElementPtr	fpe;
+static int
+BuiltinInitFPE (FontPathElementPtr fpe)
 {
     int			status;
     FontDirectoryPtr	dir;
@@ -56,9 +51,8 @@ BuiltinInitFPE (fpe)
 }
 
 /* ARGSUSED */
-int
-BuiltinResetFPE (fpe)
-    FontPathElementPtr	fpe;
+static int
+BuiltinResetFPE (FontPathElementPtr fpe)
 {
     FontDirectoryPtr	dir;
 
@@ -67,9 +61,8 @@ BuiltinResetFPE (fpe)
     return Successful;
 }
 
-int
-BuiltinFreeFPE (fpe)
-    FontPathElementPtr	fpe;
+static int
+BuiltinFreeFPE (FontPathElementPtr fpe)
 {
     FontFileFreeDir ((FontDirectoryPtr) fpe->private);
     return Successful;

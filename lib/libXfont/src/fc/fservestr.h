@@ -1,4 +1,3 @@
-/* $Xorg: fservestr.h,v 1.3 2000/08/17 19:46:36 cpqbld Exp $ */
 /*
  * Copyright 1990 Network Computing Devices
  *
@@ -23,7 +22,6 @@
  *
  * Author:  	Dave Lemke, Network Computing Devices, Inc
  */
-/* $XFree86: xc/lib/font/fc/fservestr.h,v 3.3 2001/01/17 19:43:29 dawes Exp $ */
 
 #ifndef _FSERVESTR_H_
 #define _FSERVESTR_H_
@@ -197,15 +195,6 @@ extern int fs_build_range ( FontPtr pfont, Bool range_flag,
 extern void _fs_clean_aborted_loadglyphs ( FontPtr pfont, 
 					   int num_expected_ranges, 
 					   fsRange *expected_ranges );
-extern int _fs_check_extents ( FontPtr pfont, Mask flags, int nranges, 
-			       fsRange *range, FSBlockDataPtr blockrec );
-extern int _fs_check_bitmaps ( FontPtr pfont, fsBitmapFormat format, 
-			       Mask flags, int nranges, fsRange *range, 
-			       FSBlockDataPtr blockrec );
-extern int _fs_get_glyphs ( FontPtr pFont, unsigned long count, 
-			    unsigned char *chars, FontEncoding charEncoding, 
-			    unsigned long *glyphCount, CharInfoPtr *glyphs );
-extern void _fs_unload_font ( FontPtr pfont );
 extern void _fs_init_font ( FontPtr pfont );
 extern pointer fs_alloc_glyphs (FontPtr pFont, int size);
 #endif				/* _FSERVESTR_H_ */
