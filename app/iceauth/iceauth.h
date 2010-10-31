@@ -1,6 +1,4 @@
 /*
- * $Xorg: iceauth.h,v 1.4 2001/02/09 02:05:31 xorgcvs Exp $
- *
  * 
 Copyright 1989, 1998  The Open Group
 
@@ -27,8 +25,6 @@ in this Software without prior written authorization from The Open Group.
  * Author:  Jim Fulton, MIT X Consortium
  */
 
-/* $XFree86: xc/programs/iceauth/iceauth.h,v 3.4 2001/07/25 15:05:13 dawes Exp $ */
-
 #ifdef HAVE_CONFIG_H
 # include "config.h"
 #endif
@@ -45,14 +41,14 @@ typedef int Bool;
 #define True 1
 #endif
 
-extern char *ProgramName;
+extern const char *ProgramName;
 
 #include <stdlib.h>
 
 extern int auth_initialize ( char *authfilename );
 extern int auth_finalize ( void );
-extern int process_command ( char *inputfilename, int lineno, int argc, char **argv );
-extern int print_help ( FILE *fp, char *cmd );
+extern int process_command ( const char *inputfilename, int lineno, int argc, char **argv );
+extern int print_help ( FILE *fp, const char *cmd );
 
 extern int verbose;
 extern Bool ignore_locks;
