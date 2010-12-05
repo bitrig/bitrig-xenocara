@@ -19,7 +19,6 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-/* $XConsortium$ */
 
 /* Re-written May 2001 to represent the current state of reality */
 
@@ -234,7 +233,7 @@ xf86ProcessArgument(int argc, char *argv[], int i)
    */
   if (!strcmp(argv[i], "-keeptty")) {
     KeepTty = TRUE;
-    return(1);
+    return 1;
   }
 
   /*
@@ -247,7 +246,7 @@ xf86ProcessArgument(int argc, char *argv[], int i)
    */
   if (!strcmp(argv[i], "-nompxlock")) {
     mpxLock = FALSE;
-    return (1);
+    return 1;
   }
 
   /*
@@ -257,14 +256,14 @@ xf86ProcessArgument(int argc, char *argv[], int i)
     if (sscanf(argv[i], "vt%2d", &VTnum) == 0) {
       UseMsg();
       VTnum = -1;
-      return(0);
+      return 0;
     }
     if (VTnum <= 0) {
       UseMsg();
       VTnum = -1;
-      return(0);
+      return 0;
     }
-    return(1);
+    return 1;
   }
 
   /*
@@ -274,14 +273,14 @@ xf86ProcessArgument(int argc, char *argv[], int i)
     if (++i > argc) {
       UseMsg();
       VTnum = -1;
-      return(0);
+      return 0;
     } else {
       VTnum = -2;
       strlcpy (vtdevice, argv[i], sizeof(vtdevice));
-      return(2);
+      return 2;
     }
   }
-  return(0);
+  return 0;
 }
 
 void

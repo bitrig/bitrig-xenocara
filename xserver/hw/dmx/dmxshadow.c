@@ -1,4 +1,3 @@
-/* $XFree86$ */
 /*
  * Copyright 2001 Red Hat Inc., Durham, North Carolina.
  *
@@ -48,8 +47,8 @@
 void dmxShadowUpdateProc(ScreenPtr pScreen, shadowBufPtr pBuf)
 {
     RegionPtr      damage = &pBuf->damage;
-    int            nbox = REGION_NUM_RECTS(damage);
-    BoxPtr         pbox = REGION_RECTS(damage);
+    int            nbox = RegionNumRects(damage);
+    BoxPtr         pbox = RegionRects(damage);
     DMXScreenInfo *dmxScreen = &dmxScreens[pScreen->myNum];
 
     if (!dmxScreen->beDisplay)

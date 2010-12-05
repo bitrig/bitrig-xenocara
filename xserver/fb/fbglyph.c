@@ -29,8 +29,6 @@
 #include	<X11/fonts/fontstruct.h>
 #include	"dixfontstr.h"
 
-#define dummyScreen screenInfo.screens[0]
-      
 Bool
 fbGlyphIn (RegionPtr	pRegion,
 	   int		x,
@@ -39,7 +37,7 @@ fbGlyphIn (RegionPtr	pRegion,
 	   int		height)
 {
     BoxRec  box;
-    BoxPtr  pExtents = REGION_EXTENTS (dummyScreen, pRegion);
+    BoxPtr  pExtents = RegionExtents(pRegion);
 
     /*
      * Check extents by hand to avoid 16 bit overflows
@@ -56,17 +54,17 @@ fbGlyphIn (RegionPtr	pRegion,
     box.x2 = x + width;
     box.y1 = y;
     box.y2 = y + height;
-    return RECT_IN_REGION (dummyScreen, pRegion, &box) == rgnIN;
+    return RegionContainsRect(pRegion, &box) == rgnIN;
 }
 
 #ifdef FB_24BIT
 #ifndef FBNOPIXADDR
 
-#define WRITE1(d,n,fg)	((d)[n] = (CARD8) fg)
-#define WRITE2(d,n,fg)	(*(CARD16 *) &(d[n]) = (CARD16) fg)
-#define WRITE4(d,n,fg)	(*(CARD32 *) &(d[n]) = (CARD32) fg)
+#define WRITE1(d,n,fg)	WRITE((d) + (n), (CARD8) fg)
+#define WRITE2(d,n,fg)	WRITE((CARD16 *) &(d[n]), (CARD16) fg)
+#define WRITE4(d,n,fg)	WRITE((CARD32 *) &(d[n]), (CARD32) fg)
 #if FB_UNIT == 6 && IMAGE_BYTE_ORDER == LSBFirst
-#define WRITE8(d)	(*(FbBits *) &(d[0]) = fg)
+#define WRITE8(d)	WRITE((FbBits *) &(d[0]), fg)
 #else
 #define WRITE8(d)	WRITE4(d,0,_ABCA), WRITE4(d,4,_BCAB)
 #endif
@@ -157,7 +155,7 @@ fbGlyph24 (FbBits   *dstBits,
     lshift = 4 - shift;
     while (height--)
     {
-	bits = *stipple++;
+	bits = READ(stipple++);
 	n = lshift;
 	dst = dstLine;
 	while (bits)
@@ -284,7 +282,7 @@ fbPolyGlyphBlt (DrawablePtr	pDrawable,
     glyph = 0;
     if (pGC->fillStyle == FillSolid && pPriv->and == 0)
     {
-	fbGetDrawable (pDrawable, dst, dstStride, dstBpp, dstXoff, dstYoff);
+	dstBpp = pDrawable->bitsPerPixel;
 	switch (dstBpp) {
 	case 8:	    glyph = fbGlyph8; break;
 	case 16:    glyph = fbGlyph16; break;
@@ -312,6 +310,7 @@ fbPolyGlyphBlt (DrawablePtr	pDrawable,
 	    if (glyph && gWidth <= sizeof (FbStip) * 8 &&
 		fbGlyphIn (fbGetCompositeClip(pGC), gx, gy, gWidth, gHeight))
 	    {
+		fbGetDrawable (pDrawable, dst, dstStride, dstBpp, dstXoff, dstYoff);
 		(*glyph) (dst + (gy + dstYoff) * dstStride,
 			  dstStride,
 			  dstBpp,
@@ -319,6 +318,7 @@ fbPolyGlyphBlt (DrawablePtr	pDrawable,
 			  pPriv->xor,
 			  gx + dstXoff,
 			  gHeight);
+		fbFinishAccess (pDrawable);
 	    }
 	    else
 #endif
@@ -375,7 +375,7 @@ fbImageGlyphBlt (DrawablePtr	pDrawable,
     glyph = 0;
     if (pPriv->and == 0)
     {
-	fbGetDrawable (pDrawable, dst, dstStride, dstBpp, dstXoff, dstYoff);
+	dstBpp = pDrawable->bitsPerPixel;
 	switch (dstBpp) {
 	case 8:	    glyph = fbGlyph8; break;
 	case 16:    glyph = fbGlyph16; break;
@@ -443,6 +443,7 @@ fbImageGlyphBlt (DrawablePtr	pDrawable,
 	    if (glyph && gWidth <= sizeof (FbStip) * 8 &&
 		fbGlyphIn (fbGetCompositeClip(pGC), gx, gy, gWidth, gHeight))
 	    {
+		fbGetDrawable (pDrawable, dst, dstStride, dstBpp, dstXoff, dstYoff);
 		(*glyph) (dst + (gy + dstYoff) * dstStride,
 			  dstStride,
 			  dstBpp,
@@ -450,6 +451,7 @@ fbImageGlyphBlt (DrawablePtr	pDrawable,
 			  pPriv->fg,
 			  gx + dstXoff,
 			  gHeight);
+		fbFinishAccess (pDrawable);
 	    }
 	    else
 #endif

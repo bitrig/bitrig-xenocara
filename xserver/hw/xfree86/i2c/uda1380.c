@@ -1,6 +1,4 @@
 /*************************************************************************************
- * $Id: uda1380.c,v 1.1 2006/11/26 18:17:37 matthieu Exp $
- * 
  * Copyright (C) 2005 Bogdan D. bogdand@users.sourceforge.net
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this 
@@ -38,7 +36,7 @@ UDA1380Ptr Detect_uda1380(I2CBusPtr b, I2CSlaveAddr addr)
 	UDA1380Ptr t;
 	I2CByte a;
   
-	t = xcalloc(1, sizeof(UDA1380Rec));
+	t = calloc(1, sizeof(UDA1380Rec));
 	if(t == NULL) return NULL;
 	switch(addr)
 	{
@@ -60,14 +58,14 @@ UDA1380Ptr Detect_uda1380(I2CBusPtr b, I2CSlaveAddr addr)
   
 	if(!I2C_WriteRead(&(t->d), NULL, 0, &a, 1))
 	{
-		xfree(t);
+		free(t);
 		return NULL;
 	}
   
 	/* set default parameters */
 	if(!I2CDevInit(&(t->d)))
 	{
-		xfree(t);
+		free(t);
 		return NULL;
 	}
   

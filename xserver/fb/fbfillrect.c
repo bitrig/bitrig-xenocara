@@ -1,6 +1,4 @@
 /*
- * Id: fbfillrect.c,v 1.1 1999/11/02 03:54:45 keithp Exp $
- *
  * Copyright © 1998 Keith Packard
  *
  * Permission to use, copy, modify, distribute, and sell this software and its
@@ -46,7 +44,7 @@ fbPolyFillRect(DrawablePtr  pDrawable,
     xorg = pDrawable->x;
     yorg = pDrawable->y;
     
-    pextent = REGION_EXTENTS(pGC->pScreen, pClip);
+    pextent = RegionExtents(pClip);
     extentX1 = pextent->x1;
     extentY1 = pextent->y1;
     extentX2 = pextent->x2;
@@ -73,7 +71,7 @@ fbPolyFillRect(DrawablePtr  pDrawable,
 
 	if ((fullX1 >= fullX2) || (fullY1 >= fullY2))
 	    continue;
-	n = REGION_NUM_RECTS (pClip);
+	n = RegionNumRects (pClip);
 	if (n == 1)
 	{
 	    fbFill (pDrawable,
@@ -82,7 +80,7 @@ fbPolyFillRect(DrawablePtr  pDrawable,
 	}
 	else
 	{
-	    pbox = REGION_RECTS(pClip);
+	    pbox = RegionRects(pClip);
 	    /* 
 	     * clip the rectangle to each box in the clip region
 	     * this is logically equivalent to calling Intersect()

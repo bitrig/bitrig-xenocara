@@ -1,6 +1,4 @@
 /*
- * Id: fbsetsp.c,v 1.1 1999/11/02 03:54:45 keithp Exp $
- *
  * Copyright © 1998 Keith Packard
  *
  * Permission to use, copy, modify, distribute, and sell this software and its
@@ -62,8 +60,8 @@ fbSetSpans (DrawablePtr	    pDrawable,
 	xoff = (int) (((long) src) & (FB_MASK >> 3));
 	s = (FbBits *) (src - xoff);
 	xoff <<= 3;
-	n = REGION_NUM_RECTS(pClip);
-	pbox = REGION_RECTS (pClip);
+	n = RegionNumRects(pClip);
+	pbox = RegionRects (pClip);
 	while (n--)
 	{
 	    if (pbox->y1 > ppt->y)
@@ -99,5 +97,6 @@ fbSetSpans (DrawablePtr	    pDrawable,
 	pwidth++;
     }
     fbValidateDrawable (pDrawable);
+    fbFinishAccess (pDrawable);
 }
 	    

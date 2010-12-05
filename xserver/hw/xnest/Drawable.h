@@ -11,7 +11,6 @@ the suitability of this software for any purpose.  It is provided "as
 is" without express or implied warranty.
 
 */
-/* $XFree86$ */
 
 #ifndef XNESTDRAWABLE_H
 #define XNESTDRAWABLE_H
@@ -20,7 +19,7 @@ is" without express or implied warranty.
 #include "XNPixmap.h"
 
 #define xnestDrawable(pDrawable) \
-  ((pDrawable)->type == DRAWABLE_WINDOW ? \
+  (WindowDrawable((pDrawable)->type) ?	\
    xnestWindow((WindowPtr)pDrawable) : \
    xnestPixmap((PixmapPtr)pDrawable))
 

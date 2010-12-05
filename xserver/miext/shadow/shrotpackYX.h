@@ -1,6 +1,4 @@
 /*
- * $Id: shrotpackYX.h,v 1.1 2006/11/26 18:15:06 matthieu Exp $
- *
  * Copyright © 2004 Philip Blundell
  *
  * Permission to use, copy, modify, distribute, and sell this software and its
@@ -65,8 +63,8 @@ FUNC (ScreenPtr	    pScreen,
 {
     RegionPtr	damage = shadowDamage(pBuf);
     PixmapPtr	pShadow = pBuf->pPixmap;
-    int		nbox = REGION_NUM_RECTS (damage);
-    BoxPtr	pbox = REGION_RECTS (damage);
+    int		nbox = RegionNumRects (damage);
+    BoxPtr	pbox = RegionRects (damage);
     FbBits	*shaBits;
     Data	*shaBase, *shaLine, *sha;
     FbStride	shaStride, winStride;

@@ -22,7 +22,6 @@
  * PERFORMANCE OF THIS SOFTWARE.
  *
  */
-/* $XConsortium: atKeynames.h /main/11 1996/03/09 11:17:41 kaleb $ */
 
 #define XK_TECHNICAL
 #define	XK_KATAKANA
@@ -39,7 +38,6 @@
 #define KanaMask	Mod4Mask
 #define ScrollLockMask	Mod5Mask
 
-#define KeyPressed(k) (keyc->down[k >> 3] & (1 << (k & 7)))
 #define ModifierDown(k) ((keyc->state & (k)) == (k))
 
 /*
