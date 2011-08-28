@@ -40,7 +40,7 @@ typedef struct sectionName {
     char *	suffix;
 } SectionNameRec;
 
-#if defined(SYSV) || defined(__osf__) || defined(SVR4) && !defined(sun)
+#if (defined(SYSV) || defined(__osf__) || defined(SVR4)) && !defined(sun)
 
 static SectionNameRec SectionNames[] = {
     {"(1) User Commands",		"1"},
@@ -187,10 +187,10 @@ char * path)
   int numSections = sizeof(SectionNames) / sizeof(SectionNames[0]);
 
   for (i=0; i < numSections; i++) {
-    sprintf(file, "%s%s", SEARCHDIR, SectionNames[i].suffix);
+    snprintf(file, sizeof(file), "%s%s", SEARCHDIR, SectionNames[i].suffix);
     AddNewSection(list, path, file, SectionNames[i].name, TRUE);
 #ifdef SEARCHOTHER
-    sprintf(file, "%s%s", SEARCHOTHER, SectionNames[i].suffix);
+    snprintf(file, sizeof(file), "%s%s", SEARCHOTHER, SectionNames[i].suffix);
     AddNewSection(list, path, file, SectionNames[i].name, TRUE);
 #endif
   }
@@ -251,7 +251,7 @@ char *path)
     char *message = *p++;
     int flags = (int) *p++;
     while (*p != NULL) {
-      sprintf(file, "%s%s", SEARCHDIR, *p++);
+      snprintf(file, sizeof(file), "%s%s", SEARCHDIR, *p++);
       AddNewSection(list, path, file, message, flags);
     }
     p++;
