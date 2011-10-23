@@ -10,7 +10,6 @@ drienv = env.Clone()
 
 drienv.Replace(CPPPATH = [
     '#src/mesa/drivers/dri/common',
-    xmlpool_options.dir.dir, # Dir to generated xmlpool/options.h
     '#include',
     '#include/GL/internal',
     '#src/mapi',
@@ -30,7 +29,7 @@ drienv.Replace(CPPPATH = [
     '#src/egl/drivers/dri',
 ])
 
-drienv.PkgUseModules('DRM')
+drienv.ParseConfig('pkg-config --cflags --libs libdrm')
 
 dri_common_utils = drienv.SharedObject(
     target = 'utils.o',
@@ -40,6 +39,11 @@ dri_common_utils = drienv.SharedObject(
 dri_common_xmlconfig = drienv.SharedObject(
     target = 'xmlconfig.o',
     source = '#src/mesa/drivers/dri/common/xmlconfig.c'
+)
+
+dri_common_vblank = drienv.SharedObject(
+    target = 'vblank.o',
+    source = '#src/mesa/drivers/dri/common/vblank.c'
 )
 
 dri_common_dri_util = drienv.SharedObject(
@@ -62,6 +66,7 @@ COMMON_DRI_SW_OBJECTS = [
 COMMON_DRI_DRM_OBJECTS = [
     dri_common_utils,
     dri_common_xmlconfig,
+    dri_common_vblank,
     dri_common_dri_util,
 ]
 
