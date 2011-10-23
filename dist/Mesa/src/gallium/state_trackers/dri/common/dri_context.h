@@ -32,9 +32,8 @@
 #ifndef DRI_CONTEXT_H
 #define DRI_CONTEXT_H
 
-#include "dri_util.h"
 #include "pipe/p_compiler.h"
-#include "hud/hud_context.h"
+#include "dri_wrapper.h"
 
 struct pipe_context;
 struct pipe_fence;
@@ -50,13 +49,18 @@ struct dri_context
    __DRIdrawable *dPriv;
    __DRIdrawable *rPriv;
 
+   driOptionCache optionCache;
+
+   drmLock *lock;
+   boolean isLocked;
+   boolean stLostLock;
+   boolean wsLostLock;
+
    unsigned int bind_count;
 
    /* gallium */
    struct st_api *stapi;
    struct st_context_iface *st;
-   struct pp_queue_t *pp;
-   struct hud_context *hud;
 };
 
 static INLINE struct dri_context *
@@ -86,11 +90,6 @@ boolean
 dri_create_context(gl_api api,
 		   const struct gl_config * visual,
 		   __DRIcontext * driContextPriv,
-		   unsigned major_version,
-		   unsigned minor_version,
-		   uint32_t flags,
-		   bool notify_reset,
-		   unsigned *error,
 		   void *sharedContextPrivate);
 
 #endif

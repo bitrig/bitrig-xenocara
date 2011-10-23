@@ -32,14 +32,13 @@
 #ifndef DRI_SCREEN_H
 #define DRI_SCREEN_H
 
-#include "dri_util.h"
+#include "dri_wrapper.h"
 #include "xmlconfig.h"
 
 #include "pipe/p_compiler.h"
 #include "pipe/p_context.h"
 #include "pipe/p_state.h"
 #include "state_tracker/st_api.h"
-#include "postprocess/filters.h"
 
 struct dri_context;
 struct dri_drawable;
@@ -55,20 +54,15 @@ struct dri_screen
 
    /* dri */
    __DRIscreen *sPriv;
-   boolean throttling_enabled;
-   int default_throttle_frames;
 
-   /** Configuration cache with default values for all contexts */
-   driOptionCache optionCacheDefaults;
-
-   /** The screen's effective configuration options */
+   /**
+    * Configuration cache with default values for all contexts
+    */
    driOptionCache optionCache;
-
-   /* Which postprocessing filters are enabled. */
-   unsigned pp_enabled[PP_FILTERS];
 
    /* drm */
    int fd;
+   drmLock *drmLock;
 
    /* gallium */
    boolean d_depth_bits_last;
@@ -84,26 +78,15 @@ struct dri_screen
 static INLINE struct dri_screen *
 dri_screen(__DRIscreen * sPriv)
 {
-   return (struct dri_screen *)sPriv->driverPrivate;
+   return (struct dri_screen *)sPriv->private;
 }
 
 struct __DRIimageRec {
    struct pipe_resource *texture;
    unsigned level;
    unsigned layer;
-   uint32_t dri_format;
-   uint32_t dri_components;
 
    void *loader_private;
-
-   /**
-    * Provided by EGL_EXT_image_dma_buf_import.
-    */
-   enum __DRIYUVColorSpace yuv_color_space;
-   enum __DRISampleRange sample_range;
-   enum __DRIChromaSiting horizontal_siting;
-   enum __DRIChromaSiting vertical_siting;
-
 };
 
 #ifndef __NOT_HAVE_DRM_H
@@ -134,15 +117,14 @@ dri_fill_st_visual(struct st_visual *stvis, struct dri_screen *screen,
 
 const __DRIconfig **
 dri_init_screen_helper(struct dri_screen *screen,
-                       struct pipe_screen *pscreen);
+                       struct pipe_screen *pscreen,
+                       unsigned pixel_bits);
 
 void
 dri_destroy_screen_helper(struct dri_screen * screen);
 
 void
 dri_destroy_screen(__DRIscreen * sPriv);
-
-extern const __DRIconfigOptionsExtension gallium_config_options;
 
 #endif
 
