@@ -4,15 +4,13 @@
 
 #include "xf86Module.h"
 
-static MODULESETUPPROTO(uda1380Setup);
-
 static XF86ModuleVersionInfo uda1380VersRec =
 {
         "uda1380",
         MODULEVENDORSTRING,
         MODINFOSTRING1,
         MODINFOSTRING2,
-        XF86_VERSION_CURRENT,
+        XORG_VERSION_CURRENT,
         1, 0, 0,
         ABI_CLASS_VIDEODRV,             /* This needs the video driver ABI */
         ABI_VIDEODRV_VERSION,
@@ -22,11 +20,6 @@ static XF86ModuleVersionInfo uda1380VersRec =
  
 _X_EXPORT XF86ModuleData uda1380ModuleData = {
         &uda1380VersRec,
-        uda1380Setup,
+        NULL,
         NULL
 }; 
-
-static pointer
-uda1380Setup(pointer module, pointer opts, int *errmaj, int *errmin) {
-   return (pointer)1;
-}

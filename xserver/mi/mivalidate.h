@@ -25,8 +25,6 @@ other dealings in this Software without prior written authorization
 from The Open Group.
 
 */
-/* $XFree86$ */
-
 
 #ifdef HAVE_DIX_CONFIG_H
 #include <dix-config.h>
@@ -42,8 +40,7 @@ typedef union _Validate {
 	DDXPointRec	oldAbsCorner;	/* old window position */
 	RegionPtr	borderVisible;	/* visible region of border, */
 					/* non-null when size changes */
-	Bool		resized;	/* unclipped winSize has changed - */
-					/* don't call SaveDoomedAreas */
+	Bool		resized;	/* unclipped winSize has changed */
     } before;
     struct AfterValidate {
 	RegionRec	exposed;	/* exposed regions, absolute pos */

@@ -11,7 +11,6 @@ the suitability of this software for any purpose.  It is provided "as
 is" without express or implied warranty.
 
 */
-/* $XFree86$ */
 
 #ifndef XNESTCOLOR_H
 #define XNESTCOLOR_H
@@ -33,8 +32,9 @@ typedef struct {
   int index;
 } xnestInstalledColormapWindows;
 
+extern DevPrivateKeyRec xnestColormapPrivateKeyRec;
 #define xnestColormapPriv(pCmap) \
-  ((xnestPrivColormap *)((pCmap)->devPriv))
+  ((xnestPrivColormap *) dixLookupPrivate(&(pCmap)->devPrivates, &xnestColormapPrivateKeyRec))
 
 #define xnestColormap(pCmap) (xnestColormapPriv(pCmap)->colormap)
 
