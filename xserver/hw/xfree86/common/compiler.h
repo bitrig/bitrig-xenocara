@@ -1432,26 +1432,26 @@ inl(unsigned short port)
 static __inline__ void
 outb(unsigned short port, unsigned char val)
 {
-  __asm__ __volatile__("out%B0 (%1)" : :"a" (val), "d" (port));
+  __asm__ __volatile__("outb %1" : :"a" (val), "d" (port));
 }
 
 static __inline__ void
 outw(unsigned short port, unsigned short val)
 {
-  __asm__ __volatile__("out%W0 (%1)" : :"a" (val), "d" (port));
+  __asm__ __volatile__("outw %1" : :"a" (val), "d" (port));
 }
 
 static __inline__ void
 outl(unsigned short port, unsigned int val)
 {
-  __asm__ __volatile__("out%L0 (%1)" : :"a" (val), "d" (port));
+  __asm__ __volatile__("outl %1" : :"a" (val), "d" (port));
 }
 
 static __inline__ unsigned int
 inb(unsigned short port)
 {
   unsigned char ret;
-  __asm__ __volatile__("in%B0 (%1)" :
+  __asm__ __volatile__("inb %1" :
 		   "=a" (ret) :
 		   "d" (port));
   return ret;
@@ -1461,7 +1461,7 @@ static __inline__ unsigned int
 inw(unsigned short port)
 {
   unsigned short ret;
-  __asm__ __volatile__("in%W0 (%1)" :
+  __asm__ __volatile__("inw %1" :
 		   "=a" (ret) :
 		   "d" (port));
   return ret;
@@ -1471,7 +1471,7 @@ static __inline__ unsigned int
 inl(unsigned short port)
 {
   unsigned int ret;
-  __asm__ __volatile__("in%L0 (%1)" :
+  __asm__ __volatile__("inl %1" :
                    "=a" (ret) :
                    "d" (port));
   return ret;

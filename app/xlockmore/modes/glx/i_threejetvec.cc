@@ -100,5 +100,5 @@ ThreeJetVec InterpolateVec(ThreeJetVec v1, ThreeJetVec v2, ThreeJet weight) {
 
 ThreeJet Length(ThreeJetVec v)
 {
-  return (v.x^2 + v.y^2) ^ (.5);
+  return (v.x^2 + v.y^2.0) ^ (.5);
 }

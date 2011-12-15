@@ -92,5 +92,5 @@ TwoJetVec InterpolateVec(TwoJetVec v1, TwoJetVec v2, TwoJet weight) {
 
 TwoJet Length(TwoJetVec v)
 {
-  return (v.x^2 + v.y^2) ^ (.5);
+  return (v.x^2 + v.y^2.0) ^ (.5);
 }
