@@ -2,8 +2,8 @@
 # Makefile for chkmbox
 #
 
-CC=	gcc
-LN=	gcc
+CC=	/usr/contrib/bin/clang
+LN=	/usr/contrib/bin/clang
 
 CFLAGS=	-c -O2 -Wall
 
