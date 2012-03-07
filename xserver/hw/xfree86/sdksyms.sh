@@ -314,7 +314,7 @@ cat > sdksyms.c << EOF
 
 EOF
 
-case `gcc -dumpversion` in 
+case `clang -dumpversion` in
     [23].*)
 	n=2
 	;;
