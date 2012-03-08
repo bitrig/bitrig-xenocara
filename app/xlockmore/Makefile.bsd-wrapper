@@ -3,6 +3,8 @@
 .include <bsd.xconf.mk>
 
 config.status:
+	CC=${CC} \
+	CXX=${CXX} \
 	AUTOMAKE_VERSION="$(AUTOMAKE_VERSION)" \
 	AUTOCONF_VERSION="$(AUTOCONF_VERSION)" \
 	ACLOCAL="aclocal -I ${X11BASE}/share/aclocal" \

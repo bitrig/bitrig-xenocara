@@ -14,7 +14,7 @@ CPPFLAGS+=	-I${.CURDIR} -I${X11BASE}/include \
 		-DHAVE_CONFIG_H -DCSRG_BASED \
 		-DFUNCPROTO=15 -DNARROWPROTO -DXFREE86_FT2 -DUTMP \
 		-DDEF_ALLOW_FONT=False -DDEF_ALLOW_TCAP=False \
-		-DDEF_ALLOW_WINDOW=False
+		-DDEF_ALLOW_WINDOW=False -O2
 LDADD+=		-L${X11BASE}/lib -lXaw -lXpm -lXt -lSM -lICE \
 		-lXmu -lXft -lXrender -lX11 -lxcb -lXext -lXau -lXdmcp \
 		-lfontconfig -lexpat -lfreetype -lutil -ltermcap -lz

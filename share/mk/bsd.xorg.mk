@@ -44,10 +44,6 @@ INSTALL_DATA = \
 # Autoconf cache
 _cache= --cache-file=${XOBJDIR}/xorg-config.cache.${MACHINE}
 
-# XXX this is bad but use for now
-CC?=		/usr/contrib/bin/clang
-CXX?=		/usr/contrib/bin/clang++
-
 CFLAGS+=	$(COPTS)
 
 .if !defined(CONFIG_SITE)
@@ -56,7 +52,7 @@ CONFIG_SITE=	${XSRCDIR}/etc/config.site
 
 _SRCDIR?=	${.CURDIR}
 
-XENOCARA_PATH?=	/bin:/sbin:/usr/bin:/usr/sbin:/usr/X11R6/bin
+XENOCARA_PATH?=	/bin:/sbin:/usr/bin:/usr/sbin:/usr/X11R6/bin:/usr/local/bin
 
 CONFIGURE_ENV=	PKG_CONFIG_LIBDIR="$(PKG_CONFIG_LIBDIR)" \
 		CONFIG_SITE=$(CONFIG_SITE) \

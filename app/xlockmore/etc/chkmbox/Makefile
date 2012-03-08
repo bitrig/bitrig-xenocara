@@ -2,8 +2,7 @@
 # Makefile for chkmbox
 #
 
-CC=	gcc
-LN=	gcc
+.include <bsd.xconf.mk>
 
 CFLAGS=	-c -O2 -Wall
 

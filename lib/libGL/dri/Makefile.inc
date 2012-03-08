@@ -25,6 +25,8 @@ CFLAGS+= -g -DIN_DRI_DRIVER -DGLX_DIRECT_RENDERING -DPTHREADS \
 CFLAGS += -std=c99
 .endif
 
+CXXFLAGS= ${CFLAGS}
+
 INCLUDES = \
 	-I$(TOP)/src/mesa/drivers/dri/common \
 	-I$(TOP)/include \
