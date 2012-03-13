@@ -104,8 +104,6 @@ CXX_SOURCES = \
 	brw_fs_reg_allocate.cpp \
 	brw_fs_vector_splitting.cpp
 
-CXXFLAGS=${CFLAGS}
-
 SRCS = \
 	$(COMMON_SOURCES) \
 	$(MINIGLX_SOURCES) \
