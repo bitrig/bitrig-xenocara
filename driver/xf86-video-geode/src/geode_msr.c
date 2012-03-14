@@ -19,7 +19,8 @@
 
 #ifdef __OpenBSD__
 #define _PATH_MSRDEV	"/dev/amdmsr"
-#define X_PRIVSEP
+//#define X_PRIVSEP
+extern int priv_open_device(const char *);
 #else
 #define _PATH_MSRDEV	"/dev/cpu/0/msr"
 #endif
@@ -55,7 +56,7 @@ GeodeReadMSR(unsigned long addr, unsigned long *lo, unsigned long *hi)
     req.addr = addr;
 
     if (ioctl(fd, RDMSR, &req) == -1)
-	FatalError("Unable to read MSR at address %0x06x: %s\n", addr,
+	FatalError("Unable to read MSR at address %0lx06x: %s\n", addr,
 	    strerror(errno));
 
     *hi = req.val >> 32;
@@ -97,7 +98,7 @@ GeodeWriteMSR(unsigned long addr, unsigned long lo, unsigned long hi)
     req.val = (u_int64_t)hi << 32 | (u_int64_t)lo;
 
     if (ioctl(fd, WRMSR, &req) == -1)
-	FatalError("Unable to write MSR at address 0x%06x: %s\n", addr,
+	FatalError("Unable to write MSR at address 0x%06lx: %s\n", addr,
 	    strerror(errno));
 #else
     unsigned int data[2];
