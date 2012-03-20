@@ -84,7 +84,12 @@ in this Software without prior written authorization from The Open Group.
 
 /* Added in X11R6.9, so available in any version of modular xproto */
 #if defined(__GNUC__) && (__GNUC__ >= 4) && !defined(__CYGWIN__)
+#if defined(__i386__) && (__llvm__)
+/* XXX work around an issue where X can't start due to optimized symbols.  THIS MUST BE FIXED!!! */
+# define _X_EXPORT      __attribute__((visibility("default"))) __attribute__((weak))
+#else
 # define _X_EXPORT      __attribute__((visibility("default")))
+#endif
 # define _X_HIDDEN      __attribute__((visibility("hidden")))
 # define _X_INTERNAL    __attribute__((visibility("internal")))
 #elif defined(__SUNPRO_C) && (__SUNPRO_C >= 0x550)
