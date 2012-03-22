@@ -287,7 +287,7 @@ void KludgeOutputLine(char **), KludgeResetRule(void);
 #ifndef CROSSCOMPILE
 # ifdef USE_CC_E
 #  ifndef DEFAULT_CC
-#   define DEFAULT_CC "egcc"
+#   define DEFAULT_CC "cc"
 #  endif
 # else
 #  ifndef DEFAULT_CPP
@@ -1023,7 +1023,7 @@ get_stackprotector(FILE *inFile)
 
   cc = getenv("CC");
   if (cc == NULL) {
-    cc = "egcc";
+    cc = "cc";
   }
   snprintf(command, sizeof(command), "%s -v 2>&1", cc);
   fp = popen(command, "r");
