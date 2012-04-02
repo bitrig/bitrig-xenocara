@@ -207,7 +207,6 @@ uxa_check_poly_point(DrawablePtr pDrawable, GCPtr pGC, int mode, int npt,
 	}
 }
 
-
 void
 uxa_check_poly_lines(DrawablePtr pDrawable, GCPtr pGC,
 		     int mode, int npt, DDXPointPtr ppt)
