@@ -7770,7 +7770,7 @@ else
     lt_cv_sys_max_cmd_len=8192;
     ;;
 
-  netbsd* | freebsd* | openbsd* | darwin* | dragonfly*)
+  netbsd* | freebsd* | openbsd* | darwin* | dragonfly* | bitrig*)
     # This has been around since 386BSD, at least.  Likely further.
     if test -x /sbin/sysctl; then
       lt_cv_sys_max_cmd_len=`/sbin/sysctl -n kern.argmax`
@@ -8286,7 +8286,7 @@ newos6*)
   lt_cv_deplibs_check_method=pass_all
   ;;
 
-openbsd*)
+openbsd* | bitrig*)
   if test -z "`echo __ELF__ | $CC -E - | $GREP __ELF__`" || test "$host_os-$host_cpu" = "openbsd2.8-powerpc"; then
     lt_cv_deplibs_check_method='match_pattern /lib[^/]+(\.so\.[0-9]+\.[0-9]+|\.so|_pic\.a)$'
   else
@@ -8942,7 +8942,7 @@ old_postuninstall_cmds=
 
 if test -n "$RANLIB"; then
   case $host_os in
-  openbsd*)
+  openbsd* | bitrig*)
     old_postinstall_cmds="$old_postinstall_cmds~\$RANLIB -t \$tool_oldlib"
     ;;
   *)
@@ -11538,7 +11538,7 @@ $as_echo_n "checking whether the $compiler linker ($LD) supports shared librarie
     # we just hope/assume this is gcc and not c89 (= MSVC++)
     with_gnu_ld=yes
     ;;
-  openbsd*)
+  openbsd* | bitrig*)
     with_gnu_ld=no
     ;;
   esac
@@ -12505,7 +12505,7 @@ $as_echo "$lt_cv_irix_exported_symbol" >&6; }
     *nto* | *qnx*)
       ;;
 
-    openbsd*)
+    openbsd* | bitrig* )
       if test -f /usr/libexec/ld.so; then
 	hardcode_direct=yes
 	hardcode_shlibpath_var=no
@@ -13580,7 +13580,7 @@ newsos6)
   dynamic_linker='ldqnx.so'
   ;;
 
-openbsd*)
+openbsd* | bitrig*)
   version_type=sunos
   sys_lib_dlsearch_path_spec="/usr/lib"
   need_lib_prefix=no
@@ -21471,6 +21471,12 @@ _ACEOF
 
 				SYS_LIBS=-li386
 				;;
+		*bitrig*)	cat >>confdefs.h <<\_ACEOF
+#define USE_I386_IOPL 1
+_ACEOF
+
+				SYS_LIBS=-li386
+				;;
 	esac
         ;;
   powerpc*)
@@ -21511,6 +21517,13 @@ cat >>confdefs.h <<\_ACEOF
 _ACEOF
 
 				SYS_LIBS=-lx86_64
+				;;
+		*bitrig*)
+cat >>confdefs.h <<\_ACEOF
+#define USE_AMD64_IOPL 1
+_ACEOF
+
+				SYS_LIBS=-lamd64
 				;;
 		*openbsd*)
 cat >>confdefs.h <<\_ACEOF
@@ -21669,6 +21682,28 @@ cat >>confdefs.h <<\_ACEOF
 _ACEOF
 
 	DRI=yes
+	;;
+  *bitrig*)
+
+cat >>confdefs.h <<\_ACEOF
+#define CSRG_BASED 1
+_ACEOF
+
+
+cat >>confdefs.h <<\_ACEOF
+#define PCVT_SUPPORT 1
+_ACEOF
+
+
+cat >>confdefs.h <<\_ACEOF
+#define WSCONS_SUPPORT 1
+_ACEOF
+
+	# Disable use of SIGIO by default; it breaks multi-card
+	# configurations.  We don't want to run thousands of lines of
+	# potentially signal-unsafe code for no particular benefit.
+	USE_SIGIO_BY_DEFAULT="no"
+	KDRIVE_HW=yes
 	;;
   *openbsd*)
 
@@ -24521,7 +24556,7 @@ fi
 
 if test "x$CONFIG_WSCONS" = xauto; then
 	case $host_os in
-		*openbsd*)
+		*openbsd* | *bitrig*)
 			CONFIG_WSCONS=yes;
 			;;
 		*)
@@ -25041,7 +25076,7 @@ else
 fi
 if test "x$CLIENTIDS" = xyes; then
 	case $host_os in
-	openbsd*)
+	openbsd* | bitrig* )
 		SYS_LIBS="$SYS_LIBS -lkvm"
 	;;
 	esac
@@ -28174,7 +28209,7 @@ UTILS_SYS_LIBS="${SYS_LIBS}"
 # necessary flags for each platform when -export-dynamic is passed to it.
 LD_EXPORT_SYMBOLS_FLAG="-export-dynamic"
 case $host_os in
-       openbsd*)
+       openbsd* | bitrig* )
        case $host_cpu in
        		m68k|m88k|vax)
 		LD_EXPORT_SYMBOLS_FLAGS=""
@@ -28998,6 +29033,15 @@ done
 		;;
 	  netbsd*)
 	  	XORG_OS="netbsd"
+		XORG_OS_SUBDIR="bsd"
+		xorg_bus_bsdpci="yes"
+		;;
+	  bitrig*)
+		if test "x$ac_cv_BSD_APM" = xyes \
+			-o "x$ac_cv_BSD_KQUEUE_APM" = xyes; then
+			XORG_CFLAGS="$XORG_CFLAGS -DXF86PM"
+		fi
+	  	XORG_OS="bitrig"
 		XORG_OS_SUBDIR="bsd"
 		xorg_bus_bsdpci="yes"
 		;;
@@ -33242,7 +33286,7 @@ fi
 		KDRIVE_MOUSE=yes
 	    fi
 	    ;;
-	*openbsd*)
+	*openbsd* | *bitrig*)
 	    KDRIVE_OS_LIB='$(top_builddir)/hw/kdrive/openbsd/libopenbsd.la'
 	    KDRIVEOPENBSD=yes
 	    if test "x$KDRIVE_EVDEV" = xauto; then

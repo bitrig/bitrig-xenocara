@@ -428,7 +428,7 @@ AC_ARG_ENABLE(dynamic-greeter,
 
 if test "x$DYNAMIC_GREETER" = "xauto" ; then
 	case $host_os in
-	openbsd*)
+	openbsd* | bitrig*)
 		DYNAMIC_GREETER="no"
 		;;
 	    *)	DYNAMIC_GREETER="yes" ;;
@@ -541,7 +541,7 @@ if test -z "$DEF_USER_PATH" ; then
 	    netbsd*)
 		DEF_USER_PATH="/bin:/usr/bin:/usr/pkg/bin:/usr/local/bin:${bindir}"
 		;;
-	    openbsd*)
+	    openbsd* | bitrig*)
 		DEF_USER_PATH="/bin:/usr/bin:/sbin:/usr/sbin:${bindir}:/usr/local/bin:/usr/local/sbin"
 		;;
 	    bsdi*)
@@ -566,7 +566,7 @@ if test -z "$DEF_SYSTEM_PATH" ; then
 	    freebsd*|dragonfly*)
 		DEF_SYSTEM_PATH="/bin:/usr/bin:/sbin:/usr/sbin:${bindir}"
 		;;
-	    netbsd*|openbsd*|bsdi*)
+	    netbsd*|openbsd*|bsdi*|bitrig*)
 		DEF_SYSTEM_PATH="/sbin:/usr/sbin:/bin:/usr/bin:${bindir}"
 		;;
 	    solaris*)

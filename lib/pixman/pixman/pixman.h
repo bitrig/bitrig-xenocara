@@ -81,6 +81,8 @@ SOFTWARE.
 
 PIXMAN_BEGIN_DECLS
 
+#pragma GCC visibility push(default)
+
 /*
  * Standard integers
  */
@@ -984,6 +986,8 @@ void	      pixman_add_triangles       (pixman_image_t              *image,
 					  int32_t	               y_off,
 					  int	                       n_tris,
 					  const pixman_triangle_t     *tris);
+
+#pragma GCC visibility pop
 
 PIXMAN_END_DECLS
 

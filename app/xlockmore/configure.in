@@ -3355,6 +3355,11 @@ case "${canonical}" in
     XMLOCKLDFLAGS="-Wl,-R${XMLOCK_LDFLAGS}"
   ;;
 
+  *-*-bitrig*)
+	BITMAPTYPE="blowfish"
+	PIXMAPTYPE="blowfish"
+	INSTPGMFLAGS="-s -g auth -m 2755"
+  ;;
   *-*-openbsd*)
 	BITMAPTYPE="blowfish"
 	PIXMAPTYPE="blowfish"
@@ -3748,7 +3753,7 @@ if test "$allow_root" = yes; then
 fi
 
 case ${canonical} in
-    *-*-linux* | *-*-freebsd* | *-*-openbsd* | *-*-netbsd* | *-*-dragonfly* )
+    *-*-linux* | *-*-freebsd* | *-*-openbsd* | *-*-netbsd* | *-*-dragonfly* | *-*-bitrig* )
       AC_ARG_ENABLE(vtlock, [  --enable-vtlock         allows to turn on VT switch lock (default is to be
                           able to switch to another VT)],vtlock=$enableval,vtlock=no)
       if test "$vtlock" = yes; then

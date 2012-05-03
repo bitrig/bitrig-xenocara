@@ -62,7 +62,7 @@ case $host_os in
     IS_LINUX="yes"
     ;;
 
-  freebsd* | kfreebsd-gnu* | netbsd* | openbsd*)
+  freebsd* | kfreebsd-gnu* | netbsd* | openbsd* | bitrig*)
     IS_BSD="yes"
     ;;
 

@@ -348,7 +348,7 @@ case $host_cpu in
 		*netbsd*)	AC_DEFINE(USE_I386_IOPL)
 				SYS_LIBS=-li386
 				;;
-		*openbsd*)	AC_DEFINE(USE_I386_IOPL) 
+		*openbsd* | *bitrig*)	AC_DEFINE(USE_I386_IOPL) 
 				SYS_LIBS=-li386
 				;;
 	esac
@@ -380,7 +380,7 @@ case $host_cpu in
 		*netbsd*)	AC_DEFINE(USE_I386_IOPL, 1, [BSD i386 iopl])
 				SYS_LIBS=-lx86_64
 				;;
-		*openbsd*)	AC_DEFINE(USE_AMD64_IOPL, 1, [BSD AMD64 iopl])
+		*openbsd* | *bitrig*)	AC_DEFINE(USE_AMD64_IOPL, 1, [BSD AMD64 iopl])
 				SYS_LIBS=-lamd64
 				;;
 	esac
@@ -432,7 +432,7 @@ case $host_os in
 	AC_DEFINE(WSCONS_SUPPORT, 1, [System has wscons console])
 	DRI=yes
 	;;
-  *openbsd*)
+  *openbsd* | *bitrig*)
 	AC_DEFINE(CSRG_BASED, 1, [System is BSD-like])
 	AC_DEFINE(PCVT_SUPPORT, 1, [System has PC console])
 	AC_DEFINE(WSCONS_SUPPORT, 1, [System has wscons console])
@@ -908,7 +908,7 @@ AM_CONDITIONAL(CONFIG_NEED_DBUS, [test "x$CONFIG_NEED_DBUS" = xyes])
 
 if test "x$CONFIG_WSCONS" = xauto; then
 	case $host_os in
-		*openbsd*)
+		*openbsd* | *bitrig*)
 			CONFIG_WSCONS=yes;
 			;;
 		*)
@@ -1050,7 +1050,7 @@ else
 fi
 if test "x$CLIENTIDS" = xyes; then
 	case $host_os in
-	openbsd*)
+	openbsd* | bitrig*)
 		SYS_LIBS="$SYS_LIBS -lkvm"
 	;;
 	esac
@@ -1494,7 +1494,7 @@ AC_SUBST([UTILS_SYS_LIBS])
 # necessary flags for each platform when -export-dynamic is passed to it.
 LD_EXPORT_SYMBOLS_FLAG="-export-dynamic"
 case $host_os in
-       openbsd*)
+       openbsd* | bitrig*)
        case $host_cpu in
        		m68k|m88k|vax)
 		LD_EXPORT_SYMBOLS_FLAGS=""
@@ -1670,7 +1670,7 @@ if test "x$XORG" = xyes; then
 		XORG_OS_SUBDIR="bsd"
 		xorg_bus_bsdpci="yes"
 		;;
-	  openbsd*)
+	  openbsd* | bitrig*)
 		if test "x$ac_cv_BSD_APM" = xyes \
 			-o "x$ac_cv_BSD_KQUEUE_APM" = xyes; then
 			XORG_CFLAGS="$XORG_CFLAGS -DXF86PM"
@@ -2138,7 +2138,7 @@ if test "$KDRIVE" = yes; then
 		KDRIVE_MOUSE=yes
 	    fi
 	    ;;
-	*openbsd*)
+	*openbsd* | *bitrig*)
 	    KDRIVE_OS_LIB='$(top_builddir)/hw/kdrive/openbsd/libopenbsd.la'
 	    KDRIVEOPENBSD=yes
 	    if test "x$KDRIVE_EVDEV" = xauto; then

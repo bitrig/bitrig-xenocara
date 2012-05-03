@@ -92,7 +92,7 @@ if test x$MANCONF != x ; then
 	MAN_CONFIG_STYLE="FreeBSD"
     else
 	case $host_os in
-	*darwin* | *openbsd* | *netbsd* )
+	*darwin* | *openbsd* | *netbsd* | *bitrig* )
 	    MAN_CONFIG_STYLE="OpenBSD"
 	    ;;
 	*linux* | cygwin* )

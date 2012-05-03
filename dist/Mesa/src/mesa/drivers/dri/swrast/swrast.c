@@ -31,6 +31,7 @@
  * The back-buffer is allocated by the driver and is private.
  */
 
+#include "drisw_util.h"
 #include "main/context.h"
 #include "main/extensions.h"
 #include "main/formats.h"
@@ -717,7 +718,6 @@ dri_unbind_context(__DRIcontext * cPriv)
 
     return GL_TRUE;
 }
-
 
 const struct __DriverAPIRec driDriverAPI = {
     .InitScreen = dri_init_screen,
