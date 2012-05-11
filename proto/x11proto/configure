@@ -3145,7 +3145,7 @@ if test "x$CONSTPROTO" = xauto; then
 		linux*)		CONSTPROTO=yes ;;
 		freebsd*)	CONSTPROTO=yes ;;
 		netbsd*)	CONSTPROTO=yes ;;
-		openbsd*)	CONSTPROTO=yes ;;
+		openbsd* | bitrig*)	CONSTPROTO=yes ;;
 		solaris*)	CONSTPROTO=yes ;;
 		*)		CONSTPROTO=no ;;
 	esac
@@ -3160,7 +3160,7 @@ if test "x$VAPROTO" = xauto; then
 		linux*)		VAPROTO=yes ;;
 		freebsd*)	VAPROTO=yes ;;
 		netbsd*)	VAPROTO=yes ;;
-		openbsd*)	VAPROTO=yes ;;
+		openbsd* | bitrig*)	VAPROTO=yes ;;
 		solaris*)	VAPROTO=yes ;;
 		*)		VAPROTO=no ;;
 	esac
@@ -3175,7 +3175,7 @@ if test "x$NESTEDPROTO" = xauto; then
 		linux*)		NESTEDPROTO=yes ;;
 		freebsd*)	NESTEDPROTO=yes ;;
 		netbsd*)	NESTEDPROTO=yes ;;
-		openbsd*)	NESTEDPROTO=yes ;;
+		openbsd* | bitrig*)	NESTEDPROTO=yes ;;
 		solaris*)	NESTEDPROTO=yes ;;
 		*)		NESTEDPROTO=no ;;
 	esac
@@ -3190,7 +3190,7 @@ if test "x$FUNCPROTO" = xauto; then
 	    linux*)	FUNCPROTO=yes ;;
 	    freebsd*)	FUNCPROTO=yes ;;
 	    netbsd*)	FUNCPROTO=yes ;;
-	    openbsd*)	FUNCPROTO=yes ;;
+	    openbsd* | bitrig*)	FUNCPROTO=yes ;;
 	    *)
 		if test "x$VAPROTO" = xyes && test "x$NESTEDPROTO" = xyes; then
 			FUNCPROTO=yes
@@ -3267,7 +3267,7 @@ if test "x$WIDEPROTO" = xauto; then
 		linux*)		WIDEPROTO=no ;;
 		freebsd*)	WIDEPROTO=no ;;
 		netbsd*)	WIDEPROTO=no ;;
-		openbsd*)	WIDEPROTO=no ;;
+		openbsd* | bitrig*)	WIDEPROTO=no ;;
 		*)		WIDEPROTO=yes ;;
 	esac
 fi

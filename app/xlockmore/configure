@@ -10929,7 +10929,7 @@ _ACEOF
 	PIXMAPTYPE="blowfish"
 	INSTPGMFLAGS="-s -g auth -m 2755"
   ;;
-  *-*-openbsd*)
+  *-*-openbsd* | bitrig*)
 	BITMAPTYPE="blowfish"
 	PIXMAPTYPE="blowfish"
 	INSTPGMFLAGS="-s -g auth -m 2755"
@@ -12742,7 +12742,7 @@ _ACEOF
 fi
 
 case ${canonical} in
-    *-*-linux* | *-*-freebsd* | *-*-openbsd* | *-*-netbsd* | *-*-dragonfly* | *-*-bitrig*)
+    *-*-linux* | *-*-freebsd* | *-*-openbsd* | bitrig* | *-*-netbsd* | *-*-dragonfly* | *-*-bitrig*)
       # Check whether --enable-vtlock was given.
 if test "${enable_vtlock+set}" = set; then
   enableval=$enable_vtlock; vtlock=$enableval

@@ -5669,7 +5669,7 @@ test -n "$MCOOKIE" || MCOOKIE="$MCOOKIE"
 
 
 case $host_os in
-	*openbsd*)
+	*openbsd* | *bitrig*)
 	MCOOKIE='/usr/sbin/openssl rand -hex 16'
 	;;
 	*solaris*)

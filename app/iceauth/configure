@@ -5097,7 +5097,7 @@ fi
 # Obtain platform specific info like program name and options
 # The lint program on FreeBSD and NetBSD is different from the one on Solaris
 case $host_os in
-  *linux* | *openbsd* | kfreebsd*-gnu | darwin* | cygwin*)
+  *linux* | *openbsd* | *bitrig* | kfreebsd*-gnu | darwin* | cygwin*)
 	lint_name=splint
 	lint_options="-badflag"
 	;;

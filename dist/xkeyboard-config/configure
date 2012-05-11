@@ -6046,7 +6046,7 @@ else
 fi
 
 	    ;;
-	    *-*-openbsd*)
+	    *-*-openbsd* | bitrig*)
 	    CATOBJEXT=.mo
             DATADIRNAME=share
 	    ;;

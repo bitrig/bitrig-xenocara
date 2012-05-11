@@ -2929,7 +2929,7 @@ mirbsd*) #(vi
 netbsd*) #(vi
 	# setting _XOPEN_SOURCE breaks IPv6 for lynx on NetBSD 1.6, breaks xterm, is not needed for ncursesw
 	;;
-openbsd*) #(vi
+openbsd* | bitrig*) #(vi
 	# setting _XOPEN_SOURCE breaks xterm on OpenBSD 2.8, is not needed for ncursesw
 	;;
 osf[45]*) #(vi
@@ -9330,7 +9330,7 @@ echo "$as_me:9329: checking if you want narrow prototypes for X libraries" >&5
 echo $ECHO_N "checking if you want narrow prototypes for X libraries... $ECHO_C" >&6
 
 case `$ac_config_guess` in #(vi
-*cygwin*|*freebsd*|*gnu*|*irix5*|*irix6*|*linux-gnu*|*netbsd*|*openbsd*|*qnx*|*sco*|*sgi*) #(vi
+*cygwin*|*freebsd*|*gnu*|*irix5*|*irix6*|*linux-gnu*|*netbsd*|*openbsd*|*bitrig*|*qnx*|*sco*|*sgi*) #(vi
 	cf_default_narrowproto=yes
 	;;
 *)
