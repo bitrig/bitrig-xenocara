@@ -700,6 +700,8 @@ xf86UseMsg()
 }
 
 #ifdef X_PRIVSEP
+
+extern int priv_init(uid_t, gid_t);
 /*
  * Revoke privileges after init.
  * If the X server is started as root (xdm case), then switch to _x11

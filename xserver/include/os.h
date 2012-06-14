@@ -311,6 +311,9 @@ extern _X_EXPORT int
 ChownLock(uid_t, gid_t);
 extern _X_EXPORT int
 priv_open_device(const char *);
+#else
+#include <fcntl.h>
+#define priv_open_device(n)     open(n, O_RDWR | O_NONBLOCK | O_EXCL)
 #endif
 
 extern _X_EXPORT int

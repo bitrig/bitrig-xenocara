@@ -38,6 +38,7 @@
 #include "xf86Bus.h"
 #include "xf86Sbus.h"
 #endif
+#include "xf86pciBus.h"
 #include "misc.h"
 
 typedef struct _DevToConfig {

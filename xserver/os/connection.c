@@ -353,6 +353,7 @@ NotifyParentProcess(void)
     if (RunFromSmartParent) {
         if (ParentProcess > 1) {
 #ifdef X_PRIVSEP
+	    extern int priv_signal_parent(void);
             priv_signal_parent();
 #else
             kill (ParentProcess, SIGUSR1);
