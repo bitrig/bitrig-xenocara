@@ -34,7 +34,8 @@ libint10_la_SOURCES = \
 	$(COMMON_SOURCES) \
 	xf86x86emu.c \
 	generic.c \
-	x86emu.c
+	x86emu.c  \
+	x86emu-noopt.c
 endif
 
 if INT10_STUB

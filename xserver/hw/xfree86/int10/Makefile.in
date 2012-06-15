@@ -73,13 +73,14 @@ am__libint10_la_SOURCES_DIST = stub.c xf86int10module.c helper_exec.c \
 	helper_mem.c xf86int10.c \
 	$(srcdir)/../os-support/linux/int10/vm86/linux_vm86.c \
 	$(srcdir)/../os-support/linux/int10/linux.c xf86x86emu.c \
-	generic.c x86emu.c
+	generic.c x86emu.c x86emu-noopt.c
 am__objects_1 = helper_exec.lo helper_mem.lo xf86int10.lo \
 	xf86int10module.lo
 @INT10_STUB_FALSE@@INT10_VM86_FALSE@@INT10_X86EMU_TRUE@am_libint10_la_OBJECTS = $(am__objects_1) \
 @INT10_STUB_FALSE@@INT10_VM86_FALSE@@INT10_X86EMU_TRUE@	xf86x86emu.lo \
 @INT10_STUB_FALSE@@INT10_VM86_FALSE@@INT10_X86EMU_TRUE@	generic.lo \
-@INT10_STUB_FALSE@@INT10_VM86_FALSE@@INT10_X86EMU_TRUE@	x86emu.lo
+@INT10_STUB_FALSE@@INT10_VM86_FALSE@@INT10_X86EMU_TRUE@	x86emu.lo \
+@INT10_STUB_FALSE@@INT10_VM86_FALSE@@INT10_X86EMU_TRUE@	x86emu-noopt.lo
 @INT10_STUB_FALSE@@INT10_VM86_TRUE@am_libint10_la_OBJECTS =  \
 @INT10_STUB_FALSE@@INT10_VM86_TRUE@	$(am__objects_1) \
 @INT10_STUB_FALSE@@INT10_VM86_TRUE@	linux_vm86.lo linux.lo
@@ -664,7 +665,8 @@ COMMON_SOURCES = \
 @INT10_X86EMU_TRUE@	$(COMMON_SOURCES) \
 @INT10_X86EMU_TRUE@	xf86x86emu.c \
 @INT10_X86EMU_TRUE@	generic.c \
-@INT10_X86EMU_TRUE@	x86emu.c
+@INT10_X86EMU_TRUE@	x86emu.c \
+@INT10_X86EMU_TRUE@	x86emu-noopt.c
 
 EXTRA_DIST = xf86x86emu.h INT10.HOWTO
 all: all-am
@@ -743,6 +745,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/linux_vm86.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stub.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/x86emu.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/x86emu-noopt.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xf86int10.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xf86int10module.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xf86x86emu.Plo@am__quote@
