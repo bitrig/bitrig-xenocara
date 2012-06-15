@@ -27,6 +27,12 @@
 #include "mipict.h"
 #endif
 
+/* ugliest work around ever! to deal with: http://llvm.org/bugs/show_bug.cgi?id=12440 */
+#if defined(__i386__)
+void fbPolyLine(DrawablePtr pDrawable, GCPtr pGC, int mode, int npt, DDXPointPtr ppt) __attribute__((weak));
+void fbPolySegment(DrawablePtr pDrawable, GCPtr pGC, int nsegInit, xSegment * pSegInit) __attribute__((weak));
+#endif
+
 /*
  * These functions wrap the low-level fb rendering functions and
  * synchronize framebuffer/accelerated drawing by stalling until

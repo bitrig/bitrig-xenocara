@@ -65,6 +65,10 @@
 #include <X11/extensions/dpms.h>
 #endif
 
+/* ugliest work around ever! to deal with: http://llvm.org/bugs/show_bug.cgi?id=12440 */
+#if defined(__i386__)
+void shadowUpdatePacked(ScreenPtr pScreen, shadowBufPtr pBuf) __attribute__((weak));
+#endif
 
 /* Mandatory functions */
 static const OptionInfoRec * VESAAvailableOptions(int chipid, int busid);
