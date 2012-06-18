@@ -239,7 +239,7 @@ typedef struct DRI2DrawableRefRec {
 static DRI2DrawableRefPtr
 DRI2LookupDrawableRef(DRI2DrawablePtr pPriv, XID id)
 {
-    DRI2DrawableRefPtr ref;
+    DRI2DrawableRefPtr ref = NULL;
 
     xorg_list_for_each_entry(ref, &pPriv->reference_list, link) {
         if (ref->id == id)
@@ -306,7 +306,7 @@ DRI2DrawableGone(pointer p, XID id)
 {
     DRI2DrawablePtr pPriv = p;
     DRI2ScreenPtr ds = pPriv->dri2_screen;
-    DRI2DrawableRefPtr ref, next;
+    DRI2DrawableRefPtr ref = NULL, next;
     WindowPtr pWin;
     PixmapPtr pPixmap;
     DrawablePtr pDraw;
@@ -587,7 +587,7 @@ static void
 DRI2InvalidateDrawable(DrawablePtr pDraw)
 {
     DRI2DrawablePtr pPriv = DRI2GetDrawable(pDraw);
-    DRI2DrawableRefPtr ref;
+    DRI2DrawableRefPtr ref = NULL;
 
     if (!pPriv || !pPriv->needInvalidate)
         return;
