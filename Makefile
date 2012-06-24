@@ -13,7 +13,7 @@ XSERVER= xserver
 .endif
 
 .if defined(XENOCARA_BUILD_PIXMAN)
-.if ${COMPILER_VERSION:L:Mgcc[34]*} && ${XENOCARA_BUILD_PIXMAN:L} == "yes"
+.if ${XENOCARA_BUILD_PIXMAN:L} == "yes"
 XSERVER+= kdrive
 .endif
 .endif
