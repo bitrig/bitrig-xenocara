@@ -1,4 +1,4 @@
-# $OpenBSD: Makefile,v 1.1.1.1 2012/07/13 12:43:34 mpi Exp $
+# $OpenBSD: Makefile,v 1.1 2012/07/13 12:43:34 mpi Exp $
 
 LIB = trace
 
