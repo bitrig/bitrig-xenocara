@@ -337,7 +337,7 @@ priv_signal_parent(void)
 	if (priv_fd != -1) {
 		if (parent_pid == -1) {
 			warnx("parent_pid == -1");
-			return -1;
+			return;
 		}
 		cmd.cmd = PRIV_SIG_PARENT;
 		write(priv_fd, &cmd, sizeof(cmd));
