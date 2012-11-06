@@ -320,7 +320,7 @@ case $host_cpu in
 	case $host_os in
 	        *freebsd*)	SYS_LIBS=-lio ;;
 		*netbsd*)	AC_DEFINE(USE_ALPHA_PIO, 1, [NetBSD PIO alpha IO]) ;;
-		*openbsd*)	SYS_LIBS=-lalpha ;;
+		*openbsd* | *bitrig*)	SYS_LIBS=-lalpha ;;
 	esac
 	GLX_ARCH_DEFINES="-D__GLX_ALIGN64 -mieee"
 	;;
@@ -381,7 +381,7 @@ case $host_cpu in
 	;;
   hppa*)
 	case $host_os in
-		*openbsd*)	HPPA_VIDEO=yes
+		*openbsd* | *bitrig*)	HPPA_VIDEO=yes
 	     			;;
 	esac
 	;;
@@ -1147,7 +1147,7 @@ AM_CONDITIONAL(DRI2_AIGLX, test "x$DRI2_AIGLX" = xyes)
 # link Xorg with pthreads for llvm-pipe driver on OpenBSD
 if test "x$DRI2" = xyes; then
 	case $host_os in
-	openbsd*)
+	openbsd* | bitrig*)
 		XORG_SYS_LIBS="-lpthread"
 		;;
 	esac
@@ -1645,14 +1645,14 @@ if test "x$XORG" = xyes; then
 	AC_DEFINE(XSERVER_LIBPCIACCESS, 1, [Use libpciaccess for all pci manipulation])
 	AC_DEFINE_DIR(PCI_TXT_IDS_PATH, PCI_TXT_IDS_DIR, [Default PCI text file ID path])
 	case $host_os in
-	  gnu* | freebsd* | kfreebsd*-gnu | netbsd* | openbsd* | solaris* | dragonfly*)
+	  gnu* | freebsd* | kfreebsd*-gnu | netbsd* | openbsd* | bitrig* | solaris* | dragonfly*)
 		xorg_bus_bsdpci="yes"
 		;;
 	esac
 	case $host_cpu in
 	  sparc*)
 		case $host_os in
-		  openbsd*)
+		  openbsd* | bitrig*)
 		    xorg_bus_sparc="no"
 		    ;;
 		  *)
