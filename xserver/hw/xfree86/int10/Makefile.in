@@ -525,7 +525,7 @@ COMMON_SOURCES = \
 @INT10_X86EMU_TRUE@	$(COMMON_SOURCES) \
 @INT10_X86EMU_TRUE@	xf86x86emu.c \
 @INT10_X86EMU_TRUE@	generic.c \
-@INT10_X86EMU_TRUE@	x86emu.c \
+@INT10_X86EMU_TRUE@	x86emu.c  \
 @INT10_X86EMU_TRUE@	x86emu-noopt.c
 
 EXTRA_DIST = xf86x86emu.h INT10.HOWTO
@@ -612,8 +612,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/linux.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/linux_vm86.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stub.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/x86emu.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/x86emu-noopt.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/x86emu.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xf86int10.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xf86int10module.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xf86x86emu.Plo@am__quote@
