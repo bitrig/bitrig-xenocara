@@ -58,6 +58,9 @@ enum cmd_types {
 	PRIV_REDIRECT_CONSOLE,
 };
 
+int	priv_init(uid_t, gid_t);
+int	priv_openpty(int *, int *);
+int	priv_set_console(int);
 
 static int priv_fd = -1;
 
