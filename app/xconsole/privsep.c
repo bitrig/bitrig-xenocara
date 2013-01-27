@@ -44,10 +44,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#ifdef HAS_UTIL_H
+#include "config.h"
+#ifdef HAVE_UTIL_H
 #include <util.h>
+#else
 #endif
-#ifdef HAS_PTY_H
+#ifdef HAVE_PTY_H
 #inlude <pty.h>
 #endif
 
