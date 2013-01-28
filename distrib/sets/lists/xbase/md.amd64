@@ -24,7 +24,6 @@
 ./usr/X11R6/include/intel_bufmgr.h
 ./usr/X11R6/include/pixman-1/pixman-version.h
 ./usr/X11R6/include/pixman-1/pixman.h
-./usr/X11R6/include/r600_pci_ids.h
 ./usr/X11R6/include/xf86drm.h
 ./usr/X11R6/include/xf86drmMode.h
 ./usr/X11R6/include/xorg/compositeext.h
