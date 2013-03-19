@@ -3031,6 +3031,7 @@
 ./usr/X11R6/man/man5/Compose.5
 ./usr/X11R6/man/man5/XCompose.5
 ./usr/X11R6/man/man5/cwmrc.5
+./usr/X11R6/man/man5/fonts-conf.5
 ./usr/X11R6/man/man7/Consortium.7
 ./usr/X11R6/man/man7/Standards.7
 ./usr/X11R6/man/man7/X.7
@@ -3589,6 +3590,8 @@
 ./usr/X11R6/share/doc/fixesproto/fixesproto.txt
 ./usr/X11R6/share/doc/fontconfig
 ./usr/X11R6/share/doc/fontconfig/fontconfig-devel
+./usr/X11R6/share/doc/fontconfig/fontconfig-devel.pdf
+./usr/X11R6/share/doc/fontconfig/fontconfig-devel.txt
 ./usr/X11R6/share/doc/fontconfig/fontconfig-devel/fcatomiccreate.html
 ./usr/X11R6/share/doc/fontconfig/fontconfig-devel/fcatomicdeletenew.html
 ./usr/X11R6/share/doc/fontconfig/fontconfig-devel/fcatomicdestroy.html
@@ -3777,6 +3780,9 @@
 ./usr/X11R6/share/doc/fontconfig/fontconfig-devel/x102.html
 ./usr/X11R6/share/doc/fontconfig/fontconfig-devel/x19.html
 ./usr/X11R6/share/doc/fontconfig/fontconfig-devel/x31.html
+./usr/X11R6/share/doc/fontconfig/fontconfig-user.html
+./usr/X11R6/share/doc/fontconfig/fontconfig-user.pdf
+./usr/X11R6/share/doc/fontconfig/fontconfig-user.txt
 ./usr/X11R6/share/doc/fontsproto
 ./usr/X11R6/share/doc/fontsproto/fsproto.xml
 ./usr/X11R6/share/doc/inputproto

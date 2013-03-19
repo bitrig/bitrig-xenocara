@@ -67,8 +67,10 @@
 ./etc/fonts/conf.avail/20-unhint-small-dejavu-serif.conf
 ./etc/fonts/conf.avail/20-unhint-small-vera.conf
 ./etc/fonts/conf.avail/25-unhint-nonlatin.conf
+./etc/fonts/conf.avail/30-lucida-aliases.conf
 ./etc/fonts/conf.avail/30-metric-aliases.conf
 ./etc/fonts/conf.avail/30-urw-aliases.conf
+./etc/fonts/conf.avail/31-nonmst.conf
 ./etc/fonts/conf.avail/40-nonlatin.conf
 ./etc/fonts/conf.avail/42-luxi-mono.conf
 ./etc/fonts/conf.avail/45-latin.conf
@@ -106,5 +108,8 @@
 ./etc/fonts/conf.d/69-unifont.conf
 ./etc/fonts/conf.d/80-delicious.conf
 ./etc/fonts/conf.d/90-synthetic.conf
+./etc/fonts/conf.d/README
+./etc/fonts/fonts.conf
+./etc/fonts/fonts.dtd
 ./var/db/sysmerge
 ./var/db/sysmerge/xetcsum
