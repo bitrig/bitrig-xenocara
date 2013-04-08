@@ -1755,7 +1755,7 @@ drm_wakeup_handler(pointer data, int err, pointer p)
 static drmModeEncoderPtr
 intel_get_kencoder(struct intel_mode *mode, int num)
 {
-	struct intel_output *iterator;
+	struct intel_output *iterator = NULL;
 	int id = mode->mode_res->encoders[num];
 
 	list_for_each_entry(iterator, &mode->outputs, link)
