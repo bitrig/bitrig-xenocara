@@ -4533,15 +4533,6 @@ else
     i=0
   teststring="ABCD"
 
-<<<<<<< HEAD
-openbsd* | bitrig*)
-  if test -z "`echo __ELF__ | $CC -E - | grep __ELF__`" || test "$host_os-$host_cpu" = "openbsd2.8-powerpc"; then
-    lt_cv_deplibs_check_method='match_pattern /lib[^/]+(\.so\.[0-9]+\.[0-9]+|\.so|_pic\.a)$'
-  else
-    lt_cv_deplibs_check_method='match_pattern /lib[^/]+(\.so\.[0-9]+\.[0-9]+|_pic\.a)$'
-  fi
-  ;;
-=======
   case $build_os in
   msdosdjgpp*)
     # On DJGPP, this test can blow up pretty badly due to problems in libc
@@ -4550,7 +4541,6 @@ openbsd* | bitrig*)
     # check would be larger than it should be.
     lt_cv_sys_max_cmd_len=12288;    # 12K is about right
     ;;
->>>>>>> 09fae4c... Merge upstream fixes for several X libs vulnerabilities
 
   gnu*)
     # Under GNU Hurd, this test is not required because there is
@@ -4581,7 +4571,7 @@ openbsd* | bitrig*)
     lt_cv_sys_max_cmd_len=8192;
     ;;
 
-  netbsd* | freebsd* | openbsd* | darwin* | dragonfly*)
+  netbsd* | freebsd* | openbsd* | bitrig* | darwin* | dragonfly*)
     # This has been around since 386BSD, at least.  Likely further.
     if test -x /sbin/sysctl; then
       lt_cv_sys_max_cmd_len=`/sbin/sysctl -n kern.argmax`
@@ -5022,7 +5012,7 @@ freebsd* | dragonfly*)
     i*86 )
       # Not sure whether the presence of OpenBSD here was a mistake.
       # Let's accept both of them until this is cleared up.
-      lt_cv_deplibs_check_method='file_magic (FreeBSD|OpenBSD|DragonFly)/i[3-9]86 (compact )?demand paged shared library'
+      lt_cv_deplibs_check_method='file_magic (FreeBSD|OpenBSD|Bitrig|DragonFly)/i[3-9]86 (compact )?demand paged shared library'
       lt_cv_file_magic_cmd=/usr/bin/file
       lt_cv_file_magic_test_file=`echo /usr/lib/libc.so.*`
       ;;
@@ -5096,7 +5086,7 @@ newos6*)
   lt_cv_deplibs_check_method=pass_all
   ;;
 
-openbsd*)
+openbsd* | bitrig*)
   if test -z "`echo __ELF__ | $CC -E - | $GREP __ELF__`" || test "$host_os-$host_cpu" = "openbsd2.8-powerpc"; then
     lt_cv_deplibs_check_method='match_pattern /lib[^/]+(\.so\.[0-9]+\.[0-9]+|\.so|_pic\.a)$'
   else
@@ -5713,7 +5703,7 @@ old_postuninstall_cmds=
 
 if test -n "$RANLIB"; then
   case $host_os in
-  openbsd*)
+  openbsd* | bitrig*)
     old_postinstall_cmds="$old_postinstall_cmds~\$RANLIB -t \$tool_oldlib"
     ;;
   *)
@@ -5754,22 +5744,6 @@ esac
 
 
 
-<<<<<<< HEAD
-  netbsd* | freebsd* | openbsd* | bitrig* | darwin* | dragonfly*)
-    # This has been around since 386BSD, at least.  Likely further.
-    if test -x /sbin/sysctl; then
-      lt_cv_sys_max_cmd_len=`/sbin/sysctl -n kern.argmax`
-    elif test -x /usr/sbin/sysctl; then
-      lt_cv_sys_max_cmd_len=`/usr/sbin/sysctl -n kern.argmax`
-    else
-      lt_cv_sys_max_cmd_len=65536	# usable default for all BSDs
-    fi
-    # And add a safety zone
-    lt_cv_sys_max_cmd_len=`expr $lt_cv_sys_max_cmd_len \/ 4`
-    lt_cv_sys_max_cmd_len=`expr $lt_cv_sys_max_cmd_len \* 3`
-    ;;
-=======
->>>>>>> 09fae4c... Merge upstream fixes for several X libs vulnerabilities
 
 
 
@@ -6613,192 +6587,7 @@ esac
     NMEDIT=$ac_ct_NMEDIT
   fi
 else
-<<<<<<< HEAD
-  STRIP="$ac_cv_prog_STRIP"
-fi
-
-
-old_CC="$CC"
-old_CFLAGS="$CFLAGS"
-
-# Set sane defaults for various variables
-test -z "$AR" && AR=ar
-test -z "$AR_FLAGS" && AR_FLAGS=cru
-test -z "$AS" && AS=as
-test -z "$CC" && CC=cc
-test -z "$LTCC" && LTCC=$CC
-test -z "$LTCFLAGS" && LTCFLAGS=$CFLAGS
-test -z "$DLLTOOL" && DLLTOOL=dlltool
-test -z "$LD" && LD=ld
-test -z "$LN_S" && LN_S="ln -s"
-test -z "$MAGIC_CMD" && MAGIC_CMD=file
-test -z "$NM" && NM=nm
-test -z "$SED" && SED=sed
-test -z "$OBJDUMP" && OBJDUMP=objdump
-test -z "$RANLIB" && RANLIB=:
-test -z "$STRIP" && STRIP=:
-test -z "$ac_objext" && ac_objext=o
-
-# Determine commands to create old-style static archives.
-old_archive_cmds='$AR $AR_FLAGS $oldlib$oldobjs'
-old_postinstall_cmds='chmod 644 $oldlib'
-old_postuninstall_cmds=
-
-if test -n "$RANLIB"; then
-  case $host_os in
-  openbsd* | bitrig*)
-    old_postinstall_cmds="$old_postinstall_cmds~\$RANLIB -t \$oldlib"
-    ;;
-  *)
-    old_postinstall_cmds="$old_postinstall_cmds~\$RANLIB \$oldlib"
-    ;;
-  esac
-  old_archive_cmds="$old_archive_cmds~\$RANLIB \$oldlib"
-fi
-
-for cc_temp in $compiler""; do
-  case $cc_temp in
-    compile | *[\\/]compile | ccache | *[\\/]ccache ) ;;
-    distcc | *[\\/]distcc | purify | *[\\/]purify ) ;;
-    \-*) ;;
-    *) break;;
-  esac
-done
-cc_basename=`$echo "X$cc_temp" | $Xsed -e 's%.*/%%' -e "s%^$host_alias-%%"`
-
-
-# Only perform the check for file, if the check method requires it
-case $deplibs_check_method in
-file_magic*)
-  if test "$file_magic_cmd" = '$MAGIC_CMD'; then
-    { $as_echo "$as_me:$LINENO: checking for ${ac_tool_prefix}file" >&5
-$as_echo_n "checking for ${ac_tool_prefix}file... " >&6; }
-if test "${lt_cv_path_MAGIC_CMD+set}" = set; then
-  $as_echo_n "(cached) " >&6
-else
-  case $MAGIC_CMD in
-[\\/*] |  ?:[\\/]*)
-  lt_cv_path_MAGIC_CMD="$MAGIC_CMD" # Let the user override the test with a path.
-  ;;
-*)
-  lt_save_MAGIC_CMD="$MAGIC_CMD"
-  lt_save_ifs="$IFS"; IFS=$PATH_SEPARATOR
-  ac_dummy="/usr/bin$PATH_SEPARATOR$PATH"
-  for ac_dir in $ac_dummy; do
-    IFS="$lt_save_ifs"
-    test -z "$ac_dir" && ac_dir=.
-    if test -f $ac_dir/${ac_tool_prefix}file; then
-      lt_cv_path_MAGIC_CMD="$ac_dir/${ac_tool_prefix}file"
-      if test -n "$file_magic_test_file"; then
-	case $deplibs_check_method in
-	"file_magic "*)
-	  file_magic_regex=`expr "$deplibs_check_method" : "file_magic \(.*\)"`
-	  MAGIC_CMD="$lt_cv_path_MAGIC_CMD"
-	  if eval $file_magic_cmd \$file_magic_test_file 2> /dev/null |
-	    $EGREP "$file_magic_regex" > /dev/null; then
-	    :
-	  else
-	    cat <<EOF 1>&2
-
-*** Warning: the command libtool uses to detect shared libraries,
-*** $file_magic_cmd, produces output that libtool cannot recognize.
-*** The result is that libtool may fail to recognize shared libraries
-*** as such.  This will affect the creation of libtool libraries that
-*** depend on shared libraries, but programs linked with such libtool
-*** libraries will work regardless of this problem.  Nevertheless, you
-*** may want to report the problem to your system manager and/or to
-*** bug-libtool@gnu.org
-
-EOF
-	  fi ;;
-	esac
-      fi
-      break
-    fi
-  done
-  IFS="$lt_save_ifs"
-  MAGIC_CMD="$lt_save_MAGIC_CMD"
-  ;;
-esac
-fi
-
-MAGIC_CMD="$lt_cv_path_MAGIC_CMD"
-if test -n "$MAGIC_CMD"; then
-  { $as_echo "$as_me:$LINENO: result: $MAGIC_CMD" >&5
-$as_echo "$MAGIC_CMD" >&6; }
-else
-  { $as_echo "$as_me:$LINENO: result: no" >&5
-$as_echo "no" >&6; }
-fi
-
-if test -z "$lt_cv_path_MAGIC_CMD"; then
-  if test -n "$ac_tool_prefix"; then
-    { $as_echo "$as_me:$LINENO: checking for file" >&5
-$as_echo_n "checking for file... " >&6; }
-if test "${lt_cv_path_MAGIC_CMD+set}" = set; then
-  $as_echo_n "(cached) " >&6
-else
-  case $MAGIC_CMD in
-[\\/*] |  ?:[\\/]*)
-  lt_cv_path_MAGIC_CMD="$MAGIC_CMD" # Let the user override the test with a path.
-  ;;
-*)
-  lt_save_MAGIC_CMD="$MAGIC_CMD"
-  lt_save_ifs="$IFS"; IFS=$PATH_SEPARATOR
-  ac_dummy="/usr/bin$PATH_SEPARATOR$PATH"
-  for ac_dir in $ac_dummy; do
-    IFS="$lt_save_ifs"
-    test -z "$ac_dir" && ac_dir=.
-    if test -f $ac_dir/file; then
-      lt_cv_path_MAGIC_CMD="$ac_dir/file"
-      if test -n "$file_magic_test_file"; then
-	case $deplibs_check_method in
-	"file_magic "*)
-	  file_magic_regex=`expr "$deplibs_check_method" : "file_magic \(.*\)"`
-	  MAGIC_CMD="$lt_cv_path_MAGIC_CMD"
-	  if eval $file_magic_cmd \$file_magic_test_file 2> /dev/null |
-	    $EGREP "$file_magic_regex" > /dev/null; then
-	    :
-	  else
-	    cat <<EOF 1>&2
-
-*** Warning: the command libtool uses to detect shared libraries,
-*** $file_magic_cmd, produces output that libtool cannot recognize.
-*** The result is that libtool may fail to recognize shared libraries
-*** as such.  This will affect the creation of libtool libraries that
-*** depend on shared libraries, but programs linked with such libtool
-*** libraries will work regardless of this problem.  Nevertheless, you
-*** may want to report the problem to your system manager and/or to
-*** bug-libtool@gnu.org
-
-EOF
-	  fi ;;
-	esac
-      fi
-      break
-    fi
-  done
-  IFS="$lt_save_ifs"
-  MAGIC_CMD="$lt_save_MAGIC_CMD"
-  ;;
-esac
-fi
-
-MAGIC_CMD="$lt_cv_path_MAGIC_CMD"
-if test -n "$MAGIC_CMD"; then
-  { $as_echo "$as_me:$LINENO: result: $MAGIC_CMD" >&5
-$as_echo "$MAGIC_CMD" >&6; }
-else
-  { $as_echo "$as_me:$LINENO: result: no" >&5
-$as_echo "no" >&6; }
-fi
-
-  else
-    MAGIC_CMD=:
-  fi
-=======
   NMEDIT="$ac_cv_prog_NMEDIT"
->>>>>>> 09fae4c... Merge upstream fixes for several X libs vulnerabilities
 fi
 
     if test -n "$ac_tool_prefix"; then
@@ -7660,26 +7449,6 @@ fi
 
 
 
-<<<<<<< HEAD
-  case $host_os in
-  cygwin* | mingw* | pw32*)
-    # FIXME: the MSVC++ port hasn't been tested in a loooong time
-    # When not using gcc, we currently assume that we are using
-    # Microsoft Visual C++.
-    if test "$GCC" != yes; then
-      with_gnu_ld=no
-    fi
-    ;;
-  interix*)
-    # we just hope/assume this is gcc and not c89 (= MSVC++)
-    with_gnu_ld=yes
-    ;;
-  openbsd* | bitrig*)
-    with_gnu_ld=no
-    ;;
-  esac
-=======
->>>>>>> 09fae4c... Merge upstream fixes for several X libs vulnerabilities
 
 
 # This can be used to rebuild libtool when needed
@@ -7798,33 +7567,6 @@ test -z "$LTCFLAGS" && LTCFLAGS=$CFLAGS
 test -z "$LD" && LD=ld
 test -z "$ac_objext" && ac_objext=o
 
-<<<<<<< HEAD
-    openbsd* | bitrig*)
-      if test -f /usr/libexec/ld.so; then
-	hardcode_direct=yes
-	hardcode_shlibpath_var=no
-	if test -z "`echo __ELF__ | $CC -E - | grep __ELF__`" || test "$host_os-$host_cpu" = "openbsd2.8-powerpc"; then
-	  archive_cmds='$CC -shared $pic_flag -o $lib $libobjs $deplibs $compiler_flags'
-	  archive_expsym_cmds='$CC -shared $pic_flag -o $lib $libobjs $deplibs $compiler_flags ${wl}-retain-symbols-file,$export_symbols'
-	  hardcode_libdir_flag_spec='${wl}-rpath,$libdir'
-	  export_dynamic_flag_spec='${wl}-E'
-	else
-	  case $host_os in
-	   openbsd[01].* | openbsd2.[0-7] | openbsd2.[0-7].*)
-	     archive_cmds='$LD -Bshareable -o $lib $libobjs $deplibs $linker_flags'
-	     hardcode_libdir_flag_spec='-R$libdir'
-	     ;;
-	   *)
-	     archive_cmds='$CC -shared $pic_flag -o $lib $libobjs $deplibs $compiler_flags'
-	     hardcode_libdir_flag_spec='${wl}-rpath,$libdir'
-	     ;;
-	  esac
-        fi
-      else
-	ld_shlibs=no
-      fi
-      ;;
-=======
 for cc_temp in $compiler""; do
   case $cc_temp in
     compile | *[\\/]compile | ccache | *[\\/]ccache ) ;;
@@ -7834,7 +7576,6 @@ for cc_temp in $compiler""; do
   esac
 done
 cc_basename=`$ECHO "$cc_temp" | $SED "s%.*/%%; s%^$host_alias-%%"`
->>>>>>> 09fae4c... Merge upstream fixes for several X libs vulnerabilities
 
 
 # Only perform the check for file, if the check method requires it
@@ -8094,34 +7835,6 @@ fi
 
 
 
-<<<<<<< HEAD
-openbsd* | bitrig*)
-  version_type=sunos
-  sys_lib_dlsearch_path_spec="/usr/lib"
-  need_lib_prefix=no
-  # Some older versions of OpenBSD (3.3 at least) *do* need versioned libs.
-  case $host_os in
-    openbsd3.3 | openbsd3.3.*) need_version=yes ;;
-    *)                         need_version=no  ;;
-  esac
-  library_names_spec='${libname}${release}${shared_ext}$versuffix ${libname}${shared_ext}$versuffix'
-  finish_cmds='PATH="\$PATH:/sbin" ldconfig -m $libdir'
-  shlibpath_var=LD_LIBRARY_PATH
-  if test -z "`echo __ELF__ | $CC -E - | grep __ELF__`" || test "$host_os-$host_cpu" = "openbsd2.8-powerpc"; then
-    case $host_os in
-      openbsd2.[89] | openbsd2.[89].*)
-	shlibpath_overrides_runpath=no
-	;;
-      *)
-	shlibpath_overrides_runpath=yes
-	;;
-      esac
-  else
-    shlibpath_overrides_runpath=yes
-  fi
-  ;;
-=======
->>>>>>> 09fae4c... Merge upstream fixes for several X libs vulnerabilities
 
 
 
@@ -8749,7 +8462,7 @@ $as_echo_n "checking whether the $compiler linker ($LD) supports shared librarie
     # we just hope/assume this is gcc and not c89 (= MSVC++)
     with_gnu_ld=yes
     ;;
-  openbsd*)
+  openbsd* | bitrig*)
     with_gnu_ld=no
     ;;
   esac
@@ -9625,7 +9338,7 @@ $as_echo "$lt_cv_irix_exported_symbol" >&6; }
     *nto* | *qnx*)
       ;;
 
-    openbsd*)
+    openbsd* | bitrig*)
       if test -f /usr/libexec/ld.so; then
 	hardcode_direct=yes
 	hardcode_shlibpath_var=no
@@ -10029,103 +9742,6 @@ esac
 
 
 
-<<<<<<< HEAD
-	runpath_var=LD_RUN_PATH
-	hardcode_libdir_flag_spec_CXX='-rpath $libdir'
-	hardcode_libdir_separator_CXX=:
-
-	# Commands to make compiler produce verbose output that lists
-	# what "hidden" libraries, object files and flags are used when
-	# linking a shared library.
-	#
-	# There doesn't appear to be a way to prevent this compiler from
-	# explicitly linking system object files so we need to strip them
-	# from the output so that they don't get included in the library
-	# dependencies.
-	output_verbose_link_cmd='templist=`$CC -shared $CFLAGS -v conftest.$objext 2>&1 | grep "ld"`; templist=`echo $templist | $SED "s/\(^.*ld.*\)\( .*ld .*$\)/\1/"`; list=""; for z in $templist; do case $z in conftest.$objext) list="$list $z";; *.$objext);; *) list="$list $z";;esac; done; echo $list'
-	;;
-      *)
-	case `$CC -V 2>&1 | sed 5q` in
-	*Sun\ C*)
-	  # Sun C++ 5.9
-	  no_undefined_flag_CXX=' -zdefs'
-	  archive_cmds_CXX='$CC -G${allow_undefined_flag} -h$soname -o $lib $predep_objects $libobjs $deplibs $postdep_objects $compiler_flags'
-	  archive_expsym_cmds_CXX='$CC -G${allow_undefined_flag} -h$soname -o $lib $predep_objects $libobjs $deplibs $postdep_objects $compiler_flags ${wl}-retain-symbols-file ${wl}$export_symbols'
-	  hardcode_libdir_flag_spec_CXX='-R$libdir'
-	  whole_archive_flag_spec_CXX='${wl}--whole-archive`new_convenience=; for conv in $convenience\"\"; do test -z \"$conv\" || new_convenience=\"$new_convenience,$conv\"; done; $echo \"$new_convenience\"` ${wl}--no-whole-archive'
-
-	  # Not sure whether something based on
-	  # $CC $CFLAGS -v conftest.$objext -o libconftest$shared_ext 2>&1
-	  # would be better.
-	  output_verbose_link_cmd='echo'
-
-	  # Archives containing C++ object files must be created using
-	  # "CC -xar", where "CC" is the Sun C++ compiler.  This is
-	  # necessary to make sure instantiated templates are included
-	  # in the archive.
-	  old_archive_cmds_CXX='$CC -xar -o $oldlib $oldobjs'
-	  ;;
-	esac
-	;;
-    esac
-    ;;
-  lynxos*)
-    # FIXME: insert proper C++ library support
-    ld_shlibs_CXX=no
-    ;;
-  m88k*)
-    # FIXME: insert proper C++ library support
-    ld_shlibs_CXX=no
-    ;;
-  mvs*)
-    case $cc_basename in
-      cxx*)
-	# FIXME: insert proper C++ library support
-	ld_shlibs_CXX=no
-	;;
-      *)
-	# FIXME: insert proper C++ library support
-	ld_shlibs_CXX=no
-	;;
-    esac
-    ;;
-  netbsd*)
-    if echo __ELF__ | $CC -E - | grep __ELF__ >/dev/null; then
-      archive_cmds_CXX='$LD -Bshareable  -o $lib $predep_objects $libobjs $deplibs $postdep_objects $linker_flags'
-      wlarc=
-      hardcode_libdir_flag_spec_CXX='-R$libdir'
-      hardcode_direct_CXX=yes
-      hardcode_shlibpath_var_CXX=no
-    fi
-    # Workaround some broken pre-1.5 toolchains
-    output_verbose_link_cmd='$CC -shared $CFLAGS -v conftest.$objext 2>&1 | grep conftest.$objext | $SED -e "s:-lgcc -lc -lgcc::"'
-    ;;
-  openbsd2*)
-    # C++ shared libraries are fairly broken
-    ld_shlibs_CXX=no
-    ;;
-  openbsd* | bitrig*)
-    if test -f /usr/libexec/ld.so; then
-      hardcode_direct_CXX=yes
-      hardcode_shlibpath_var_CXX=no
-      archive_cmds_CXX='$CC -shared $pic_flag $predep_objects $libobjs $deplibs $postdep_objects $compiler_flags -o $lib'
-      hardcode_libdir_flag_spec_CXX='${wl}-rpath,$libdir'
-      if test -z "`echo __ELF__ | $CC -E - | grep __ELF__`" || test "$host_os-$host_cpu" = "openbsd2.8-powerpc"; then
-	archive_expsym_cmds_CXX='$CC -shared $pic_flag $predep_objects $libobjs $deplibs $postdep_objects $compiler_flags ${wl}-retain-symbols-file,$export_symbols -o $lib'
-	export_dynamic_flag_spec_CXX='${wl}-E'
-	whole_archive_flag_spec_CXX="$wlarc"'--whole-archive$convenience '"$wlarc"'--no-whole-archive'
-      fi
-      output_verbose_link_cmd='echo'
-    else
-      ld_shlibs_CXX=no
-    fi
-    ;;
-  osf3*)
-    case $cc_basename in
-      KCC*)
-	# Kuck and Associates, Inc. (KAI) C++ Compiler
-=======
->>>>>>> 09fae4c... Merge upstream fixes for several X libs vulnerabilities
 
 
 
@@ -11609,18 +11225,9 @@ $as_echo "yes" >&6; }
 $as_echo "no" >&6; }
     fi
     ;;
-<<<<<<< HEAD
-  interix*)
-    # we just hope/assume this is gcc and not c89 (= MSVC++)
-    with_gnu_ld=yes
-    ;;
-  openbsd* | bitrig*)
-    with_gnu_ld=no
-=======
   *)
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
->>>>>>> 09fae4c... Merge upstream fixes for several X libs vulnerabilities
     ;;
   esac
 fi
@@ -11770,39 +11377,11 @@ struct incomplete_array
   double data[];
 };
 
-<<<<<<< HEAD
-    openbsd* | bitrig*)
-      if test -f /usr/libexec/ld.so; then
-	hardcode_direct_F77=yes
-	hardcode_shlibpath_var_F77=no
-	if test -z "`echo __ELF__ | $CC -E - | grep __ELF__`" || test "$host_os-$host_cpu" = "openbsd2.8-powerpc"; then
-	  archive_cmds_F77='$CC -shared $pic_flag -o $lib $libobjs $deplibs $compiler_flags'
-	  archive_expsym_cmds_F77='$CC -shared $pic_flag -o $lib $libobjs $deplibs $compiler_flags ${wl}-retain-symbols-file,$export_symbols'
-	  hardcode_libdir_flag_spec_F77='${wl}-rpath,$libdir'
-	  export_dynamic_flag_spec_F77='${wl}-E'
-	else
-	  case $host_os in
-	   openbsd[01].* | openbsd2.[0-7] | openbsd2.[0-7].*)
-	     archive_cmds_F77='$LD -Bshareable -o $lib $libobjs $deplibs $linker_flags'
-	     hardcode_libdir_flag_spec_F77='-R$libdir'
-	     ;;
-	   *)
-	     archive_cmds_F77='$CC -shared $pic_flag -o $lib $libobjs $deplibs $compiler_flags'
-	     hardcode_libdir_flag_spec_F77='${wl}-rpath,$libdir'
-	     ;;
-	  esac
-        fi
-      else
-	ld_shlibs_F77=no
-      fi
-      ;;
-=======
 struct named_init {
   int number;
   const wchar_t *name;
   double average;
 };
->>>>>>> 09fae4c... Merge upstream fixes for several X libs vulnerabilities
 
 typedef const char *ccp;
 
@@ -12083,40 +11662,12 @@ fi
 
 
 
-<<<<<<< HEAD
-openbsd* | bitrig*)
-  version_type=sunos
-  sys_lib_dlsearch_path_spec="/usr/lib"
-  need_lib_prefix=no
-  # Some older versions of OpenBSD (3.3 at least) *do* need versioned libs.
-  case $host_os in
-    openbsd3.3 | openbsd3.3.*) need_version=yes ;;
-    *)                         need_version=no  ;;
-  esac
-  library_names_spec='${libname}${release}${shared_ext}$versuffix ${libname}${shared_ext}$versuffix'
-  finish_cmds='PATH="\$PATH:/sbin" ldconfig -m $libdir'
-  shlibpath_var=LD_LIBRARY_PATH
-  if test -z "`echo __ELF__ | $CC -E - | grep __ELF__`" || test "$host_os-$host_cpu" = "openbsd2.8-powerpc"; then
-    case $host_os in
-      openbsd2.[89] | openbsd2.[89].*)
-	shlibpath_overrides_runpath=no
-	;;
-      *)
-	shlibpath_overrides_runpath=yes
-	;;
-      esac
-  else
-    shlibpath_overrides_runpath=yes
-  fi
-  ;;
-=======
 # -v is too short to test reliably with XORG_TESTSET_CFLAG
 if test "x$SUNCC" = "xyes"; then
     BASE_CFLAGS="-v"
 else
     BASE_CFLAGS=""
 fi
->>>>>>> 09fae4c... Merge upstream fixes for several X libs vulnerabilities
 
 # This chunk of warnings were those that existed in the legacy CWARNFLAGS
 
@@ -13000,26 +12551,6 @@ $as_echo "$supported" >&6; }
 
 
 
-<<<<<<< HEAD
-  case $host_os in
-  cygwin* | mingw* | pw32*)
-    # FIXME: the MSVC++ port hasn't been tested in a loooong time
-    # When not using gcc, we currently assume that we are using
-    # Microsoft Visual C++.
-    if test "$GCC" != yes; then
-      with_gnu_ld=no
-    fi
-    ;;
-  interix*)
-    # we just hope/assume this is gcc and not c89 (= MSVC++)
-    with_gnu_ld=yes
-    ;;
-  openbsd* | bitrig*)
-    with_gnu_ld=no
-    ;;
-  esac
-=======
->>>>>>> 09fae4c... Merge upstream fixes for several X libs vulnerabilities
 
 
 
@@ -13413,33 +12944,6 @@ $as_echo "$xorg_cv_cc_flag_unknown_warning_option" >&6; }
 	CFLAGS="$xorg_testset_save_CFLAGS"
 fi
 
-<<<<<<< HEAD
-    openbsd* | bitrig*)
-      if test -f /usr/libexec/ld.so; then
-	hardcode_direct_GCJ=yes
-	hardcode_shlibpath_var_GCJ=no
-	if test -z "`echo __ELF__ | $CC -E - | grep __ELF__`" || test "$host_os-$host_cpu" = "openbsd2.8-powerpc"; then
-	  archive_cmds_GCJ='$CC -shared $pic_flag -o $lib $libobjs $deplibs $compiler_flags'
-	  archive_expsym_cmds_GCJ='$CC -shared $pic_flag -o $lib $libobjs $deplibs $compiler_flags ${wl}-retain-symbols-file,$export_symbols'
-	  hardcode_libdir_flag_spec_GCJ='${wl}-rpath,$libdir'
-	  export_dynamic_flag_spec_GCJ='${wl}-E'
-	else
-	  case $host_os in
-	   openbsd[01].* | openbsd2.[0-7] | openbsd2.[0-7].*)
-	     archive_cmds_GCJ='$LD -Bshareable -o $lib $libobjs $deplibs $linker_flags'
-	     hardcode_libdir_flag_spec_GCJ='-R$libdir'
-	     ;;
-	   *)
-	     archive_cmds_GCJ='$CC -shared $pic_flag -o $lib $libobjs $deplibs $compiler_flags'
-	     hardcode_libdir_flag_spec_GCJ='${wl}-rpath,$libdir'
-	     ;;
-	  esac
-        fi
-      else
-	ld_shlibs_GCJ=no
-      fi
-      ;;
-=======
 if test "x$xorg_testset_cc_unused_command_line_argument" = "x" ; then
 	if test "x$xorg_testset_cc_unknown_warning_option" = "xyes" ; then
 		CFLAGS="$CFLAGS -Werror=unknown-warning-option"
@@ -13466,7 +12970,6 @@ $as_echo "$xorg_cv_cc_flag_unused_command_line_argument" >&6; }
 	xorg_testset_cc_unused_command_line_argument=$xorg_cv_cc_flag_unused_command_line_argument
 	CFLAGS="$xorg_testset_save_CFLAGS"
 fi
->>>>>>> 09fae4c... Merge upstream fixes for several X libs vulnerabilities
 
 found="no"
 
@@ -13650,58 +13153,6 @@ $as_echo "$supported" >&6; }
 
 
 
-<<<<<<< HEAD
-openbsd* | bitrig*)
-  version_type=sunos
-  sys_lib_dlsearch_path_spec="/usr/lib"
-  need_lib_prefix=no
-  # Some older versions of OpenBSD (3.3 at least) *do* need versioned libs.
-  case $host_os in
-    openbsd3.3 | openbsd3.3.*) need_version=yes ;;
-    *)                         need_version=no  ;;
-  esac
-  library_names_spec='${libname}${release}${shared_ext}$versuffix ${libname}${shared_ext}$versuffix'
-  finish_cmds='PATH="\$PATH:/sbin" ldconfig -m $libdir'
-  shlibpath_var=LD_LIBRARY_PATH
-  if test -z "`echo __ELF__ | $CC -E - | grep __ELF__`" || test "$host_os-$host_cpu" = "openbsd2.8-powerpc"; then
-    case $host_os in
-      openbsd2.[89] | openbsd2.[89].*)
-	shlibpath_overrides_runpath=no
-	;;
-      *)
-	shlibpath_overrides_runpath=yes
-	;;
-      esac
-  else
-    shlibpath_overrides_runpath=yes
-  fi
-  ;;
-
-os2*)
-  libname_spec='$name'
-  shrext_cmds=".dll"
-  need_lib_prefix=no
-  library_names_spec='$libname${shared_ext} $libname.a'
-  dynamic_linker='OS/2 ld.exe'
-  shlibpath_var=LIBPATH
-  ;;
-
-osf3* | osf4* | osf5*)
-  version_type=osf
-  need_lib_prefix=no
-  need_version=no
-  soname_spec='${libname}${release}${shared_ext}$major'
-  library_names_spec='${libname}${release}${shared_ext}$versuffix ${libname}${release}${shared_ext}$major $libname${shared_ext}'
-  shlibpath_var=LD_LIBRARY_PATH
-  sys_lib_search_path_spec="/usr/shlib /usr/ccs/lib /usr/lib/cmplrs/cc /usr/lib /usr/local/lib /var/shlib"
-  sys_lib_dlsearch_path_spec="$sys_lib_search_path_spec"
-  ;;
-
-rdos*)
-  dynamic_linker=no
-  ;;
-=======
->>>>>>> 09fae4c... Merge upstream fixes for several X libs vulnerabilities
 
 xorg_testset_save_CFLAGS="$CFLAGS"
 
