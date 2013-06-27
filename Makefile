@@ -129,5 +129,43 @@ distrib-dirs:
 	dist distrib-dirs fix-appd beforebuild bootstrap afterbuild realbuild \
 	install-mk bootstrap-root
 
+# snap build infrastructure
+.if !defined(SNAPDIR)
+presnap snap snapinfo:
+	echo "SNAPDIR must defined"
+	exit 1
+.else
+.NOTPARALLEL:
+ARCH!= uname -m
+SNAPROOTDIR=${SNAPDIR}/${ARCH}/xroot
+.if defined(SNAPDATE)
+SNAPRELDIR!= echo ${SNAPDIR}/${ARCH}/xrelease.$$(date "+%y%m%d%H%M")
+.else
+SNAPRELDIR!= echo ${SNAPDIR}/${ARCH}/xrelease
+.endif
+SNAPLOGFILE != echo ${SNAPDIR}/${ARCH}/xbuildlog.$$(date "+%y%m%d%H%M")
+snapinfo:
+
+	@echo rootdir = ${SNAPROOTDIR}
+	@echo reldir = ${SNAPRELDIR}
+	@echo logfile = ${SNAPLOGFILE}
+
+snap:
+	make do_snap 2>&1 | tee ${SNAPLOGFILE}
+
+do_snap:  bootstrap do_preclean obj build do_snap_rel
+
+do_preclean:
+	mkdir -p /usr/xobj
+	rm -rf /usr/xobj/*
+
+do_snap_rel:
+	date
+	rm -rf ${SNAPROOTDIR}
+	mkdir -p ${SNAPROOTDIR}
+	mkdir -p ${SNAPRELDIR}
+	DESTDIR=${SNAPROOTDIR} RELEASEDIR=${SNAPRELDIR} make release
+.endif
+
 .include <bsd.subdir.mk>
 .include <bsd.xorg.mk>
