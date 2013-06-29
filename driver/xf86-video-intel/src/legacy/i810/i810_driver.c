@@ -80,6 +80,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /* ugliest work around ever! to deal with: http://llvm.org/bugs/show_bug.cgi?id=12440 */
 #if defined(__i386__)
 Bool vgaHWSaveScreen(ScreenPtr pScreen, Bool unblack) __attribute__((weak));
+void vgaHWFreeHWRec(ScrnInfoPtr scrp) __attribute__((weak));;
 #endif
 
 static Bool I810PreInit(ScrnInfoPtr pScrn, int flags);
