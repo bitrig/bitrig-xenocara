@@ -130,10 +130,13 @@ distrib-dirs:
 	install-mk bootstrap-root
 
 # snap build infrastructure
+.if exists(/usr/snap)
+SNAPDIR?=/usr/snap
+.endif
 .if !defined(SNAPDIR)
-presnap snap snapinfo:
-	echo "SNAPDIR must defined"
-	exit 1
+snapinfo snap do_snap do_preclean do_snap_rel:
+	@echo "SNAPDIR must defined or create the directory /usr/snap"
+	@exit 1
 .else
 .NOTPARALLEL:
 ARCH!= uname -m
