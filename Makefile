@@ -134,7 +134,7 @@ distrib-dirs:
 SNAPDIR?=/usr/snap
 .endif
 .if !defined(SNAPDIR)
-snapinfo snap do_snap do_preclean do_snap_rel:
+snapinfo buildworld snap do_snap do_snap_rel:
 	@echo "SNAPDIR must defined or create the directory /usr/snap"
 	@exit 1
 .else
@@ -154,20 +154,23 @@ snapinfo:
 	@echo logfile = ${SNAPLOGFILE}
 
 snap:
-	make do_snap 2>&1 | tee ${SNAPLOGFILE}
+	${MAKE} do_snap 2>&1 | tee ${SNAPLOGFILE}
 
-do_snap:  bootstrap do_preclean obj build do_snap_rel
+buildworld:
+	${SUDO} mkdir -p /usr/xobj
+	${SUDO} rm -rf /usr/xobj/*
+	${MAKE} bootstrap
+	${MAKE} obj >/dev/null
+	${MAKE} build
 
-do_preclean:
-	mkdir -p /usr/xobj
-	rm -rf /usr/xobj/*
+do_snap: buildworld do_snap_rel
 
 do_snap_rel:
 	date
 	rm -rf ${SNAPROOTDIR}
 	mkdir -p ${SNAPROOTDIR}
 	mkdir -p ${SNAPRELDIR}
-	DESTDIR=${SNAPROOTDIR} RELEASEDIR=${SNAPRELDIR} make release
+	DESTDIR=${SNAPROOTDIR} RELEASEDIR=${SNAPRELDIR} ${MAKE} release
 .endif
 
 .include <bsd.subdir.mk>
