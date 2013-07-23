@@ -140,6 +140,11 @@ snapinfo buildworld snap do_snap do_snap_rel:
 .else
 .NOTPARALLEL:
 ARCH!= uname -m
+.if defined(SNAPDIRSUFFIX)
+SNAPROOTDIR=${SNAPDIR}/${ARCH}/xroot.${SNAPDIRSUFFIX}
+SNAPRELDIR=${SNAPDIR}/${ARCH}/${SNAPDIRSUFFIX}
+SNAPLOGFILE= echo ${SNAPDIR}/${ARCH}/xbuildlog.${SNAPDIRSUFFIX}
+.else
 SNAPROOTDIR=${SNAPDIR}/${ARCH}/xroot
 .if defined(SNAPDATE)
 SNAPRELDIR!= echo ${SNAPDIR}/${ARCH}/xrelease.$$(date "+%y%m%d%H%M")
@@ -147,6 +152,7 @@ SNAPRELDIR!= echo ${SNAPDIR}/${ARCH}/xrelease.$$(date "+%y%m%d%H%M")
 SNAPRELDIR!= echo ${SNAPDIR}/${ARCH}/xrelease
 .endif
 SNAPLOGFILE != echo ${SNAPDIR}/${ARCH}/xbuildlog.$$(date "+%y%m%d%H%M")
+.endif
 snapinfo:
 
 	@echo rootdir = ${SNAPROOTDIR}
