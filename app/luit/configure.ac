@@ -38,9 +38,9 @@ AC_CANONICAL_HOST
 
 
 AC_CHECK_HEADERS([pty.h stropts.h sys/param.h sys/select.h])
-# grantpt support is broken on OpenBSD
+# grantpt support is broken on OpenBSD and Bitrig
 case $host_os in
-     openbsd*)
+     openbsd*|bitrig*)
 	AC_CHECK_FUNCS([select])
 	;;
     *)

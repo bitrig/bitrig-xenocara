@@ -10495,9 +10495,9 @@ fi
 
 done
 
-# grantpt support is broken on OpenBSD
+# grantpt support is broken on OpenBSD and Bitrig
 case $host_os in
-     openbsd*)
+     openbsd*|bitrig*)
 	for ac_func in select
 do :
   ac_fn_c_check_func "$LINENO" "select" "ac_cv_func_select"
