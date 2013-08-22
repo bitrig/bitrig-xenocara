@@ -1,4 +1,4 @@
-# $OpenBSD: Makefile.inc,v 1.16 2012/11/28 13:53:16 mpi Exp $
+# $OpenBSD: Makefile.inc,v 1.17 2013/08/22 18:48:46 miod Exp $
 .include <bsd.xconf.mk>
 
 TOP=		${.CURDIR}/../../../../dist/Mesa
