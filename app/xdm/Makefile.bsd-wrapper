@@ -18,8 +18,8 @@ CONFIGURE_ARGS= --enable-privsep \
 	--with-authdir=$(XDMCONFIGDIR) \
 	--with-xdmlibdir=$(XDMCONFIGDIR) \
 	--with-pixmapdir=$(PIXMAPDIR) \
-	--with-bw-pixmap=OpenBSD_1bpp.xpm \
-	--with-color-pixmap=OpenBSD_15bpp.xpm
+	--with-bw-pixmap=Bitrig_1bpp.xpm \
+	--with-color-pixmap=Bitrig_15bpp.xpm
 
 # avoid clobbering installed config files
 realinstall:
@@ -35,10 +35,10 @@ XDMCONFIGSCRIPTS= \
 	Xsession GiveConsole TakeConsole Xsetup_0 Xstartup Xreset Xwilling
 
 afterinstall:
-	$(INSTALL_DATA) ${.CURDIR}/config/OpenBSD_1bpp.xpm $(DESTDIR)$(PIXMAPDIR)
-	$(INSTALL_DATA) ${.CURDIR}/config/OpenBSD_4bpp.xpm $(DESTDIR)$(PIXMAPDIR)
-	$(INSTALL_DATA) ${.CURDIR}/config/OpenBSD_8bpp.xpm $(DESTDIR)$(PIXMAPDIR)
-	$(INSTALL_DATA) ${.CURDIR}/config/OpenBSD_15bpp.xpm $(DESTDIR)$(PIXMAPDIR)
+	$(INSTALL_DATA) ${.CURDIR}/config/Bitrig_1bpp.xpm $(DESTDIR)$(PIXMAPDIR)
+	$(INSTALL_DATA) ${.CURDIR}/config/Bitrig_4bpp.xpm $(DESTDIR)$(PIXMAPDIR)
+	$(INSTALL_DATA) ${.CURDIR}/config/Bitrig_8bpp.xpm $(DESTDIR)$(PIXMAPDIR)
+	$(INSTALL_DATA) ${.CURDIR}/config/Bitrig_15bpp.xpm $(DESTDIR)$(PIXMAPDIR)
 	@cd config ; for f in $(XDMCONFIGFILES); do \
 	  if ! test -f $(DESTDIR)$(XDMCONFIGDIR)/$$f ; then \
 	    if test -f $$f; then d=; else d="$(.CURDIR)/config/"; fi; \

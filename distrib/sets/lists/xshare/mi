@@ -1,7 +1,7 @@
-./etc/X11/xdm/pixmaps/OpenBSD_15bpp.xpm
-./etc/X11/xdm/pixmaps/OpenBSD_1bpp.xpm
-./etc/X11/xdm/pixmaps/OpenBSD_4bpp.xpm
-./etc/X11/xdm/pixmaps/OpenBSD_8bpp.xpm
+./etc/X11/xdm/pixmaps/Bitrig_15bpp.xpm
+./etc/X11/xdm/pixmaps/Bitrig_1bpp.xpm
+./etc/X11/xdm/pixmaps/Bitrig_4bpp.xpm
+./etc/X11/xdm/pixmaps/Bitrig_8bpp.xpm
 ./etc/X11/xdm/pixmaps/xorg-bw.xpm
 ./etc/X11/xdm/pixmaps/xorg.xpm
 ./usr/X11R6/bin/gccmakedep

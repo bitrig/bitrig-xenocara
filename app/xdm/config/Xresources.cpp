@@ -107,22 +107,22 @@ xlogin*promptColor: white
 *Background: black
 XHASHendif
 XHASHifdef bpp1
-xlogin*logoFileName: BITMAPDIR/**//OpenBSD_1bpp.xpm
+xlogin*logoFileName: BITMAPDIR/**//Bitrig_1bpp.xpm
 XHASHendif
 #if ! defined(SparcArchitecture)
 XHASHif defined(bpp4) || defined(bpp8)
-xlogin*logoFileName: BITMAPDIR/**//OpenBSD_4bpp.xpm
+xlogin*logoFileName: BITMAPDIR/**//Bitrig_4bpp.xpm
 XHASHendif
 #else /* sparc */
 XHASHifdef bpp4
-xlogin*logoFileName: BITMAPDIR/**//OpenBSD_4bpp.xpm
+xlogin*logoFileName: BITMAPDIR/**//Bitrig_4bpp.xpm
 XHASHendif
 XHASHifdef bpp8
-xlogin*logoFileName: BITMAPDIR/**//OpenBSD_8bpp.xpm
+xlogin*logoFileName: BITMAPDIR/**//Bitrig_8bpp.xpm
 XHASHendif
 #endif
 XHASHifdef bpp15
-xlogin*logoFileName: BITMAPDIR/**//OpenBSD_15bpp.xpm
+xlogin*logoFileName: BITMAPDIR/**//Bitrig_15bpp.xpm
 XHASHendif
 #if ! defined(Hp300Architecture)
 xlogin*useShape: true
