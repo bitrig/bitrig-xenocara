@@ -441,7 +441,6 @@ NVC0LegalizePostRA::insertTextureBarriers(Function *fn)
          if (i->op == OP_TEXBAR) {
             if (i->subOp >= max) {
                delete_Instruction(prog, i);
-               i = NULL;
             } else {
                max = i->subOp;
                if (prev && prev->op == OP_TEXBAR && prev->subOp >= max) {
@@ -453,7 +452,7 @@ NVC0LegalizePostRA::insertTextureBarriers(Function *fn)
          if (isTextureOp(i->op)) {
             max++;
          }
-         if (i && !i->isNop())
+         if (!i->isNop())
             prev = i;
       }
    }
