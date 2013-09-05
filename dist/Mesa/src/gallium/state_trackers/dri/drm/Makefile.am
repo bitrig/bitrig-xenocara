@@ -20,7 +20,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-include Makefile.sources
 include $(top_srcdir)/src/gallium/Automake.inc
 
 AM_CPPFLAGS = \
@@ -31,9 +30,12 @@ AM_CPPFLAGS = \
 	-I$(top_srcdir)/src/mesa/drivers/dri/common \
 	-I$(top_builddir)/src/mesa/drivers/dri/common \
 	$(GALLIUM_CFLAGS) \
-	$(LIBDRM_CFLAGS) \
-	$(VISIBILITY_CFLAGS)
+	$(LIBDRM_CFLAGS)
 
 noinst_LTLIBRARIES = libdridrm.la
 
-libdridrm_la_SOURCES = $(C_SOURCES)
+libdridrm_la_SOURCES = \
+	dri_context.c \
+	dri_screen.c \
+	dri_drawable.c \
+	dri2.c

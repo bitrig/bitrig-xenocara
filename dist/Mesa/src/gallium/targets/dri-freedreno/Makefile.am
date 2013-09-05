@@ -23,19 +23,34 @@
 include $(top_srcdir)/src/gallium/Automake.inc
 
 AM_CFLAGS = \
-	$(GALLIUM_DRI_CFLAGS)
+	$(GALLIUM_CFLAGS) \
+	$(PTHREAD_CFLAGS) \
+	$(LIBDRM_CFLAGS)
 AM_CPPFLAGS = \
+	-I$(top_srcdir)/src/gallium/drivers \
+	-I$(top_srcdir)/src/gallium/winsys \
+	-I$(top_srcdir)/src/mesa \
+	-I$(top_srcdir)/src/mapi \
+	-I$(top_builddir)/src/mesa/drivers/dri/common \
 	-DGALLIUM_RBUG \
 	-DGALLIUM_TRACE \
 	-DGALLIUM_NOOP
 
 dridir = $(DRI_DRIVER_INSTALL_DIR)
-dri_LTLIBRARIES = kgsl_dri.la msm_dri.la
+dri_LTLIBRARIES = kgsl_dri.la
 
-COMMON_LDFLAGS = $(GALLIUM_DRI_LINKER_FLAGS)
+nodist_EXTRA_kgsl_dri_la_SOURCES = dummy.cpp
+kgsl_dri_la_SOURCES = \
+	target.c \
+	$(top_srcdir)/src/mesa/drivers/dri/common/utils.c \
+	$(top_srcdir)/src/mesa/drivers/dri/common/dri_util.c \
+	$(top_srcdir)/src/mesa/drivers/dri/common/xmlconfig.c
 
-COMMON_LIBADD = \
-	$(top_builddir)/src/mesa/drivers/dri/common/libdricommon.la \
+kgsl_dri_la_LDFLAGS = -module -avoid-version -shared -no-undefined
+
+kgsl_dri_la_LIBADD = \
+	$(top_builddir)/src/mesa/libmesagallium.la \
+	$(top_builddir)/src/gallium/auxiliary/libgallium.la \
 	$(top_builddir)/src/gallium/state_trackers/dri/drm/libdridrm.la \
 	$(top_builddir)/src/gallium/winsys/freedreno/drm/libfreedrenodrm.la \
 	$(top_builddir)/src/gallium/drivers/freedreno/libfreedreno.la \
@@ -46,14 +61,13 @@ COMMON_LIBADD = \
 	$(LIBDRM_LIBS) \
 	$(FREEDRENO_LIBS)
 
-nodist_EXTRA_kgsl_dri_la_SOURCES = dummy.cpp
-kgsl_dri_la_SOURCES = target-kgsl.c
-kgsl_dri_la_LDFLAGS = $(COMMON_LDFLAGS)
-kgsl_dri_la_LIBADD  = $(COMMON_LIBADD)
+if HAVE_MESA_LLVM
+kgsl_dri_la_LDFLAGS += $(LLVM_LDFLAGS)
+kgsl_dri_la_LIBADD += $(LLVM_LIBS)
+endif
 
-nodist_EXTRA_msm_dri_la_SOURCES = dummy.cpp
-msm_dri_la_SOURCES  = target-msm.c
-msm_dri_la_LDFLAGS  = $(COMMON_LDFLAGS)
-msm_dri_la_LIBADD   = $(COMMON_LIBADD)
-
-include $(top_srcdir)/install-gallium-links.mk
+# Provide compatibility with scripts for the old Mesa build system for
+# a while by putting a link to the driver into /lib of the build tree.
+all-local: kgsl_dri.la
+	$(MKDIR_P) $(top_builddir)/$(LIB_DIR)/gallium
+	ln -f .libs/kgsl_dri.so $(top_builddir)/$(LIB_DIR)/gallium/kgsl_dri.so

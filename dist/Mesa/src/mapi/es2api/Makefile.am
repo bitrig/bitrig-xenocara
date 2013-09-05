@@ -41,7 +41,6 @@ GLES2_include_HEADERS = \
 GLES3_includedir = $(includedir)/GLES3
 GLES3_include_HEADERS = \
 	$(top_srcdir)/include/GLES3/gl3.h \
-	$(top_srcdir)/include/GLES3/gl31.h \
 	$(top_srcdir)/include/GLES3/gl3ext.h \
 	$(top_srcdir)/include/GLES3/gl3platform.h
 
@@ -49,11 +48,7 @@ lib_LTLIBRARIES = libGLESv2.la
 
 libGLESv2_la_SOURCES = ../entry.c glapi_mapi_tmp.h
 libGLESv2_la_LIBADD = $(GLESv2_LIB_DEPS)
-libGLESv2_la_LDFLAGS = \
-	-no-undefined \
-	-version-number 2 \
-	$(GC_SECTIONS) \
-	$(LD_NO_UNDEFINED)
+libGLESv2_la_LDFLAGS = -version-number 2 -no-undefined
 
 if HAVE_SHARED_GLAPI
 libGLESv2_la_LIBADD += ../shared-glapi/libglapi.la
@@ -66,4 +61,10 @@ glapi_mapi_tmp.h: ../glapi/gen/gl_and_es_API.xml $(glapi_gen_mapi_deps)
 BUILT_SOURCES = glapi_mapi_tmp.h
 CLEANFILES = $(BUILT_SOURCES)
 
-include $(top_srcdir)/install-lib-links.mk
+# Provide compatibility with scripts for the old Mesa build system for
+# a while by putting a link to the driver into /lib of the build tree.
+all-local: libGLESv2.la
+	$(MKDIR_P) $(top_builddir)/$(LIB_DIR);
+	ln -f .libs/libGLESv2.so $(top_builddir)/$(LIB_DIR)/libGLESv2.so
+	ln -f .libs/libGLESv2.so.2 $(top_builddir)/$(LIB_DIR)/libGLESv2.so.2
+	ln -f .libs/libGLESv2.so.2.0.0 $(top_builddir)/$(LIB_DIR)/libGLESv2.so.2.0.0
