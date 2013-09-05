@@ -32,12 +32,7 @@
 #include "fd3_program.h"
 #include "fd3_util.h"
 
-
-int fd3_compile_shader(struct fd3_shader_variant *so,
-		const struct tgsi_token *tokens,
-		struct fd3_shader_key key);
-int fd3_compile_shader_old(struct fd3_shader_variant *so,
-		const struct tgsi_token *tokens,
-		struct fd3_shader_key key);
+int fd3_compile_shader(struct fd3_shader_stateobj *so,
+		const struct tgsi_token *tokens);
 
 #endif /* FD3_COMPILER_H_ */
