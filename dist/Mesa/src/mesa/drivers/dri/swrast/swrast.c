@@ -32,7 +32,6 @@
  * The back-buffer is allocated by the driver and is private.
  */
 
-#include "drisw_util.h"
 #include "main/api_exec.h"
 #include "main/context.h"
 #include "main/extensions.h"
