@@ -763,11 +763,14 @@
 ./usr/X11R6/lib/pkgconfig/dmxproto.pc
 ./usr/X11R6/lib/pkgconfig/fixesproto.pc
 ./usr/X11R6/lib/pkgconfig/fontcacheproto.pc
+./usr/X11R6/lib/pkgconfig/egl.pc
 ./usr/X11R6/lib/pkgconfig/fontconfig.pc
 ./usr/X11R6/lib/pkgconfig/fontenc.pc
 ./usr/X11R6/lib/pkgconfig/fontsproto.pc
 ./usr/X11R6/lib/pkgconfig/fontutil.pc
 ./usr/X11R6/lib/pkgconfig/freetype2.pc
+./usr/X11R6/lib/pkgconfig/glesv1_cm.pc
+./usr/X11R6/lib/pkgconfig/glesv2.pc
 ./usr/X11R6/lib/pkgconfig/glproto.pc
 ./usr/X11R6/lib/pkgconfig/ice.pc
 ./usr/X11R6/lib/pkgconfig/inputproto.pc

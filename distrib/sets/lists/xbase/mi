@@ -133,6 +133,10 @@
 ./usr/X11R6/bin/xwud
 ./usr/X11R6/include
 ./usr/X11R6/include/EGL
+./usr/X11R6/include/EGL/egl.h
+./usr/X11R6/include/EGL/eglext.h
+./usr/X11R6/include/EGL/eglmesaext.h
+./usr/X11R6/include/EGL/eglplatform.h
 ./usr/X11R6/include/GL
 ./usr/X11R6/include/GL/internal
 ./usr/X11R6/include/X11
@@ -168,6 +172,7 @@
 ./usr/X11R6/lib/X11/fvwm/system.fvwm2rc-sample-2
 ./usr/X11R6/lib/X11/proxymngr
 ./usr/X11R6/lib/X11/xman.help
+./usr/X11R6/lib/libEGL.a
 ./usr/X11R6/lib/libFS.a
 ./usr/X11R6/lib/libFS.la
 ./usr/X11R6/lib/libICE.a
@@ -242,9 +247,11 @@
 ./usr/X11R6/lib/libfontenc.a
 ./usr/X11R6/lib/libfontenc.la
 ./usr/X11R6/lib/libfreetype.a
+./usr/X11R6/lib/libglapi.a
 ./usr/X11R6/lib/libpciaccess.a
 ./usr/X11R6/lib/libpciaccess.la
 ./usr/X11R6/lib/libpthread-stubs.a
+./usr/X11R6/lib/libtxc_dxtn.a
 ./usr/X11R6/lib/libxcb-atom.a
 ./usr/X11R6/lib/libxcb-aux.a
 ./usr/X11R6/lib/libxcb-composite.a

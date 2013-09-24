@@ -46,7 +46,6 @@
 ./usr/X11R6/include/xorg/gc.h
 ./usr/X11R6/include/xorg/gcstruct.h
 ./usr/X11R6/include/xorg/globals.h
-./usr/X11R6/include/xorg/glx_extinit.h
 ./usr/X11R6/include/xorg/glyphstr.h
 ./usr/X11R6/include/xorg/i2c_def.h
 ./usr/X11R6/include/xorg/input.h
