@@ -646,8 +646,6 @@
 ./usr/X11R6/include/freetype2/freetype/fttypes.h
 ./usr/X11R6/include/freetype2/freetype/ftwinfnt.h
 ./usr/X11R6/include/freetype2/freetype/ftxf86.h
-./usr/X11R6/include/freetype2/freetype/internal
-./usr/X11R6/include/freetype2/freetype/internal/services
 ./usr/X11R6/include/freetype2/freetype/t1tables.h
 ./usr/X11R6/include/freetype2/freetype/ttnameid.h
 ./usr/X11R6/include/freetype2/freetype/tttables.h
@@ -727,9 +725,9 @@
 ./usr/X11R6/lib/pkgconfig/damageproto.pc
 ./usr/X11R6/lib/pkgconfig/dmx.pc
 ./usr/X11R6/lib/pkgconfig/dmxproto.pc
+./usr/X11R6/lib/pkgconfig/egl.pc
 ./usr/X11R6/lib/pkgconfig/fixesproto.pc
 ./usr/X11R6/lib/pkgconfig/fontcacheproto.pc
-./usr/X11R6/lib/pkgconfig/egl.pc
 ./usr/X11R6/lib/pkgconfig/fontconfig.pc
 ./usr/X11R6/lib/pkgconfig/fontenc.pc
 ./usr/X11R6/lib/pkgconfig/fontsproto.pc
@@ -3298,7 +3296,6 @@
 ./usr/X11R6/share/X11/xkb/geometry/keytronic
 ./usr/X11R6/share/X11/xkb/geometry/kinesis
 ./usr/X11R6/share/X11/xkb/geometry/macintosh
-./usr/X11R6/share/X11/xkb/keycodes/olpc
 ./usr/X11R6/share/X11/xkb/geometry/microsoft
 ./usr/X11R6/share/X11/xkb/geometry/nec
 ./usr/X11R6/share/X11/xkb/geometry/nokia
@@ -3328,6 +3325,7 @@
 ./usr/X11R6/share/X11/xkb/keycodes/hp
 ./usr/X11R6/share/X11/xkb/keycodes/ibm
 ./usr/X11R6/share/X11/xkb/keycodes/macintosh
+./usr/X11R6/share/X11/xkb/keycodes/olpc
 ./usr/X11R6/share/X11/xkb/keycodes/sgi_vndr
 ./usr/X11R6/share/X11/xkb/keycodes/sgi_vndr/indigo
 ./usr/X11R6/share/X11/xkb/keycodes/sgi_vndr/indy
