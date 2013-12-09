@@ -5,6 +5,7 @@
 ./usr/X11R6/bin/Xvfb
 ./usr/X11R6/bin/cvt
 ./usr/X11R6/bin/gtf
+./usr/X11R6/include/txc_dxtn.h
 ./usr/X11R6/include/xorg
 ./usr/X11R6/include/xorg/BT.h
 ./usr/X11R6/include/xorg/IBM.h
