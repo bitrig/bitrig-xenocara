@@ -41,6 +41,11 @@ OS_SUPPORT = netbsd_pci.c
 VGA_ARBITER = common_vgaarb_stub.c
 endif
 
+if BITRIG
+OS_SUPPORT = openbsd_pci.c
+# VGA Arbiter code is included in openbsd_pci.c
+endif
+
 if OPENBSD
 OS_SUPPORT = openbsd_pci.c
 # VGA Arbiter code is included in openbsd_pci.c
