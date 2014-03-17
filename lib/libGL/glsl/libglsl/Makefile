@@ -156,8 +156,8 @@ cleandir: clean
 .SUFFIXES: .a .so .c .cpp
 
 .c.so:
-	@echo "${COMPILE.c} ${PICFLAG} -DPIC ${.IMPSRC} -o ${.TARGET}"
-	@${COMPILE.c} ${PICFLAG} -DPIC ${.IMPSRC} -o ${.TARGET}.o
+	@echo "${COMPILE.c:O3=O1} ${PICFLAG} -DPIC ${.IMPSRC} -o ${.TARGET}"
+	@${COMPILE.c:O3=O1} ${PICFLAG} -DPIC ${.IMPSRC} -o ${.TARGET}.o
 	@${LD} -X -r ${.TARGET}.o -o ${.TARGET}
 	@rm -f ${.TARGET}.o
 

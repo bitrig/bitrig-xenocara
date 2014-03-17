@@ -430,8 +430,8 @@ cleandir:	clean
 .SUFFIXES: .a .c .cpp .o .S .s .so
 
 .c.so:
-	@echo "${COMPILE.c} ${PICFLAG} -DPIC ${.IMPSRC} -o ${.TARGET}"
-	@${COMPILE.c} ${PICFLAG} -DPIC ${.IMPSRC} -o ${.TARGET}.o
+	@echo "${COMPILE.c:O3=O1} ${PICFLAG} -DPIC ${.IMPSRC} -o ${.TARGET}"
+	@${COMPILE.c:O3=O1} ${PICFLAG} -DPIC ${.IMPSRC} -o ${.TARGET}.o
 	@${LD} -X -r ${.TARGET}.o -o ${.TARGET}
 	@rm -f ${.TARGET}.o
 
@@ -445,8 +445,8 @@ prog_execute.so: prog_execute.c
 .endif
 
 .cpp.so:
-	@echo "${COMPILE.cc} ${PICFLAG} -DPIC ${.IMPSRC} -o ${.TARGET}"
-	@${COMPILE.cc} ${PICFLAG} -DPIC ${.IMPSRC} -o ${.TARGET}.o
+	@echo "${COMPILE.cc:O3=O1} ${PICFLAG} -DPIC ${.IMPSRC} -o ${.TARGET}"
+	@${COMPILE.cc:O3=O1} ${PICFLAG} -DPIC ${.IMPSRC} -o ${.TARGET}.o
 	@${LD} -X -r ${.TARGET}.o -o ${.TARGET}
 	@rm -f ${.TARGET}.o
 
