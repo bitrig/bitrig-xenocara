@@ -142,7 +142,7 @@ void intel_batch_teardown(ScrnInfoPtr scrn)
 static void intel_batch_do_flush(ScrnInfoPtr scrn)
 {
 	intel_screen_private *intel = intel_get_screen_private(scrn);
-	struct intel_pixmap *priv;
+	struct intel_pixmap *priv = NULL;
 
 	list_for_each_entry(priv, &intel->batch_pixmaps, batch)
 		priv->dirty = 0;
