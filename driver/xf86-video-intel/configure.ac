@@ -51,6 +51,8 @@ XORG_TESTSET_CFLAG([NOWARNFLAGS], [-Wno-maybe-uninitialized])
 ])
 AC_SUBST(NOWARNFLAGS)
 
+AC_C_TYPEOF
+
 # Require X.Org server macros (i.e. XORG_DRIVER_CHECK_EXT) to check for required modules 
 m4_ifndef([XORG_DRIVER_CHECK_EXT],
           [m4_fatal([must install xorg-server macros before running autoconf/autogen.

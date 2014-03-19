@@ -205,7 +205,7 @@ static void __sna_damage_reduce(struct sna_damage *damage)
 	int n, nboxes;
 	BoxPtr boxes, free_boxes = NULL;
 	pixman_region16_t *region = &damage->region;
-	struct sna_damage_box *iter = NULL;
+	struct sna_damage_box *iter;
 
 	assert(damage->mode != DAMAGE_ALL);
 	assert(damage->dirty);
@@ -1780,7 +1780,7 @@ void _sna_damage_debug_get_region(struct sna_damage *damage, RegionRec *r)
 {
 	int n, nboxes;
 	BoxPtr boxes;
-	struct sna_damage_box *iter = NULL;
+	struct sna_damage_box *iter;
 
 	RegionCopy(r, &damage->region);
 	if (!damage->dirty)

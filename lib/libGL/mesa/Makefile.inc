@@ -427,13 +427,39 @@ clean:
 cleandir:	clean
 
 .SUFFIXES:
-.SUFFIXES: .a .c .cpp .o .S .s .so
+.SUFFIXES: .a .c .cpp .o .S .s .so .ll
 
 .c.so:
 	@echo "${COMPILE.c:O3=O1} ${PICFLAG} -DPIC ${.IMPSRC} -o ${.TARGET}"
 	@${COMPILE.c:O3=O1} ${PICFLAG} -DPIC ${.IMPSRC} -o ${.TARGET}.o
 	@${LD} -X -r ${.TARGET}.o -o ${.TARGET}
 	@rm -f ${.TARGET}.o
+
+.c.ll:
+	@echo "${COMPILE.c} ${PICFLAG} -DPIC ${.IMPSRC} -o ${.TARGET}"
+	@${COMPILE.c} ${PICFLAG} -DPIC ${.IMPSRC} -S -emit-llvm
+
+context.so: context.ll
+
+#.if ${MACHINE_ARCH} == amd64
+#context.so: context.c
+#	@echo "${COMPILE.c:O3=O0} ${PICFLAG} -DPIC ${.IMPSRC} -o ${.TARGET}"
+#	@${COMPILE.c:O3=O0} ${PICFLAG} -DPIC ${.IMPSRC} -o ${.TARGET}.o
+#	@${LD} -X -r ${.TARGET}.o -o ${.TARGET}
+#	@rm -f ${.TARGET}.o
+#
+#vbo_context.so: vbo_context.c
+#	@echo "${COMPILE.c:O3=O0} ${PICFLAG} -DPIC ${.IMPSRC} -o ${.TARGET}"
+#	@${COMPILE.c:O3=O0} ${PICFLAG} -DPIC ${.IMPSRC} -o ${.TARGET}.o
+#	@${LD} -X -r ${.TARGET}.o -o ${.TARGET}
+#	@rm -f ${.TARGET}.o
+#
+#m_eval.so: m_eval.c
+#	@echo "${COMPILE.c:O3=O0} ${PICFLAG} -DPIC ${.IMPSRC} -o ${.TARGET}"
+#	@${COMPILE.c:O3=O0} ${PICFLAG} -DPIC ${.IMPSRC} -o ${.TARGET}.o
+#	@${LD} -X -r ${.TARGET}.o -o ${.TARGET}
+#	@rm -f ${.TARGET}.o
+#.endif
 
 .if ${MACHINE_ARCH} == alpha
 # remove optimization flags to prevent gcc 4.2.1 ICE

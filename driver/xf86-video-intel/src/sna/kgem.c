@@ -2000,7 +2000,7 @@ static void kgem_bo_move_to_snoop(struct kgem *kgem, struct kgem_bo *bo)
 static struct kgem_bo *
 search_snoop_cache(struct kgem *kgem, unsigned int num_pages, unsigned flags)
 {
-	struct kgem_bo *bo = NULL, *first = NULL;
+	struct kgem_bo *bo, *first = NULL;
 
 	DBG(("%s: num_pages=%d, flags=%x\n", __FUNCTION__, num_pages, flags));
 
@@ -2222,7 +2222,7 @@ static bool kgem_retire__buffers(struct kgem *kgem)
 
 static bool kgem_retire__flushing(struct kgem *kgem)
 {
-	struct kgem_bo *bo = NULL, *next;
+	struct kgem_bo *bo, *next;
 	bool retired = false;
 
 	list_for_each_entry_safe(bo, next, &kgem->flushing, request) {
@@ -2444,7 +2444,7 @@ static void kgem_commit__check_buffers(struct kgem *kgem)
 static void kgem_commit(struct kgem *kgem)
 {
 	struct kgem_request *rq = kgem->next_request;
-	struct kgem_bo *bo = NULL, *next;
+	struct kgem_bo *bo, *next;
 
 	list_for_each_entry_safe(bo, next, &rq->buffers, request) {
 		assert(next->request.prev == &bo->request);
@@ -2528,7 +2528,7 @@ static void kgem_close_inactive(struct kgem *kgem)
 
 static void kgem_finish_buffers(struct kgem *kgem)
 {
-	struct kgem_buffer *bo = NULL, *next;
+	struct kgem_buffer *bo, *next;
 
 	list_for_each_entry_safe(bo, next, &kgem->batch_buffers, base.list) {
 		DBG(("%s: buffer handle=%d, used=%d, exec?=%d, write=%d, mmapped=%s, refcnt=%d\n",
@@ -3499,7 +3499,7 @@ bool kgem_cleanup_cache(struct kgem *kgem)
 static struct kgem_bo *
 search_linear_cache(struct kgem *kgem, unsigned int num_pages, unsigned flags)
 {
-	struct kgem_bo *bo = NULL, *first = NULL;
+	struct kgem_bo *bo, *first = NULL;
 	bool use_active = (flags & CREATE_INACTIVE) == 0;
 	struct list *cache;
 
@@ -4149,7 +4149,7 @@ struct kgem_bo *kgem_create_2d(struct kgem *kgem,
 			       uint32_t flags)
 {
 	struct list *cache;
-	struct kgem_bo *bo = NULL;
+	struct kgem_bo *bo;
 	uint32_t pitch, tiled_height, size;
 	uint32_t handle;
 	int i, bucket, retry;
@@ -5773,7 +5773,7 @@ void kgem_bo_sync__gtt(struct kgem *kgem, struct kgem_bo *bo)
 void kgem_clear_dirty(struct kgem *kgem)
 {
 	struct list * const buffers = &kgem->next_request->buffers;
-	struct kgem_bo *bo = NULL;
+	struct kgem_bo *bo;
 
 	list_for_each_entry(bo, buffers, request) {
 		if (!bo->gpu_dirty)
@@ -6049,9 +6049,9 @@ struct kgem_bo *kgem_create_buffer(struct kgem *kgem,
 				   uint32_t size, uint32_t flags,
 				   void **ret)
 {
-	struct kgem_buffer *bo = NULL;
+	struct kgem_buffer *bo;
 	unsigned offset, alloc;
-	struct kgem_bo *old = NULL;
+	struct kgem_bo *old;
 
 	DBG(("%s: size=%d, flags=%x [write?=%d, inplace?=%d, last?=%d]\n",
 	     __FUNCTION__, size, flags,

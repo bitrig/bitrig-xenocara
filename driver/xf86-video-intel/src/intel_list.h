@@ -31,6 +31,7 @@
 #if XORG_VERSION_CURRENT < XORG_VERSION_NUMERIC(1,9,0,0,0) || XORG_VERSION_CURRENT >= XORG_VERSION_NUMERIC(1,11,99,903,0)
 
 #include <stdbool.h>
+#include <stddef.h>	/* for offsetof() */
 
 /**
  * @file Classic doubly-link circular list implementation.
@@ -269,6 +270,11 @@ list_is_empty(const struct list *head)
     return head->next == head;
 }
 
+
+#undef container_of
+#define container_of(ptr, type, member) \
+	((type *)((char *)(ptr) - offsetof(type, member)))
+
 /**
  * Alias of container_of
  */
@@ -305,9 +311,20 @@ list_is_empty(const struct list *head)
 #define list_last_entry(ptr, type, member) \
     list_entry((ptr)->prev, type, member)
 
+#ifdef HAVE_TYPEOF
+#define __container_of(ptr, sample, member) \
+	container_of(ptr, typeof(*sample), member)
+#else
+/* This implementation of __container_of has undefined behavior according
+ * to the C standard, but it works in many cases. If your compiler doesn't
+ * support typeof() and fails with this implementation, please try a newer
+ * compiler.
+ */
 #define __container_of(ptr, sample, member)				\
-    (void *)((char *)(ptr)						\
-	     - ((char *)&(sample)->member - (char *)(sample)))
+	(void *)((char *)(ptr)						\
+	    - ((char *)&(sample)->member - (char *)(sample)))
+#endif
+
 /**
  * Loop through the list given by head and set pos to struct in the list.
  *
@@ -399,9 +416,6 @@ static inline void list_move_tail(struct list *list, struct list *head)
 
 #endif
 
-#undef container_of
-#define container_of(ptr, type, member) \
-	((type *)((char *)(ptr) - (char *) &((type *)0)->member))
 
 #endif /* _INTEL_LIST_H_ */
 
