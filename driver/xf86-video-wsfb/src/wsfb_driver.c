@@ -1362,7 +1362,7 @@ WsfbRestore(ScrnInfoPtr pScrn)
 			xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
 			    "ioctl WSDISPLAY_SETGFXMODE: %s\n",
 			    strerror(errno));
-			return FALSE;
+			return;
 		}
 	}
 
