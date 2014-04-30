@@ -29,6 +29,13 @@ SUBDIR+= distrib/notes
 
 NOOBJ=
 
+buildworld:
+	${SUDO} mkdir -p /usr/xobj
+	${SUDO} rm -rf /usr/xobj/*
+	${MAKE} bootstrap
+	${MAKE} obj >/dev/null
+	${MAKE} build
+
 build: 
 	exec ${SUDO} ${MAKE} bootstrap-root
 	cd util/macros && exec ${MAKE} -f Makefile.bsd-wrapper
@@ -173,13 +180,6 @@ snapinfo:
 snap:
 	mkdir -p ${SNAPARCHDIR}
 	${MAKE} do_snap 2>&1 | tee ${SNAPLOGFILE}
-
-buildworld:
-	${SUDO} mkdir -p /usr/xobj
-	${SUDO} rm -rf /usr/xobj/*
-	${MAKE} bootstrap
-	${MAKE} obj >/dev/null
-	${MAKE} build
 
 do_snap: buildworld do_snap_rel
 
