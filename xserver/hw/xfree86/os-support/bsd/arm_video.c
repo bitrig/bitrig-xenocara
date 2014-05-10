@@ -194,6 +194,9 @@ xf86PrivilegedInit(void)
  * force softfloat functions into binary,
  * yes the protos/ret are all bogus.
  */
+void arm_softfloat(void);
+
+void
 arm_softfloat()
 {
 void __adddf3();
