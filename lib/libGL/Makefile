@@ -32,7 +32,8 @@ INCSDIR=	${X11BASE}/include/GL
 
 .if ${XENOCARA_BUILD_DRI:L} == "yes"
 LDADD=		-L${X11BASE}/lib -lX11 -lXext -lXxf86vm -lXdamage -lXfixes \
-		-lxcb -lX11-xcb -lxcb-dri2 -lxcb-glx -ldrm -lstdc++ -lm -lc
+		-lxcb -lX11-xcb -lxcb-dri2 -lxcb-glx -ldrm -lm -lc
+LDADD+=		-lc++ -lc++abi
 # XXX link libGL with -lpthread to be able to dlopen() the llvm-pipe module
 LDADD+=		-lpthread
 .else

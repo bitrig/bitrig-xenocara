@@ -57,7 +57,7 @@ CPPFLAGS += -DUSE_X86_64_ASM
 
 LDADD?=	../../mesa/libmesa/libmesa_pic.a \
 	../../glsl/libglsl/libglsl_pic.a \
-	-L${X11BASE}/lib  -lexpat -ldrm -lm -lstdc++ -lc
+	-L${X11BASE}/lib  -lexpat -ldrm -lm -lc++ -lc++abi -lpthread -lc
 DPADD?=	../../mesa/libmesa/libmesa_pic.a
 
 .PATH: ${MESA}/drivers/dri/common

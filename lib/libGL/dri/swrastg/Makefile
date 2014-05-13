@@ -48,7 +48,8 @@ LDADD=	../../mesa/libmesagallium/libmesagallium_pic.a \
 	../../glsl/libglsl/libglsl_pic.a \
 	${SWRAST_DRIVERS} \
 	../../gallium/libgallium/libgallium_pic.a \
-	-L${X11BASE}/lib -lexpat -lm -lstdc++ -lc
+	-L${X11BASE}/lib -lexpat -lm -lc
+LDADD+=	-lc++ -lc++abi -lpthread
 DPADD=	../../mesa/libmesagallium/libmesagallium_pic.a
 
 .include "../../gallium/Makefile.inc"
