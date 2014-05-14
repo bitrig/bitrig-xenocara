@@ -226,17 +226,24 @@ void __subdf3();
 void __subsf3();
 void __truncdfsf2();
 
+#if defined(__SOFTFP__)
+/* softfloat only functions */
 __adddf3();
 __addsf3();
-__eqdf2();
-__eqsf2();
 __extendsfdf2();
 __fixdfsi();
 __fixsfsi();
-__fixunsdfsi();
-__fixunssfsi();
 __floatsidf();
 __floatsisf();
+__subdf3();
+__subsf3();
+__truncdfsf2();
+#endif
+
+__eqdf2();
+__eqsf2();
+__fixunsdfsi();
+__fixunssfsi();
 __gedf2();
 __gesf2();
 __gtdf2();
@@ -249,8 +256,5 @@ __nedf2();
 __negdf2();
 __negsf2();
 __nesf2();
-__subdf3();
-__subsf3();
-__truncdfsf2();
 }
 #endif /* __VFP_FP__ */
