@@ -6,7 +6,7 @@ MESA_TINY=	3
 
 CPP=	cpp -notraditional
 
-CFLAGS+= -std=c99 -fms-extensions
+CFLAGS+= -fms-extensions
 
 CPPFLAGS+= \
 	-DPACKAGE_VERSION=\"${MESA_MAJOR}.${MESA_MINOR}.${MESA_TINY}\" \
