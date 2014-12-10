@@ -311,6 +311,7 @@ static int
 sproc_dri3_query_version(ClientPtr client)
 {
     REQUEST(xDRI3QueryVersionReq);
+    REQUEST_SIZE_MATCH(xDRI3QueryVersionReq);
 
     swaps(&stuff->length);
     swapl(&stuff->majorVersion);
@@ -322,6 +323,7 @@ static int
 sproc_dri3_open(ClientPtr client)
 {
     REQUEST(xDRI3OpenReq);
+    REQUEST_SIZE_MATCH(xDRI3OpenReq);
 
     swaps(&stuff->length);
     swapl(&stuff->drawable);
@@ -333,6 +335,7 @@ static int
 sproc_dri3_pixmap_from_buffer(ClientPtr client)
 {
     REQUEST(xDRI3PixmapFromBufferReq);
+    REQUEST_SIZE_MATCH(xDRI3PixmapFromBufferReq);
 
     swaps(&stuff->length);
     swapl(&stuff->pixmap);
@@ -348,6 +351,7 @@ static int
 sproc_dri3_buffer_from_pixmap(ClientPtr client)
 {
     REQUEST(xDRI3BufferFromPixmapReq);
+    REQUEST_SIZE_MATCH(xDRI3BufferFromPixmapReq);
 
     swaps(&stuff->length);
     swapl(&stuff->pixmap);
@@ -358,6 +362,7 @@ static int
 sproc_dri3_fence_from_fd(ClientPtr client)
 {
     REQUEST(xDRI3FenceFromFDReq);
+    REQUEST_SIZE_MATCH(xDRI3FenceFromFDReq);
 
     swaps(&stuff->length);
     swapl(&stuff->drawable);
@@ -369,6 +374,7 @@ static int
 sproc_dri3_fd_from_fence(ClientPtr client)
 {
     REQUEST(xDRI3FDFromFenceReq);
+    REQUEST_SIZE_MATCH(xDRI3FDFromFenceReq);
 
     swaps(&stuff->length);
     swapl(&stuff->drawable);
