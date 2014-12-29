@@ -128,7 +128,7 @@ dist-rel:
 dist:
 	cd distrib/sets && \
 		env MACHINE=${MACHINE} ksh ./maketars ${OSrev} ${OSREV} && \
-		{ env MACHINE=${MACHINE} ksh ./checkflist ${OSREV} || true ; }
+		{ env MACHINE=${MACHINE} ksh ./checkflist -u ${OSREV} || true ; }
 
 
 distrib-dirs:
