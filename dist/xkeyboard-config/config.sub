@@ -314,7 +314,6 @@ case $basic_machine in
 		basic_machine=tic6x-unknown
 		;;
 	m6811 | m68hc11 | m6812 | m68hc12 | m68hcs12x | picochip)
->>>>>>> a07ed08... Update to xkeyboard-config 2.7
 		basic_machine=$basic_machine-unknown
 		os=-none
 		;;
