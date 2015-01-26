@@ -172,6 +172,7 @@
 ./usr/X11R6/include/EGL
 ./usr/X11R6/include/EGL/egl.h
 ./usr/X11R6/include/EGL/eglext.h
+./usr/X11R6/include/EGL/eglextchromium.h
 ./usr/X11R6/include/EGL/eglmesaext.h
 ./usr/X11R6/include/EGL/eglplatform.h
 ./usr/X11R6/include/GL
