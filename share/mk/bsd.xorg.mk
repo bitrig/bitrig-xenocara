@@ -45,6 +45,9 @@ INSTALL_DATA = \
 _cache= --cache-file=${XOBJDIR}/xorg-config.cache.${MACHINE}
 
 CFLAGS+=	$(COPTS)
+# llvm 3.6
+CFLAGS+=	-Wno-pointer-bool-conversion
+CFLAGS+=	-Wno-tautological-pointer-compare
 
 .if !defined(CONFIG_SITE)
 CONFIG_SITE=	${XSRCDIR}/etc/config.site
