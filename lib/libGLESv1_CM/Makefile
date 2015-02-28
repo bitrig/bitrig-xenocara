@@ -20,7 +20,7 @@ LDADD=  -L${X11BASE}/lib -ldrm -lm -lpthread -lglapi
 LDADD=  -L${X11BASE}/lib -lm -lpthread -lglapi
 .endif
 
-CPP=	cpp -notraditional
+CPP=	clang-cpp
 DEBUG?=
 
 CFLAGS+= -std=c99

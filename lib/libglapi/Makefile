@@ -10,7 +10,7 @@ MESA_INCLUDE=	${.CURDIR}/../../dist/Mesa/include
 
 INCSDIR=	${X11BASE}/include/GL
 
-CPP=	cpp -notraditional
+CPP=	clang-cpp
 DEBUG?=
 
 CFLAGS+= -std=c99

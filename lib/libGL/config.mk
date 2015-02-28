@@ -4,7 +4,7 @@ MESA_MAJOR=	10
 MESA_MINOR=	4
 MESA_TINY=	3
 
-CPP=	cpp -notraditional
+CPP=	clang-cpp
 
 CPPFLAGS+= \
 	-DPACKAGE_VERSION=\"${MESA_MAJOR}.${MESA_MINOR}.${MESA_TINY}\" \
