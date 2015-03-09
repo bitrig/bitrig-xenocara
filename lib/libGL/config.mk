@@ -6,8 +6,6 @@ MESA_TINY=	9
 
 CPP=	clang-cpp
 
-CFLAGS+= -std=gnu99
-
 CPPFLAGS+= \
 	-DPACKAGE_VERSION=\"${MESA_MAJOR}.${MESA_MINOR}.${MESA_TINY}\" \
 	-DPACKAGE_BUGREPORT=\"bugs@openbsd.org\" \
