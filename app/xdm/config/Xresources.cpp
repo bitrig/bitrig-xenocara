@@ -65,6 +65,7 @@ xlogin*useShape: true
 XHASHifndef bpp1
 xlogin*greetColor: white
 xlogin*background: #0d7340
+xlogin*inpColor: #0d7340
 xlogin*hiColor: #3d8f66
 xlogin*shdColor: #0a5c33
 xlogin*failColor: red
