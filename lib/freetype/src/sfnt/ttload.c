@@ -207,7 +207,10 @@
       }
 
       /* we ignore invalid tables */
-      if ( table.Offset + table.Length > stream->size )
+
+      /* table.Offset + table.Length > stream->size ? */
+      if ( table.Length > stream->size                ||
+           table.Offset > stream->size - table.Length )
       {
         FT_TRACE2(( "check_table_dir: table entry %d invalid\n", nn ));
         continue;
@@ -395,7 +398,10 @@
       entry->Length   = FT_GET_ULONG();
 
       /* ignore invalid tables */
-      if ( entry->Offset + entry->Length > stream->size )
+
+      /* entry->Offset + entry->Length > stream->size ? */
+      if ( entry->Length > stream->size                 ||
+           entry->Offset > stream->size - entry->Length )
         continue;
       else
       {

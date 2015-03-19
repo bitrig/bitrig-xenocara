@@ -2550,7 +2550,7 @@
 
         e1 = TRUNC( e1 );
 
-        if ( e1 >= 0 && e1 < ras.target.rows )
+        if ( e1 >= 0 && (ULong)e1 < ras.target.rows )
         {
           PByte  p;
 
@@ -2644,7 +2644,7 @@
         /* bounding box instead                                           */
         if ( pxl < 0 )
           pxl = e1;
-        else if ( TRUNC( pxl ) >= ras.target.rows )
+        else if ( (ULong)( TRUNC( pxl ) ) >= ras.target.rows )
           pxl = e2;
 
         /* check that the other pixel isn't set */
@@ -2659,9 +2659,9 @@
         if ( ras.target.pitch > 0 )
           bits += ( ras.target.rows - 1 ) * ras.target.pitch;
 
-        if ( e1 >= 0              &&
-             e1 < ras.target.rows &&
-             *bits & f1           )
+        if ( e1 >= 0                     &&
+             (ULong)e1 < ras.target.rows &&
+             *bits & f1                  )
           return;
       }
       else
@@ -2673,7 +2673,7 @@
 
     e1 = TRUNC( pxl );
 
-    if ( e1 >= 0 && e1 < ras.target.rows )
+    if ( e1 >= 0 && (ULong)e1 < ras.target.rows )
     {
       bits -= e1 * ras.target.pitch;
       if ( ras.target.pitch > 0 )
