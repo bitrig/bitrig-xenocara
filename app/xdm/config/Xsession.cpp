@@ -39,6 +39,9 @@ XCOMM	done
 #endif
 fi
 
+XCOMM clear background
+xsetroot
+
 XCOMM if we have private ssh key(s), start ssh-agent and add the key(s)
 id1=$HOME/.ssh/identity
 id2=$HOME/.ssh/id_dsa

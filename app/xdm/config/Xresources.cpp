@@ -21,7 +21,6 @@ xlogin*login.translations: #override BS
 	<Key>Return: set-session-argument() finish-field()
 
 xlogin*greeting: Welcome to CLIENTHOST
-xlogin*namePrompt: \040\040\040\040\040\040\040Login:
 xlogin*fail: Login incorrect or forbidden by policy
 
 XHASHif WIDTH > 800
@@ -29,19 +28,19 @@ xlogin*greetFont: -adobe-helvetica-bold-o-normal--24-240-75-75-p-138-iso8859-1
 xlogin*font: -adobe-helvetica-medium-r-normal--18-180-75-75-p-98-iso8859-1
 xlogin*promptFont: -adobe-helvetica-bold-r-normal--18-180-75-75-p-103-iso8859-1
 xlogin*failFont: -adobe-helvetica-bold-r-normal--18-180-75-75-p-103-iso8859-1
-xlogin*greetFace:       Luxi Sans-22:bold:italic:dpi=75
-xlogin*face:            Luxi Sans-16:dpi=75
-xlogin*promptFace:      Luxi Sans-16:bold:dpi=75
-xlogin*failFace:        Luxi Sans-16:bold:dpi=75
+xlogin*greetFace:       DejaVu Sans-22:bold:italic:dpi=75
+xlogin*face:            DejaVu Sans-16:dpi=75
+xlogin*promptFace:      DejaVu Sans-16:bold:dpi=75
+xlogin*failFace:        DejaVu Sans-16:bold:dpi=75
 XHASHelse
 xlogin*greetFont: -adobe-helvetica-bold-o-normal--17-120-100-100-p-92-iso8859-1
 xlogin*font: -adobe-helvetica-medium-r-normal--12-120-75-75-p-67-iso8859-1
 xlogin*promptFont: -adobe-helvetica-bold-r-normal--12-120-75-75-p-70-iso8859-1
 xlogin*failFont: -adobe-helvetica-bold-o-normal--14-140-75-75-p-82-iso8859-1
-xlogin*greetFace:       Luxi Sans-18:bold:italic:dpi=75
-xlogin*face:            Luxi Sans-12:dpi=75
-xlogin*promptFace:      Luxi Sans-12:bold:dpi=75
-xlogin*failFace:        Luxi Sans-12:bold:dpi=75
+xlogin*greetFace:       DejaVu Sans-18:bold:italic:dpi=75
+xlogin*face:            DejaVu Sans-12:dpi=75
+xlogin*promptFace:      DejaVu Sans-12:bold:dpi=75
+xlogin*failFace:        DejaVu Sans-12:bold:dpi=75
 XHASHendif
 
 XHASHif !(defined(bpp1) || defined(bpp4) || defined(bpp8) || defined(bpp15))
@@ -56,42 +55,28 @@ XHASH  define bpp4
 XHASH endif
 XHASHendif  //**/* If manual override */**//
 
-XHASHifndef bpp1
-xlogin*borderWidth: 2
-xlogin*frameWidth: 5
-xlogin*innerFramesWidth: 2
-
-! top/left border
-xlogin*hiColor: #0d7340
-
-! bottom/right border
-xlogin*shdColor: #0d7340
-
-! 'Welcome to..' text color
-xlogin*greetColor: #ffffff
-XHASHif defined(bpp4) || defined(bpp8) || defined(bpp15)
-! flood fill
-xlogin*background: #0d7340
-XHASHendif
-xlogin*failColor: red
-
-! 'Login:' and 'Password:'
-*Foreground: #fbfeff
-
-! border/shadow
-*Background: #000000
-XHASHelse
-xlogin*borderWidth: 3
-xlogin*frameWidth: 5
+xlogin*borderWidth: 0
+xlogin*frameWidth: 1
 xlogin*innerFramesWidth: 1
-xlogin*shdColor: white
-xlogin*hiColor: white
+xlogin*sepWidth: 0
+xlogin*logoPadding: 0
+xlogin*useShape: true
+
+XHASHifndef bpp1
+xlogin*greetColor: white
+xlogin*background: #0d7340
+xlogin*hiColor: #3d8f66
+xlogin*shdColor: #0a5c33
+xlogin*failColor: red
+*Foreground: #fbfeff
+XHASHelse
 xlogin*greetColor: white
 xlogin*background: black
+xlogin*hiColor: white
+xlogin*shdColor: white
 xlogin*failColor: white
 xlogin*promptColor: white
 *Foreground: white
-*Background: black
 XHASHendif
 XHASHif defined(bpp1)
 xlogin*logoFileName: BITMAPDIR/**//Bitrig_1bpp.xpm
@@ -102,22 +87,23 @@ xlogin*logoFileName: BITMAPDIR/**//Bitrig_8bpp.xpm
 XHASHelif defined(bpp15)
 xlogin*logoFileName: BITMAPDIR/**//Bitrig_15bpp.xpm
 XHASHendif
-#if ! defined(Hp300Architecture)
-xlogin*useShape: true
-xlogin*logoPadding: 10
-#endif /* Hp300Architecture */
 
 ! uncomment to disable logins
 ! xlogin.Login.allowRootLogin:	false
 
+XHASHifndef bpp1
+XConsole*background:	#0d7340
+XHASHelse
 XConsole*background:	black
+XHASHendif
 XConsole*foreground:	white
-XConsole*borderWidth:	2
-XConsole*borderColor:   grey
+XConsole*cursorColor:	#0d7340
+XConsole*borderWidth:	0
 XConsole.text.geometry:	480x130
 XConsole.verbose:	true
 XConsole*iconic:	true
 XConsole*font:		fixed
+XConsole*scrollVertical: WhenNeeded
 
 Chooser*geometry:		640x480
 Chooser*allowShellResize:	false
