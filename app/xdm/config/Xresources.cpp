@@ -45,26 +45,14 @@ xlogin*failFace:        Luxi Sans-12:bold:dpi=75
 XHASHendif
 
 XHASHif !(defined(bpp1) || defined(bpp4) || defined(bpp8) || defined(bpp15))
-XHASH if PLANES < 4 || defined(Hp300Architecture)
-XHASH  ifndef bpp1
-XHASH   define bpp1
-XHASH  endif
+XHASH if PLANES < 4
+XHASH  define bpp1
+XHASH elif PLANES > 8
+XHASH  define bpp15
+XHASH elif PLANES > 4
+XHASH  define bpp8
 XHASH else
-XHASH  if PLANES > 4
-XHASH   if PLANES > 8
-XHASH    ifndef bpp15
-XHASH     define bpp15
-XHASH    endif
-XHASH   else
-XHASH    ifndef bpp8
-XHASH     define bpp8
-XHASH    endif bpp8
-XHASH   endif
-XHASH  else
-XHASH   ifndef bpp4
-XHASH    define bpp4
-XHASH   endif
-XHASH  endif
+XHASH  define bpp4
 XHASH endif
 XHASHendif  //**/* If manual override */**//
 
@@ -105,22 +93,13 @@ xlogin*promptColor: white
 *Foreground: white
 *Background: black
 XHASHendif
-XHASHifdef bpp1
+XHASHif defined(bpp1)
 xlogin*logoFileName: BITMAPDIR/**//Bitrig_1bpp.xpm
-XHASHendif
-#if ! defined(SparcArchitecture)
-XHASHif defined(bpp4) || defined(bpp8)
+XHASHelif defined(bpp4)
 xlogin*logoFileName: BITMAPDIR/**//Bitrig_4bpp.xpm
-XHASHendif
-#else /* sparc */
-XHASHifdef bpp4
-xlogin*logoFileName: BITMAPDIR/**//Bitrig_4bpp.xpm
-XHASHendif
-XHASHifdef bpp8
+XHASHelif defined(bpp8)
 xlogin*logoFileName: BITMAPDIR/**//Bitrig_8bpp.xpm
-XHASHendif
-#endif
-XHASHifdef bpp15
+XHASHelif defined(bpp15)
 xlogin*logoFileName: BITMAPDIR/**//Bitrig_15bpp.xpm
 XHASHendif
 #if ! defined(Hp300Architecture)
