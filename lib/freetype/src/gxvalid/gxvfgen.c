@@ -5,7 +5,8 @@
 /*    Generate feature registry data for gxv `feat' validator.             */
 /*    This program is derived from gxfeatreg.c in gxlayout.                */
 /*                                                                         */
-/*  Copyright 2004, 2005, 2006 by Masatake YAMATO and Redhat K.K.          */
+/*  Copyright 2004-2015 by                                                 */
+/*  Masatake YAMATO and Redhat K.K.                                        */
 /*                                                                         */
 /*  This file may only be used,                                            */
 /*  modified, and distributed under the terms of the FreeType project      */
@@ -460,12 +461,12 @@
       for ( nSettings = 0;
             featreg_table[i].setting_name[nSettings];
             nSettings++)
-        ;                           	/* Do nothing */
+        ;                                   /* Do nothing */
 
       printf( "    {%1d, %1d, %1d, %2d},   /* %s */\n",
               feat_name ? 1 : 0,
               ( feat_name                                                  &&
-                ( ft_strncmp( feat_name, 
+                ( ft_strncmp( feat_name,
                               APPLE_RESERVED, APPLE_RESERVED_LENGTH ) == 0 )
               ) ? 1 : 0,
               featreg_table[i].exclusive ? 1 : 0,

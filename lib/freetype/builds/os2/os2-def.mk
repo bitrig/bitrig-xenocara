@@ -3,7 +3,7 @@
 #
 
 
-# Copyright 1996-2000, 2003, 2005, 2006 by
+# Copyright 1996-2015 by
 # David Turner, Robert Wilhelm, and Werner Lemberg.
 #
 # This file is part of the FreeType project, and may only be used, modified,
@@ -14,6 +14,7 @@
 
 
 DELETE    := del
+CAT       := type
 SEP       := $(strip \ )
 BUILD_DIR := $(TOP_DIR)/builds/os2
 PLATFORM  := os2
