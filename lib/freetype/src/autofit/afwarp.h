@@ -4,7 +4,7 @@
 /*                                                                         */
 /*    Auto-fitter warping algorithm (specification).                       */
 /*                                                                         */
-/*  Copyright 2006 by                                                      */
+/*  Copyright 2006-2015 by                                                 */
 /*  David Turner, Robert Wilhelm, and Werner Lemberg.                      */
 /*                                                                         */
 /*  This file is part of the FreeType project, and may only be used,       */
@@ -25,7 +25,7 @@ FT_BEGIN_HEADER
 
 #define AF_WARPER_SCALE
 
-#define AF_WARPER_FLOOR( x )  ( (x) & ~63 )
+#define AF_WARPER_FLOOR( x )  ( (x) & ~TYPEOF( x )63 )
 #define AF_WARPER_CEIL( x )   AF_WARPER_FLOOR( (x) + 63 )
 
 
@@ -33,7 +33,6 @@ FT_BEGIN_HEADER
 
   typedef struct  AF_WarperRec_
   {
-    FT_Int        X1, X2;
     FT_Pos        x1, x2;
     FT_Pos        t1, t2;
     FT_Pos        x1min, x1max;

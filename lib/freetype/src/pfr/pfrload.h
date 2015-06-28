@@ -4,7 +4,7 @@
 /*                                                                         */
 /*    FreeType PFR loader (specification).                                 */
 /*                                                                         */
-/*  Copyright 2002 by                                                      */
+/*  Copyright 2002-2015 by                                                 */
 /*  David Turner, Robert Wilhelm, and Werner Lemberg.                      */
 /*                                                                         */
 /*  This file is part of the FreeType project, and may only be used,       */
@@ -54,11 +54,11 @@ FT_BEGIN_HEADER
   {
     FT_UInt                  type;
     PFR_ExtraItem_ParseFunc  parser;
-  
+
   } PFR_ExtraItemRec;
-  
+
   typedef const struct PFR_ExtraItemRec_*  PFR_ExtraItem;
- 
+
 
   FT_LOCAL( FT_Error )
   pfr_extra_items_skip( FT_Byte*  *pp,
@@ -85,7 +85,7 @@ FT_BEGIN_HEADER
   FT_LOCAL( FT_Error )
   pfr_log_font_count( FT_Stream   stream,
                       FT_UInt32   log_section_offset,
-                      FT_UInt    *acount );
+                      FT_Long    *acount );
 
   /* load a pfr logical font entry */
   FT_LOCAL( FT_Error )
@@ -109,7 +109,7 @@ FT_BEGIN_HEADER
                      FT_Memory    memory );
 
   /* */
- 
+
 FT_END_HEADER
 
 #endif /* __PFRLOAD_H__ */
