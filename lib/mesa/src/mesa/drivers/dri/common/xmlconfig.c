@@ -59,6 +59,9 @@ extern char *program_invocation_name, *program_invocation_short_name;
 #elif defined(__NetBSD__) && defined(__NetBSD_Version__) && (__NetBSD_Version__ >= 106000100)
 #    include <stdlib.h>
 #    define GET_PROGRAM_NAME() getprogname()
+#elif defined(__DragonFly__)
+#    include <stdlib.h>
+#    define GET_PROGRAM_NAME() getprogname()
 #elif defined(__APPLE__)
 #    include <stdlib.h>
 #    define GET_PROGRAM_NAME() getprogname()
@@ -937,6 +940,14 @@ static void parseOneConfigFile (XML_Parser p) {
 
 void driParseConfigFiles (driOptionCache *cache, const driOptionCache *info,
 			  int screenNum, const char *driverName) {
+#if defined(__OpenBSD__)
+    /*
+     * Opening drirc files is disabled by default so sandboxed
+     * browser processes with OpenGL contexts can drop the ability
+     * to read files.
+     */
+    initOptionCache (cache, info);
+#else
     char *filenames[2] = {"/etc/drirc", NULL};
     char *home;
     uint32_t i;
@@ -982,6 +993,7 @@ void driParseConfigFiles (driOptionCache *cache, const driOptionCache *info,
     }
 
     free(filenames[1]);
+#endif
 }
 
 void driDestroyOptionInfo (driOptionCache *info) {
