@@ -7382,7 +7382,7 @@ else
     lt_cv_sys_max_cmd_len=8192;
     ;;
 
-  netbsd* | freebsd* | openbsd* | darwin* | dragonfly*)
+  netbsd* | freebsd* | openbsd* | bitrig* | darwin* | dragonfly*)
     # This has been around since 386BSD, at least.  Likely further.
     if test -x /sbin/sysctl; then
       lt_cv_sys_max_cmd_len=`/sbin/sysctl -n kern.argmax`
@@ -7897,7 +7897,7 @@ newos6*)
   lt_cv_deplibs_check_method=pass_all
   ;;
 
-openbsd*)
+openbsd* | bitrig*)
   if test -z "`echo __ELF__ | $CC -E - | $GREP __ELF__`" || test "$host_os-$host_cpu" = "openbsd2.8-powerpc"; then
     lt_cv_deplibs_check_method='match_pattern /lib[^/]+(\.so\.[0-9]+\.[0-9]+|\.so|_pic\.a)$'
   else
@@ -8513,7 +8513,7 @@ old_postuninstall_cmds=
 
 if test -n "$RANLIB"; then
   case $host_os in
-  openbsd*)
+  openbsd* | bitrig*)
     old_postinstall_cmds="$old_postinstall_cmds~\$RANLIB -t \$tool_oldlib"
     ;;
   *)
@@ -11149,7 +11149,7 @@ $as_echo_n "checking whether the $compiler linker ($LD) supports shared librarie
     # we just hope/assume this is gcc and not c89 (= MSVC++)
     with_gnu_ld=yes
     ;;
-  openbsd*)
+  openbsd* | bitrig*)
     with_gnu_ld=no
     ;;
   esac
@@ -12025,7 +12025,7 @@ $as_echo "$lt_cv_irix_exported_symbol" >&6; }
     *nto* | *qnx*)
       ;;
 
-    openbsd*)
+    openbsd* | bitrig*)
       if test -f /usr/libexec/ld.so; then
 	hardcode_direct=yes
 	hardcode_shlibpath_var=no
@@ -13068,7 +13068,7 @@ newsos6)
   dynamic_linker='ldqnx.so'
   ;;
 
-openbsd*)
+openbsd* | bitrig*)
   version_type=sunos
   sys_lib_dlsearch_path_spec="/usr/lib"
   need_lib_prefix=no
@@ -15128,7 +15128,7 @@ fi
 	ld_shlibs_CXX=no
 	;;
 
-      openbsd*)
+      openbsd* | bitrig*)
 	if test -f /usr/libexec/ld.so; then
 	  hardcode_direct_CXX=yes
 	  hardcode_shlibpath_var_CXX=no
@@ -16899,7 +16899,7 @@ newsos6)
   dynamic_linker='ldqnx.so'
   ;;
 
-openbsd*)
+openbsd* | bitrig*)
   version_type=sunos
   sys_lib_dlsearch_path_spec="/usr/lib"
   need_lib_prefix=no
@@ -18170,7 +18170,7 @@ LDFLAGS=$save_LDFLAGS
 
 
 case "$host_os" in
-openbsd*)
+openbsd* | bitrig*)
     LD_NO_UNDEFINED="" ;;
 *)
     LD_NO_UNDEFINED="-Wl,--no-undefined" ;;
@@ -18290,7 +18290,7 @@ if test "x$enable_asm" = xyes; then
     case "$host_cpu" in
     i?86)
         case "$host_os" in
-        linux* | *freebsd* | dragonfly* | *netbsd* | openbsd*)
+        linux* | *freebsd* | dragonfly* | *netbsd* | openbsd* | bitrig*)
             test "x$enable_64bit" = xyes && asm_arch=x86_64 || asm_arch=x86
             ;;
         gnu*)
@@ -18300,7 +18300,7 @@ if test "x$enable_asm" = xyes; then
         ;;
     x86_64|amd64)
         case "$host_os" in
-        linux* | *freebsd* | dragonfly* | *netbsd* | openbsd*)
+        linux* | *freebsd* | dragonfly* | *netbsd* | openbsd* | bitrig*)
             test "x$enable_32bit" = xyes && asm_arch=x86 || asm_arch=x86_64
             ;;
         esac
@@ -20394,7 +20394,7 @@ if test "x$enable_dri" = xyes; then
             ;;
         esac
         ;;
-    *freebsd* | dragonfly* | *netbsd* | openbsd*)
+    *freebsd* | dragonfly* | *netbsd* | openbsd* | bitrig*)
         DEFINES="$DEFINES -DHAVE_PTHREAD -DUSE_EXTERNAL_DXTN_LIB=1"
         DEFINES="$DEFINES -DHAVE_ALIAS"
         ;;
