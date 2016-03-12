@@ -31,7 +31,8 @@ CONFIGURE_ARGS=		--with-dri-drivers=${DRI_DRIVERS} \
 			--with-egl-platforms="x11,drm" \
 			--prefix=${X11BASE} \
 			--with-dri-driverdir=${X11BASE}/lib/modules/dri \
-			--with-dri-searchpath=${X11BASE}/lib/modules/dri
+			--with-dri-searchpath=${X11BASE}/lib/modules/dri \
+			ac_cv_prog_PYTHON2="" PYTHON2=""
 
 # The i965 driver uses the cmpxchg8b instruction
 .if ${MACHINE} == i386
