@@ -18,7 +18,6 @@ DRI_DRIVERS=swrast,radeon,r200
 GALLIUM_DRIVERS=swrast,r300,r600
 .endif
 
-CONFIGURE_ENV=		YACC=${YACC}
 CONFIGURE_ARGS=		--with-dri-drivers=${DRI_DRIVERS} \
 			--with-gallium-drivers=${GALLIUM_DRIVERS} \
 			--disable-silent-rules \
