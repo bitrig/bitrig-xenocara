@@ -6,7 +6,7 @@ DIST= ${.CURDIR}
 
 # Machines for which we don't build the Xorg Xserver
 NO_XORG_MACHINES=	alpha hppa64 landisk  \
-			octeon vax
+			octeon vax arm64
 
 .for M in ${NO_XORG_MACHINES} 
 NO_XORG_${M} = --disable-xorg

@@ -16,6 +16,8 @@ INPUT_DRV_alpha=
 
 INPUT_DRV_amd64= ${INPUT_DRV_COMMON} xf86-input-synaptics xf86-input-vmmouse
 
+INPUT_DRV_arm64= 
+
 INPUT_DRV_hppa= ${INPUT_DRV_DEFAULT}
 
 INPUT_DRV_i386= ${INPUT_DRV_COMMON} xf86-input-synaptics xf86-input-vmmouse
@@ -57,6 +59,8 @@ VIDEO_DRV_amd64= \
 	xf86-video-sis xf86-video-tdfx xf86-video-trident \
 	xf86-video-tseng xf86-video-vesa xf86-video-vmware \
 	xf86-video-wsfb xf86-video-wsudl
+
+VIDEO_DRV_arm64=
 
 VIDEO_DRV_armish= \
 	xf86-video-wsfb	xf86-video-wsudl
